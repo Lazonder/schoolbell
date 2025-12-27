@@ -15,9 +15,9 @@ events.jsonl.*
 *.swp
 
 # Config (echte data)
-#roosters.json
-#dagplanning.json
-#standaardweek.json
+roosters.json
+dagplanning.json
+standaardweek.json
 
 # Secrets
 .env
