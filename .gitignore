@@ -18,6 +18,7 @@ events.jsonl.*
 roosters.json
 dagplanning.json
 standaardweek.json
+weken_uit.json
 
 # Secrets
 .env
