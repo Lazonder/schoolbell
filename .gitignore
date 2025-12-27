@@ -14,6 +14,10 @@ events.jsonl.*
 *.bak
 *.swp
 
+# Sound files (local)
+static/geluiden/*.mp3
+static/geluiden/*.wav
+
 # Config (echte data)
 roosters.json
 dagplanning.json
