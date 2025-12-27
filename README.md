@@ -12,6 +12,7 @@ templates/	HTML-templates voor alle pagina’s
 static/geluiden/	Opslag voor mp3/wav/ogg-bestanden
 data/	JSON-data voor roosters, planning en logs
 certs/	HTTPS-certificaten (self-signed of Let’s Encrypt)
+
 🧩 Functionaliteit
 
 Webinterface
