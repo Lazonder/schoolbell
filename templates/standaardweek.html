@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Standaardweek{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <div>
+    <h1>Standaardweek</h1>
+    <p class="sb-help">
+      Kies per weekdag een standaardrooster.
+      De <strong>Agenda</strong> per datum overschrijft deze keuze wanneer ingesteld.
+    </p>
+  </div>
+</header>
+
+<div class="sb-card sb-card--section">
+  <form method="post" action="{{ url_for('standaardweek') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+    <table class="sb-table stdweek-table">
+      <thead>
+        <tr>
+          <th class="stdweek-day-col">Dag</th>
+          <th>Standaardrooster</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, label in weekdagen %}
+          <tr>
+            <td class="stdweek-day-col">{{ label }}</td>
+            <td>
+              <select name="rooster_{{ key }}"
+                      class="sb-select stdweek-select">
+                <option value="">— geen —</option>
+                {% for o in opties %}
+                  <option value="{{ o }}" {% if o == huidige[key] %}selected{% endif %}>
+                    {{ o }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="stdweek-actions">
+      <button type="submit" class="sb-btn sb-btn--success">
+        Opslaan
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

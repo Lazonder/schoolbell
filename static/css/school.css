@@ -1,0 +1,567 @@
+/* 1) Design tokens */
+:root{
+  --sb-font-sans: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --sb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* Voorbeeldkleuren – vervang door jullie huisstijl */
+  --sb-color-bg: #ffffff;
+  --sb-color-surface: #f7f7f9;
+  --sb-color-text: #1c1c1e;
+  --sb-color-muted: #666a73;
+
+  --sb-color-primary: #5b62ff;     /* Primair (schoolkleur) */
+  --sb-color-primary-600: #444bdb;
+  --sb-color-accent: #ff6b3d;      /* Accent/cta */
+  --sb-color-border: #e4e6eb;
+  --sb-color-success: #1c9c6b;
+  --sb-color-warning: #e6a700;
+  --sb-color-danger:  #db3a34;
+  --sb-radius: 14px;
+  --sb-shadow: 0 6px 20px rgba(0,0,0,.06);
+  --sb-container: 1080px;
+  --sb-gap: 16px;
+}
+
+/* 2) Basistypografie en layout */
+html, body { height: 100%; }
+body{
+  margin: 0;
+  font-family: var(--sb-font-sans);
+  color: var(--sb-color-text);
+  background: var(--sb-color-bg);
+  line-height: 1.45;
+}
+.sb-container{
+  width: min(100% - 2rem, var(--sb-container));
+  margin-inline: auto;
+}
+
+/* 3) Header & navigatie */
+.sb-header{
+  background: linear-gradient(0deg, var(--sb-color-primary-600), var(--sb-color-primary));
+  color: #fff;
+  box-shadow: var(--sb-shadow);
+}
+.sb-header__inner{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+}
+.sb-brand{ display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.sb-brand__logo{ height: 28px; width: auto; display:block; }
+.sb-brand__name{ font-weight: 700; letter-spacing:.2px; }
+
+.sb-nav{ display: flex; gap: 10px; }
+.sb-nav__link{
+  color: #fff; text-decoration: none; padding: 8px 12px; border-radius: 10px;
+}
+.sb-nav__link:hover{ background: rgba(255,255,255,.12); }
+
+/* 4) Kaarten & secties */
+.sb-main{ padding-block: 24px 48px; }
+.sb-card{
+  background: var(--sb-color-surface);
+  border: 1px solid var(--sb-color-border);
+  border-radius: var(--sb-radius);
+  box-shadow: var(--sb-shadow);
+  padding: 18px;
+}
+.sb-card + .sb-card{ margin-top: 16px; }
+
+/* 5) Knoppen */
+.sb-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid transparent; border-radius: 12px;
+  padding: 10px 14px; font-weight: 600; cursor: pointer;
+  background: var(--sb-color-primary); color:#fff;
+}
+.sb-btn:hover{ background: var(--sb-color-primary-600); }
+.sb-btn--ghost{
+  background: transparent; color: var(--sb-color-primary);
+  border-color: var(--sb-color-primary);
+}
+.sb-btn--danger{ background: var(--sb-color-danger); }
+.sb-btn--success{ background: var(--sb-color-success); }
+
+/* 6) Tabellen */
+.sb-table{
+  width:100%; border-collapse: collapse; overflow:hidden;
+  border:1px solid var(--sb-color-border); border-radius: 12px;
+}
+.sb-table th, .sb-table td{ padding:12px 10px; text-align:left; }
+.sb-table thead th{
+  background:#fff; position:sticky; top:0; z-index:1;
+  border-bottom:1px solid var(--sb-color-border);
+}
+.sb-table tbody tr:nth-child(even){ background: #fff; }
+.sb-table tbody tr:nth-child(odd){ background: #fafbfc; }
+.sb-table tbody tr:hover{ background:#f0f4ff; }
+
+/* 7) Formulieren */
+.sb-field{ display:grid; gap:6px; margin-bottom:12px; }
+.sb-label{ font-size:.95rem; color: var(--sb-color-muted); }
+.sb-input, .sb-select{
+  width:100%; border:1px solid var(--sb-color-border);
+  border-radius:12px; padding:10px 12px; background:#fff;
+}
+.sb-help{ font-size:.85rem; color: var(--sb-color-muted); }
+
+/* 8) Alerts */
+.sb-alerts{ display:grid; gap:10px; margin-bottom: 14px; }
+.sb-alert{
+  padding: 10px 12px; border-radius: 12px; border:1px solid var(--sb-color-border);
+  background:#fff;
+}
+.sb-alert--success{ border-color: var(--sb-color-success); }
+.sb-alert--warning{ border-color: var(--sb-color-warning); }
+.sb-alert--error, .sb-alert--danger{ border-color: var(--sb-color-danger); }
+
+/* 9) Footer */
+.sb-footer{
+  border-top: 1px solid var(--sb-color-border);
+  color: var(--sb-color-muted);
+  padding: 16px 0; background:#fff;
+}
+/* =========================================================
+   Layout voor de roosterpagina
+   ========================================================= */
+
+/* Grid waarin roosters naast elkaar komen */
+.grid-roosters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--sb-gap);
+  align-items: start;
+}
+
+
+/* Kaartstijl uitbreiden voor roosters (optioneel) */
+.card.rooster {
+  min-width: 360px;
+}
+
+/* Formulier-layout voor het toevoegen van momenten */
+.add-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sb-gap);
+  margin-top: var(--sb-gap);
+}
+
+.add-form .line1 {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--sb-gap);
+  align-items: center;
+}
+
+.add-form .line2 {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: var(--sb-gap);
+  align-items: center;
+}
+
+/* Zorg dat inline-formulieren netjes horizontaal blijven */
+form.inline {
+  display: inline;
+}
+
+/* Pagina-header bovenaan een pagina */
+.sb-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-gap);
+  margin-bottom: calc(var(--sb-gap) * 1.25);
+}
+
+.sb-page-header h1 {
+  margin: 0;
+}
+
+/* Kleine card tweaks voor secties */
+.sb-card--section {
+  margin-top: var(--sb-gap);
+}
+
+/* Titel in een kaart */
+.sb-card__title {
+  margin: 0 0 8px 0;
+}
+
+/* Monospace code accent */
+.sb-code-mono {
+  font-family: var(--sb-font-mono);
+  font-size: 0.95em;
+}
+
+/* Grid waarin roosters naast elkaar komen */
+.grid-roosters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--sb-gap);
+  align-items: start;
+}
+
+/* Roosterkaarten kunnen, als nodig, een min-breedte hebben */
+.card.rooster {
+  min-width: 0; /* laat grid de breedte bepalen */
+}
+
+/* Kolombreedtes in roostertabel */
+.sb-table .col-tijd {
+  width: 6.5rem;
+}
+
+.sb-table .col-acties {
+  width: 3.5rem;
+  text-align: right;
+}
+
+/* Formulier-layout voor het toevoegen van momenten */
+.add-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sb-gap);
+  margin-top: var(--sb-gap);
+}
+
+.add-form .line1 {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--sb-gap);
+  align-items: center;
+}
+
+.add-form .line2 {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: var(--sb-gap);
+  align-items: center;
+}
+
+/* Nieuw rooster formulier onderaan */
+.sb-new-rooster-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-gap);
+  align-items: center;
+  margin-top: 8px;
+}
+
+.sb-new-rooster-name {
+  flex: 1 1 220px;
+}
+
+/* Checkboxrij netjes uitlijnen */
+.sb-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Inline formulieren voor kleine acties (zoals verwijderen) */
+form.inline {
+  display: inline;
+}
+
+/* Basisbutton */
+.sb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: var(--sb-color-primary);
+  color: #fff;
+  text-decoration: none;
+}
+
+.sb-btn:hover {
+  background: var(--sb-color-primary-600);
+}
+
+/* Icon-only buttons (bv. ✕) */
+.sb-btn--icon {
+  padding-inline: 8px;
+}
+
+/* Varianten */
+.sb-btn--ghost {
+  background: transparent;
+  color: var(--sb-color-primary);
+  border-color: var(--sb-color-primary);
+}
+
+.sb-btn--danger {
+  background: var(--sb-color-danger);
+  border-color: var(--sb-color-danger);
+}
+
+.sb-btn--danger:hover {
+  background: #b02d28;
+}
+
+.sb-btn--success {
+  background: var(--sb-color-success);
+  border-color: var(--sb-color-success);
+}
+
+/* Inputs & selects */
+.sb-input,
+.sb-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--sb-color-border);
+  background: #fff;
+  font: inherit;
+  line-height: 1.3;
+}
+
+.sb-input:focus,
+.sb-select:focus {
+  outline: 2px solid var(--sb-color-primary);
+  outline-offset: 1px;
+  border-color: var(--sb-color-primary);
+}
+
+html[data-theme="dark"] {
+  --sb-color-bg: #0f1115;
+  --sb-color-surface: #141824;
+  --sb-color-text: #f2f3f5;
+  --sb-color-muted: #a0a4b0;
+  --sb-color-border: #262a36;
+}
+
+/* Zorg dat kaarten & tabel goed ogen in dark mode */
+html[data-theme="dark"] .sb-card,
+html[data-theme="dark"] .sb-table {
+  background: var(--sb-color-surface);
+}
+
+/* =========================================
+   Login-pagina
+   ========================================= */
+
+.sb-login-page {
+  min-height: calc(100vh - 140px); /* header + footer marge */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-login-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.sb-login-form {
+  margin-top: 12px;
+  display: grid;
+  gap: var(--sb-gap);
+}
+
+.sb-login-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* =========================================
+   Geluiden-pagina
+   ========================================= */
+
+/* Lijst van audiobestanden */
+.audio-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.audio-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-gap);
+  border-bottom: 1px solid var(--sb-color-border);
+  padding: 8px 0;
+}
+
+.audio-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+/* Actieknoppen (play / delete) naast elkaar */
+.audio-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Uploadformulier layout */
+.upload-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sb-gap);
+  margin-top: var(--sb-gap);
+}
+
+.upload-line1 {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) 1fr;
+  gap: var(--sb-gap);
+  align-items: center;
+}
+
+/* File input ietsje compacter */
+.sb-input--file {
+  padding: 4px 6px;
+}
+
+/* Hinttekst onder het formulier */
+.upload-hint {
+  font-size: 0.9em;
+}
+
+/* Actieknoppen onder upload-form */
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Verborgen audio-player totdat er iets wordt afgespeeld */
+.audio-player-hidden {
+  display: none;
+}
+
+/* Als je de player altijd onderaan zichtbaar wilt hebben:
+   .audio-player-hidden { display: block; opacity: 0.6; } enz. */
+
+   /* =========================================
+   Logboek-pagina
+   ========================================= */
+
+/* Grid-indeling van de logkaarten */
+.log-grid {
+  display: grid;
+  gap: var(--sb-gap);
+  grid-template-columns: 1fr;
+}
+
+/* Op bredere schermen de twee bovenste kaarten naast elkaar */
+@media (min-width: 1000px) {
+  .log-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* onderste (daemon) kaart over volle breedte */
+  .log-bell-card {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Datum/tijd kolommen: niet afbreken */
+.dt {
+  white-space: nowrap;
+}
+
+/* Monospace-stijl voor bestandsnamen / JSON */
+.mono {
+  font-family: var(--sb-font-mono);
+}
+
+/* Optioneel: JSON niet te groot maken in UI-acties */
+.sb-table code.sb-code-mono {
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+/* =========================================
+   Standaardweek-pagina
+   ========================================= */
+
+.stdweek-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stdweek-day-col {
+  width: 160px;
+  white-space: nowrap;
+}
+
+/* Selects netjes over de breedte van de tweede kolom */
+.stdweek-select {
+  width: 100%;
+}
+
+/* Opslaan-knop onder de tabel rechts uitlijnen */
+.stdweek-actions {
+  margin-top: var(--sb-gap);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* =========================================
+   Voorkeuren / settings-pagina
+   ========================================= */
+
+.sb-settings-form {
+  max-width: 480px;
+  display: grid;
+  gap: var(--sb-gap);
+}
+
+/* Actierij onderaan het formulier */
+.sb-settings-actions {
+  margin-top: var(--sb-gap);
+  display: flex;
+  align-items: center;
+  gap: var(--sb-gap);
+}
+
+/* Status-tekst links van de knop */
+.sb-settings-status {
+  min-height: 1.2em;
+}
+
+/* =========================================
+   DARK MODE
+   ========================================= */
+
+html[data-theme="dark"] {
+  --sb-color-bg: #0f1115;
+  --sb-color-surface: #141824;
+  --sb-color-text: #f2f3f5;
+  --sb-color-muted: #a0a4b0;
+  --sb-color-border: #262a36;
+  --sb-color-primary: #7a81ff;
+  --sb-color-primary-600: #6167e6;
+  --sb-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+}
+
+html[data-theme="dark"] .sb-card,
+html[data-theme="dark"] .sb-table,
+html[data-theme="dark"] .sb-footer,
+html[data-theme="dark"] .sb-header {
+  background: var(--sb-color-surface);
+}
+
+html[data-theme="dark"] body {
+  background: var(--sb-color-bg);
+}
+
+/* Optioneel: donker logo */
+html[data-theme="dark"] .sb-brand__logo {
+  filter: invert(1) hue-rotate(180deg);
+}

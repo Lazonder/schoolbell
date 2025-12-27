@@ -1,0 +1,28 @@
+#Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs & runtime
+events.jsonl
+events.jsonl.*
+*.log
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+
+# Config (echte data)
+#roosters.json
+#dagplanning.json
+#standaardweek.json
+
+# Secrets
+.env
+*.env
+
+# OS
+.DS_Store
+

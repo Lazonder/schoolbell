@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Roosters{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <h1>Roosters</h1>
+</header>
+
+<div class="grid-roosters">
+  {% if roosters %}
+    {% for naam, moments in roosters|dictsort %}
+      <div class="card rooster sb-card">
+
+        <h2 class="sb-card__title">{{ naam }}</h2>
+
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th class="col-tijd">Tijd</th>
+              <th>Naam</th>
+              <th>Bestand</th>
+              <th class="col-acties"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if moments %}
+              {% for m in moments|sort(attribute='tijd') %}
+                <tr>
+                  <td class="col-tijd">
+                    <code class="sb-code-mono">
+                      {{ m.tijd }}
+                    </code>
+                  </td>
+                  <td>{{ m.naam }}</td>
+                  <td>{{ m.bestand }}</td>
+                  <td class="col-acties">
+                    <form class="inline" method="post"
+                          action="{{ url_for('delete_moment', rooster=naam, index=loop.index0) }}">
+                      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                      <button type="submit"
+                              class="sb-btn sb-btn--danger sb-btn--icon"
+                              title="Verwijder dit moment">
+                        ✕
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4">
+                  <em class="sb-help">Geen momenten</em>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <form method="post"
+              action="{{ url_for('add_moment', rooster=naam) }}"
+              class="add-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+          <div class="line1">
+            <input name="tijd"
+                   class="sb-input"
+                   placeholder="HH:MM"
+                   required
+                   pattern="^(?:[01]\d|2[0-3]):[0-5]\d$">
+            <input name="naam"
+                   class="sb-input"
+                   placeholder="Naam (verplicht)"
+                   required>
+          </div>
+
+          <div class="line2">
+            <select name="bestand"
+                    class="sb-select"
+                    required>
+              <option value="">— Kies geluid —</option>
+              {% for g in geluiden %}
+                <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="sb-btn sb-btn--success">
+              Moment toevoegen
+            </button>
+          </div>
+        </form>
+
+        <form class="inline"
+              method="post"
+              action="{{ url_for('delete_rooster', rooster=naam) }}"
+              onclick="return confirm('Weet je zeker dat je dit rooster wilt verwijderen?');">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button type="submit" class="sb-btn sb-btn--danger">
+            Rooster verwijderen
+          </button>
+        </form>
+
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="card rooster sb-card">
+      <h2 class="sb-card__title">Roosters</h2>
+      <p class="sb-help">Er zijn nog geen roosters. Maak de eerste aan.</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card sb-card sb-card--section">
+  <h2 class="sb-card__title">Nieuw rooster</h2>
+  <form method="post" action="{{ url_for('add_rooster') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+    <div class="sb-new-rooster-row">
+      <input name="naam"
+             class="sb-input sb-new-rooster-name"
+             placeholder="Naam nieuw rooster"
+             required>
+
+      <label class="sb-checkbox-row">
+        <input type="checkbox" name="kopieer_van_eerste" checked>
+        <span class="sb-help">Start als kopie van het eerste rooster</span>
+      </label>
+
+      <button type="submit" class="sb-btn">
+        Aanmaken
+      </button>
+    </div>
+  </form>
+</div>
+
+<p class="sb-hint">
+  Na wijzigingen: herlaad de daemon met
+  <code class="sb-code-mono">sudo systemctl kill -s HUP schoolbell-daemon.service</code>.
+</p>
+
+{% endblock %}

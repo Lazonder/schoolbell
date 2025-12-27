@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Schoolbel{% endblock %} · IVKO</title>
+
+  <!-- CSRF token beschikbaar voor JS -->
+  <meta name="csrf-token" content="{{ csrf_token }}">
+
+  <!-- Huisstijl -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/school.css') }}">
+</head>
+<body>
+<body data-theme="light">
+  <!-- HEADER -->
+  <header class="sb-header">
+    <div class="sb-container sb-header__inner">
+
+      <!-- Branding -->
+      <a class="sb-brand" href="{{ url_for('roosters') }}">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}"
+             alt="IVKO"
+             class="sb-brand__logo">
+        <span class="sb-brand__name">IVKO Schoolbel</span>
+      </a>
+
+      <!-- Navigatie -->
+      <nav class="sb-nav">
+        <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('logs_page') }}">Logboek</a>
+        <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters') }}">Roosters</a>
+        <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('standaardweek') }}">Standaardweek</a>
+        <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda') }}">Agenda</a>
+        <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden') }}">Geluiden</a>
+        <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings_page') }}">Voorkeuren</a>
+      </nav>
+
+      <!-- Logout -->
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button type="submit" class="sb-btn">Uitloggen</button>
+      </form>
+
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="sb-container sb-main">
+
+    <!-- Flash-berichten -->
+    {% with messages = get_flashed_messages(with_categories=false) %}
+      {% if messages %}
+        <div class="sb-alerts">
+          {% for m in messages %}
+            <div class="sb-alert sb-alert--info">{{ m }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Pagina-inhoud -->
+    {% block content %}{% endblock %}
+
+    <!-- Optionele hint -->
+    {% block hint %}{% endblock %}
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="sb-footer">
+    <div class="sb-container">
+      © {{ now().year if false else "" }} IVKO · Schoolbel
+    </div>
+  </footer>
+
+  <!-- CSRF auto-inject voor POST-formulieren -->
+  <script>
+  (() => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!token) return;
+
+    for (const form of document.forms) {
+      const method = (form.getAttribute('method') || 'GET').toUpperCase();
+      if (method !== 'POST') continue;
+      if (form.querySelector('input[name="_csrf"]')) continue;
+
+      const input = document.createElement('input');
+      input.type = "hidden";
+      input.name = "_csrf";
+      input.value = token;
+      form.appendChild(input);
+    }
+  })();
+  </script>
+
+  <script>
+  (async () => {
+    // haal thema-instelling op
+    const r = await fetch("/api/settings", { credentials:"same-origin" });
+    const settings = await r.json();
+    const mode = settings.theme_mode || "light";
+
+    function applyTheme(mode) {
+      if (mode === "auto") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+      } else {
+        document.documentElement.setAttribute("data-theme", mode);
+      }
+    }
+
+    applyTheme(mode);
+
+    // als user OS-thema wijzigt en 'auto' staat aan → meteen omschakelen
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+      if (mode === "auto") applyTheme("auto");
+    });
+  })();
+  </script>
+
+</body>
+</html>

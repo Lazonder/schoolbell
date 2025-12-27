@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Agenda{% endblock %}
+
+{% block content %}
+
+<div class="card sb-card sb-card--section">
+  <form method="post" action="{{ url_for('agenda') }}">
+    <input type="hidden" name="_action" value="bulk_save">
+
+    <header class="sb-page-header">
+      <div>
+        <h1>Agenda</h1>
+        <p class="sb-help">
+          Wijzig per dag het rooster, of zet een hele week uit. Klik daarna op
+          <strong>Alles opslaan</strong>.
+        </p>
+      </div>
+      <div class="agenda-actions">
+        <button type="submit" class="sb-btn sb-btn--success">
+          Alles opslaan
+        </button>
+      </div>
+    </header>
+
+    <div class="agenda-scroll">
+      <table class="sb-table agenda-table">
+        <thead>
+          <tr>
+            <th class="col-week">Week</th>
+            <th>Ma</th>
+            <th>Di</th>
+            <th>Wo</th>
+            <th>Do</th>
+            <th>Vr</th>
+            <th class="col-bel-uit">Bel uit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wk in weeks %}
+            <tr class="{{ 'week-off' if wk.off else '' }}">
+              <td class="weeknum">
+                {{ wk.key }}
+                <div class="small">{{ wk.range }}</div>
+              </td>
+
+              {% for d in wk.days %}
+                <td class="cell">
+                  <select name="day[{{ d.iso }}]"
+                          class="sb-select agenda-select"
+                          {{ 'disabled' if wk.off else '' }}>
+                    {% for opt in opties %}
+                      <option value="{{ opt }}" {{ 'selected' if opt == d.selected else '' }}>
+                        {{ opt if opt else '— leeg —' }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </td>
+              {% endfor %}
+
+              <td>
+                <label class="week-toggle">
+                  <input type="checkbox"
+                         name="week_off[{{ wk.key }}]"
+                         value="1"
+                         {{ 'checked' if wk.off else '' }}>
+                  <span>Uit</span>
+                </label>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="agenda-actions">
+      <button type="submit" class="sb-btn sb-btn--success">
+        Alles opslaan
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

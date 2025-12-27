@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Logboek{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <div>
+    <h1>Logboek</h1>
+    <p class="sb-help">
+      Overzicht van komende belmomenten, recente bel-events (daemon) en recente UI-acties.
+    </p>
+  </div>
+</header>
+
+<div class="log-grid">
+
+  <div class="sb-card">
+    <h2 class="sb-card__title">Eerstkomende belmomenten</h2>
+    <table class="sb-table">
+      <thead>
+        <tr>
+          <th class="dt">Datum/Tijd</th>
+          <th>Naam</th>
+          <th>Bestand</th>
+          <th>Rooster</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if upcoming %}
+          {% for u in upcoming %}
+            <tr>
+              <td class="dt">{{ u.datum }} {{ u.tijd }}</td>
+              <td>{{ u.naam }}</td>
+              <td class="mono sb-code-mono">{{ u.bestand }}</td>
+              <td>{{ u.rooster }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4">
+              <em class="sb-help">Geen komende momenten gevonden.</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sb-card">
+    <h2 class="sb-card__title">Recente UI-acties</h2>
+    <table class="sb-table">
+      <thead>
+        <tr>
+          <th class="dt">Ts</th>
+          <th>Actie</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if recent_ui %}
+          {% for e in recent_ui %}
+            {% set ts = (e.ts or '')[:19].replace('T',' ') %}
+            {% set action = e.action or e.data.action or '' %}
+            <tr>
+              <td class="dt">{{ ts }}</td>
+              <td>{{ action }}</td>
+              <td>
+                {% if e.data %}
+                  <code class="mono sb-code-mono">{{ e.data|tojson(indent=0) }}</code>
+                {% else %}
+                  <span class="sb-help">-</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3">
+              <em class="sb-help">Geen UI-acties gelogd.</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sb-card log-bell-card">
+    <h2 class="sb-card__title">Recente bel-events (daemon)</h2>
+    <table class="sb-table">
+      <thead>
+        <tr>
+          <th class="dt">Ts</th>
+          <th>Naam</th>
+          <th>Tijd</th>
+          <th>Bestand</th>
+          <th>Status</th>
+          <th>Bericht</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if recent_bell %}
+          {% for e in recent_bell %}
+            {% set ts = (e.ts or '')[:19].replace('T',' ') %}
+            {% set d = e.data or {} %}
+            <tr>
+              <td class="dt">{{ ts }}</td>
+              <td>{{ d.naam or '' }}</td>
+              <td>{{ d.tijd or '' }}</td>
+              <td class="mono sb-code-mono">{{ d.bestand or '' }}</td>
+              <td>{{ d.status or '' }}</td>
+              <td>{{ d.message or '' }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6">
+              <em class="sb-help">Geen bel-logregels (daemon heeft nog niet gelogd).</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

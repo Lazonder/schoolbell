@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Geluiden{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <h1>Geluiden</h1>
+</header>
+
+<div class="sb-card sb-card--section">
+  <h2 class="sb-card__title">Beschikbare geluiden</h2>
+
+  {% if files %}
+    <ul class="audio-list">
+      {% for name in files %}
+        <li class="audio-item">
+          <div class="audio-name">{{ name }}</div>
+          <div class="audio-actions">
+            <button type="button"
+                    class="sb-btn sb-btn--success sb-btn--icon"
+                    onclick="playAudio('{{ url_for('serve_audio', filename=name) }}')"
+                    title="Afspelen">
+              ▶
+            </button>
+            <form method="post"
+                  action="{{ url_for('geluiden_delete') }}"
+                  class="inline"
+                  onsubmit="return confirm('Bestand &quot;{{ name }}&quot; verwijderen?');">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="filename" value="{{ name }}">
+              <button type="submit"
+                      class="sb-btn sb-btn--danger sb-btn--icon"
+                      title="Verwijderen">
+                ✕
+              </button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="sb-help"><em>Geen audiobestanden gevonden.</em></p>
+  {% endif %}
+</div>
+
+<div class="sb-card sb-card--section">
+  <h2 class="sb-card__title">Nieuw geluid uploaden</h2>
+
+  <form class="upload-form"
+        method="post"
+        action="{{ url_for('geluiden_upload') }}"
+        enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+    <div class="upload-line1">
+      <input type="text"
+             name="naam"
+             class="sb-input"
+             placeholder="Unieke naam (max 35 tekens)"
+             required>
+      <input type="file"
+             name="file"
+             class="sb-input sb-input--file"
+             accept="{{ accept_attr }}"
+             required>
+    </div>
+
+    <div class="upload-hint sb-help">
+      Toegestane extensies: {{ allowed_exts|join(', ') }} • max {{ max_mb }} MB • Naam: letters/cijfers/spatie/_/-
+    </div>
+
+    <div class="upload-actions">
+      <button type="submit" class="sb-btn sb-btn--success">
+        Uploaden
+      </button>
+    </div>
+  </form>
+</div>
+
+<audio id="player" controls class="audio-player-hidden"></audio>
+<script>
+  function playAudio(url) {
+    var player = document.getElementById('player');
+    player.src = url;
+    player.classList.remove('audio-player-hidden');
+    player.play();
+  }
+</script>
+
+{% endblock %}

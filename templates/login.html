@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Inloggen{% endblock %}
+
+{% block content %}
+
+<div class="sb-login-page">
+  <div class="sb-card sb-login-card">
+    <h1 class="sb-card__title">Schoolbel — Inloggen</h1>
+
+    {# Flashes ook binnen de kaart tonen, naast de globale in base.html #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="sb-alerts" style="margin-bottom: var(--sb-gap);">
+          {% for category, message in messages %}
+            <div class="sb-alert sb-alert--{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post"
+          action="{{ url_for('login', next=next_url) }}"
+          class="sb-login-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+      <div class="sb-field">
+        <label class="sb-label" for="username">Gebruikersnaam</label>
+        <input id="username"
+               name="username"
+               class="sb-input"
+               autocomplete="username"
+               autofocus
+               required>
+      </div>
+
+      <div class="sb-field">
+        <label class="sb-label" for="password">Wachtwoord</label>
+        <input id="password"
+               type="password"
+               name="password"
+               class="sb-input"
+               autocomplete="current-password"
+               required>
+      </div>
+
+      <div class="sb-login-actions">
+        <button type="submit" class="sb-btn sb-btn--success">
+          Inloggen
+        </button>
+      </div>
+    </form>
+
+    <p class="sb-hint" style="text-align:center; margin-top:8px;">
+      Je gebruikersnaam is meestal
+      <code class="sb-code-mono">{{ admin_user }}</code>.
+    </p>
+  </div>
+</div>
+
+{% endblock %}

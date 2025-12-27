@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Voorkeuren{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <div>
+    <h1>Voorkeuren</h1>
+    <p class="sb-help">
+      Pas hier algemene instellingen van de schoolbel aan, zoals volume, maximale bestandsgrootte en polling-interval.
+    </p>
+  </div>
+</header>
+
+<div class="sb-card sb-card--section">
+  <form id="settingsForm" class="sb-settings-form">
+
+    <div class="sb-field">
+      <label class="sb-label" for="volume_percent">Belvolume (0–100)</label>
+      <input type="number"
+             name="volume_percent"
+             id="volume_percent"
+             class="sb-input"
+             min="0"
+             max="100">
+      <p class="sb-help">Standaard afspeelvolume van de bel.</p>
+    </div>
+
+    <div class="sb-field">
+      <label class="sb-label" for="max_file_size_mb">Max. bestandsgrootte (MB)</label>
+      <input type="number"
+             name="max_file_size_mb"
+             id="max_file_size_mb"
+             class="sb-input"
+             min="1"
+             max="1024">
+      <p class="sb-help">Maximale grootte van geüploade audiobestanden.</p>
+    </div>
+
+    <div class="sb-field">
+      <label class="sb-label" for="poll_interval_sec">Polling-tijd (seconden)</label>
+      <input type="number"
+             name="poll_interval_sec"
+             id="poll_interval_sec"
+             class="sb-input"
+             min="1"
+             max="60">
+      <p class="sb-help">Hoe vaak de daemon de planning controleert.</p>
+    </div>
+
+    <div class="sb-field">
+      <label class="sb-label" for="timezone">Tijdzone</label>
+      <input type="text"
+             name="timezone"
+             id="timezone"
+             class="sb-input"
+             placeholder="Europe/Amsterdam">
+      <p class="sb-help">IANA-tijdzone zoals <code class="sb-code-mono">Europe/Amsterdam</code>.</p>
+    </div>
+
+    <div class="sb-field">
+      <label class="sb-label" for="theme_mode">Thema</label>
+      <select name="theme_mode" id="theme_mode" class="sb-select">
+        <option value="light">Licht</option>
+        <option value="dark">Donker</option>
+        <option value="auto">Automatisch (volgt systeem)</option>
+        </select>
+      <p class="sb-help">Kies de kleurmodus voor de interface.</p>
+    </div>
+
+    <div class="sb-settings-actions">
+      <button type="submit" class="sb-btn sb-btn--success">
+        Opslaan
+      </button>
+      <span id="status" class="sb-settings-status sb-help"></span>
+    </div>
+  </form>
+</div>
+
+<script>
+async function loadSettings() {
+  const r = await fetch("/api/settings", { credentials: "same-origin" });
+  if (!r.ok) {
+    console.error("Kon settings niet laden:", r.status, await r.text());
+    return;
+  }
+  const data = await r.json();
+  for (const [k, v] of Object.entries(data)) {
+    const el = document.querySelector(`[name="${k}"]`);
+    if (el) el.value = v;
+  }
+}
+
+document.getElementById("settingsForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const payload = Object.fromEntries(new FormData(form).entries());
+
+  // numerieke velden omzetten naar Number
+  for (const k of ["volume_percent","max_file_size_mb","poll_interval_sec"]) {
+    if (payload[k] !== undefined && payload[k] !== "") {
+      payload[k] = Number(payload[k]);
+    }
+  }
+
+  // CSRF-token uit <meta name="csrf-token">
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  const csrfToken = meta ? meta.content : null;
+
+  const status = document.getElementById("status");
+  status.textContent = "Bezig met opslaan...";
+
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // meest gebruikte headernaam; jouw CSRF-wrapper kijkt hier waarschijnlijk naar
+        "X-CSRF-Token": csrfToken || ""
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    });
+
+    if (r.ok) {
+      status.textContent = "Opgeslagen ✔";
+    } else {
+      console.error("Fout bij opslaan:", r.status, await r.text());
+      status.textContent = "Fout bij opslaan";
+    }
+  } catch (err) {
+    console.error("Netwerkfout bij opslaan:", err);
+    status.textContent = "Netwerkfout bij opslaan";
+  }
+});
+
+loadSettings();
+</script>
+
+
+{% endblock %}
