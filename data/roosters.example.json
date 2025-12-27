@@ -1,0 +1,228 @@
+{
+  "normaal": [
+    {
+      "tijd": "08:25",
+      "naam": "eerste bel",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "08:30",
+      "naam": "eerste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:10",
+      "naam": "tweede uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:50",
+      "naam": "derde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:30",
+      "naam": "kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:40",
+      "naam": "eerste bel na kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:45",
+      "naam": "vierde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "11:25",
+      "naam": "vijfde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:05",
+      "naam": "Zesde uur - grote pauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:40",
+      "naam": "eerste bel na grote pauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:45",
+      "naam": "zevende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "13:25",
+      "naam": "achtste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "14:05",
+      "naam": "negende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "14:45",
+      "naam": "kleine middagpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "14:55",
+      "naam": "eerste bel na kleine middagpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "15:00",
+      "naam": "tiende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "15:40",
+      "naam": "elfde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "16:20",
+      "naam": "twaalfde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "17:00",
+      "naam": "einde schooldag",
+      "bestand": "1 ivko schoolbel.mp3"
+    }
+  ],
+  "verkort rooster": [
+    {
+      "tijd": "08:25",
+      "naam": "eerste bel",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "08:30",
+      "naam": "eerste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:00",
+      "naam": "tweede uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:30",
+      "naam": "derde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:00",
+      "naam": "vierde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:30",
+      "naam": "kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:45",
+      "naam": "eerste bel na kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:50",
+      "naam": "vijfde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "11:20",
+      "naam": "zevende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "11:50",
+      "naam": "achtste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:20",
+      "naam": "negende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:50",
+      "naam": "einde schooldag",
+      "bestand": "1 ivko schoolbel.mp3"
+    }
+  ],
+  "dinsdagrooster": [
+    {
+      "tijd": "08:25",
+      "naam": "eerste bel",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "08:30",
+      "naam": "eerste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:10",
+      "naam": "tweede uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "09:50",
+      "naam": "derde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:30",
+      "naam": "kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:40",
+      "naam": "eerste bel na kleine ochtendpauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "10:45",
+      "naam": "vierde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "11:25",
+      "naam": "vijfde uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:05",
+      "naam": "Zesde uur - grote pauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:40",
+      "naam": "eerste bel na grote pauze",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "12:45",
+      "naam": "zevende uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "13:25",
+      "naam": "achtste uur",
+      "bestand": "1 ivko schoolbel.mp3"
+    },
+    {
+      "tijd": "14:05",
+      "naam": "einde schooldag",
+      "bestand": "1 ivko schoolbel.mp3"
+    }
+  ]
+}
