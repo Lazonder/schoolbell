@@ -848,4 +848,4 @@ if __name__ == "__main__":
         save_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
     if not os.path.exists(WEEKDISABLE_PATH):
         save_json(WEEKDISABLE_PATH, default_weken_uit_obj())
-    app.run(host="0.0.0.0", port=5000, ssl_context=("certs/cert.pem", "certs/key.pem"))
+    app.run(host="127.0.0.1", port=5000) #, ssl_context=("certs/cert.pem", "certs/key.pem"))
