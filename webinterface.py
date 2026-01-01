@@ -35,7 +35,7 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.jinja_env.auto_reload = True
 app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 # Zet een ruime bovengrens. De echte limiet handhaven we per request via Settings.
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GiB
 app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minuten
