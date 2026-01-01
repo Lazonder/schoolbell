@@ -7,6 +7,7 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
 from functools import wraps
 from settings_store import Settings
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 auth = HTTPBasicAuth()
 
@@ -31,6 +32,7 @@ EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # gedeeld log (UI + da
 
 # === Flask ===
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.jinja_env.auto_reload = True
 app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
