@@ -32,13 +32,17 @@ EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # gedeeld log (UI + da
 
 # === Flask ===
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.jinja_env.auto_reload = True
 app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Zet een ruime bovengrens. De echte limiet handhaven we per request via Settings.
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GiB
 app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minuten
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
 # Tijd-Regex: 24-uurs klok 00–23, met optionele seconden (HH:MM of HH:MM:SS)
 TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
