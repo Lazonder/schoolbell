@@ -1,67 +1,87 @@
-🎓 IVKO Schoolbel
+# IVKO Schoolbel
 
 Een Raspberry Pi-gebaseerde schoolbel die automatisch geluiden afspeelt volgens instelbare roosters, met een webinterface voor beheer.
+Ontwikkeld voor gebruik binnen het schoolnetwerk (optioneel via VPN extern bereikbaar).
 
-🚀 Overzicht
-Component	Functie
-webinterface.py	Flask-webapp (beheer, uploads, agenda, instellingen)
-schoolbelldaemon.py	Achtergrondproces dat belmomenten uitvoert
-settings_store.py	Leest en schrijft instellingen (JSON)
-health_check.py	Testscript om periodiek de werking te controleren
-templates/	HTML-templates voor alle pagina’s
-static/geluiden/	Opslag voor mp3/wav/ogg-bestanden
-data/	JSON-data voor roosters, planning en logs
-certs/	HTTPS-certificaten (self-signed of Let’s Encrypt)
-🧩 Functionaliteit
+---
 
-Webinterface
+## Overzicht
 
-Roosters aanmaken en bewerken
+### Architectuur
 
-Standaardweek en agenda instellen
+```
+Browser
+  ↓ HTTPS
+Nginx
+  ↓ proxy_pass
+Gunicorn (Flask app)
+  ↓ API
+schoolbell-daemon (systemd)
+```
 
-Geluiden uploaden en verwijderen
+### Componenten
 
-Logboek bekijken
+| Component             | Functie                                                 |
+| --------------------- | ------------------------------------------------------- |
+| `webinterface.py`     | Flask-webapp (beheer, agenda, roosters, geluiden, logs) |
+| `schoolbelldaemon.py` | Achtergrondproces dat belmomenten uitvoert              |
+| `settings_store.py`   | Leest en schrijft instellingen (JSON)                   |
+| `health_check.py`     | Testscript voor periodieke functionele checks           |
+| `templates/`          | HTML/Jinja2-templates                                   |
+| `static/geluiden/`    | Opslag voor mp3 / wav / ogg                             |
+| `data/`               | JSON-bestanden voor roosters, planning en logs          |
+| `certs/`              | TLS-certificaten (indien niet via Nginx geregeld)       |
 
-Voorkeuren aanpassen (volume, max. bestandsgrootte, polling-interval)
+---
 
-Daemon
+## Functionaliteit
 
-Haalt elke paar seconden het actuele rooster op via de API
+### Webinterface
 
-Speelt belgeluiden af met het ingestelde volume
+* Roosters aanmaken en bewerken
+* Standaardweek en agenda per dag instellen
+* Geluiden uploaden en verwijderen
+* Logboek bekijken
+* Instellingen aanpassen (volume, uploadlimiet, polling-interval)
 
-Schrijft bel-events naar data/events.jsonl
+### Daemon
 
-Herlaadt instellingen direct na SIGHUP
+* Haalt periodiek het effectieve rooster op via de API
+* Speelt belgeluiden af met ingesteld volume
+* Logt elk belmoment in `data/events.jsonl`
+* Herlaadt instellingen direct na `SIGHUP`
 
-Beveiliging
+---
 
-HTTPS met certificaat in certs/
+## Beveiliging
 
-Sessie-login met CSRF-bescherming
+* HTTPS via **Nginx**
+* Sessiegebaseerde login met CSRF-bescherming
+* Basic Auth voor daemon-API
+* Upload-limiet en extensie-check via `config.json`
+* Webinterface alleen toegankelijk binnen LAN/VPN
 
-Basic Auth voor de daemon-API
+---
 
-Upload-limiet en extensie-check uit config.json
+## Installatie
 
-⚙️ Installatie
+```bash
 cd /home/pi/schoolbell
 python3 -m venv venv
 source venv/bin/activate
-pip install flask flask_httpauth pygame schedule requests
-
+pip install flask flask_httpauth pygame schedule requests gunicorn
+```
 
 Controleer dat deze bestanden bestaan:
 
+```
 /etc/schoolbell/config.json
-certs/cert.pem
-certs/key.pem
+/home/pi/schoolbell/certs/   (alleen nodig als TLS niet via Nginx loopt)
+```
 
+### Voorbeeld `/etc/schoolbell/config.json`
 
-Voorbeeld config.json:
-
+```json
 {
   "volume_percent": 70,
   "max_file_size_mb": 15,
@@ -69,70 +89,121 @@ Voorbeeld config.json:
   "timezone": "Europe/Amsterdam",
   "allowed_extensions": [".mp3", ".wav", ".ogg"]
 }
+```
 
-▶️ Starten
+---
 
-Webinterface
+## Webserver (Nginx + Gunicorn)
 
+### Gunicorn
+
+* Draait de Flask-app
+* Meerdere **workers** en **threads**
+* Timeouts voorkomen vastlopende requests
+* Periodieke worker refresh voorkomt geheugenlekken
+
+Voorbeeld (systemd):
+
+```
+ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
+  --workers 2 \
+  --threads 4 \
+  --timeout 30 \
+  --max-requests 1000 \
+  --max-requests-jitter 100 \
+  --bind 127.0.0.1:8000 \
+  webinterface:app
+```
+
+### Nginx
+
+* Verzorgt HTTPS
+* Reverse proxy naar Gunicorn
+* Afhandeling van certificaten
+* Eventueel IP-restricties
+
+Toegang:
+
+```
+https://<pi-ip>/
+```
+
+---
+
+## Starten & beheren
+
+### Services
+
+```bash
 sudo systemctl start schoolbell-web.service
-
-
-Toegang via
-👉 https://<pi-ip>:5000
-
-Daemon
-
 sudo systemctl start schoolbell-daemon.service
+```
 
+### Herladen instellingen daemon
 
-Na wijzigingen in instellingen:
-
+```bash
 sudo systemctl kill -s HUP schoolbell-daemon.service
+```
 
-🔍 Health-check
+### Herstarten
 
-Gebruik health_check.py om de werking te testen:
+```bash
+sudo systemctl restart schoolbell-web.service
+sudo systemctl restart schoolbell-daemon.service
+```
 
+---
+
+## Logging & logrotate
+
+### Runtime logs
+
+* Web: `journalctl -u schoolbell-web.service`
+* Daemon: `journalctl -u schoolbell-daemon.service`
+
+### Bel-events
+
+* Bestand: `data/events.jsonl`
+
+Logrotate is geconfigureerd voor:
+
+* Periodieke rotatie
+* Compressie (`.gz`)
+* Behoud van oudere logs
+* Geen onbegrensde groei van het logbestand
+
+---
+
+## Health-check
+
+Gebruik `health_check.py`:
+
+```bash
 source venv/bin/activate
-export SCHOOLBELL_BASE="https://127.0.0.1:5000"
+export SCHOOLBELL_BASE="https://127.0.0.1"
 export SCHOOLBELL_WEB_USER="admin"
 export SCHOOLBELL_WEB_PASS="jouw-wachtwoord"
 python health_check.py
+```
 
+Optioneel upload/delete testen:
 
-Optioneel ook upload/delete testen:
-
+```bash
 export SCHOOLBELL_HEALTH_UPLOAD=1
 python health_check.py
-
+```
 
 De check controleert:
 
-login en CSRF-beveiliging
+* Login en CSRF-bescherming
+* Bereikbaarheid van `/geluiden`, `/roosters`, `/logs`
+* API’s `/api/settings` en `/api/effectief-rooster`
 
-bereikbaarheid van /geluiden, /roosters, /logs
+---
 
-API’s /api/settings en /api/effectief-rooster
+## Onderhoud
 
-📂 Belangrijke mappen
-Pad	Inhoud
-/home/pi/schoolbell/data/	JSON-bestanden voor roosters, planning, logs
-/home/pi/schoolbell/static/geluiden/	Alle audiobestanden
-/etc/schoolbell/config.json	Algemene instellingen
-/home/pi/schoolbell/templates/	Jinja2-templates
-/home/pi/schoolbell/certs/	Certificaten voor HTTPS
-🛠️ Onderhoud
+* **Back-up**: `data/` en `/etc/schoolbell/config.json`
+* **Geluidstest**: upload kort mp3’tje en gebruik ▶ in de interface
+* **Debuggen**: check `journalctl` en `events.jsonl`
 
-Back-up: bewaar de mappen data/ en /etc/schoolbell/config.json
-
-Geluidstest: upload een kort mp3’tje en druk op ▶ in de interface
-
-Daemon herstarten:
-sudo systemctl restart schoolbell-daemon.service
-
-Webinterface herstarten:
-sudo systemctl restart schoolbell-web.service
-
-Log bekijken:
-journalctl -u schoolbell-daemon.service -f
-of tail -f data/events.jsonl
