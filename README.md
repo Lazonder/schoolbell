@@ -55,7 +55,7 @@ schoolbell-daemon (systemd)
 
 ## Beveiliging
 
-* HTTPS via **Nginx**
+* HTTPS via Nginx
 * Sessiegebaseerde login met CSRF-bescherming
 * Basic Auth voor daemon-API
 * Upload-limiet en extensie-check via `config.json`
@@ -98,7 +98,7 @@ Controleer dat deze bestanden bestaan:
 ### Gunicorn
 
 * Draait de Flask-app
-* Meerdere **workers** en **threads**
+* Meerdere *workers* en *threads*
 * Timeouts voorkomen vastlopende requests
 * Periodieke worker refresh voorkomt geheugenlekken
 

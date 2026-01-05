@@ -1,0 +1,14 @@
+[Unit]
+Description=Schoolbell Daemon
+After=network.target schoolbell-web.service
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/schoolbell
+Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
+ExecStart=/home/pi/schoolbell/venv/bin/python /home/pi/schoolbell/schoolbelldaemon.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=Schoolbell Web (Gunicorn behind Nginx)
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/schoolbell
+Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
+ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
+  --workers 2 \
+  --threads 4 \
+  --timeout 30 \
+  --max-requests 1000 \
+  --max-requests-jitter 100 \
+  --bind 127.0.0.1:5000 \
+  webinterface:app
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
