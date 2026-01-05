@@ -1,9 +1,9 @@
 # Webinterface
-Flask>=2.3,<3.0
+Flask>=3.1,<4.0
+Werkzeug>=3.0,<4.0
 Flask-HTTPAuth>=4.8
 itsdangerous>=2.1
 Jinja2>=3.1
-Werkzeug>=2.3
 
 # Server
 gunicorn>=21.2
