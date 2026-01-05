@@ -80,7 +80,7 @@ def ui_login_required(view):
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if ui_logged_in():
-        return redirect(url_for("roosters"))
+        return redirect(url_for("agenda"))
 
     next_url = request.args.get("next") or request.form.get("next") or url_for("roosters")
 
@@ -384,7 +384,7 @@ def compute_upcoming(limit=20):
 @app.route("/")
 @ui_login_required
 def home():
-    return redirect(url_for("roosters"))
+    return redirect(url_for("agenda"))
 
 @app.route("/logs", methods=["GET"])
 @ui_login_required
