@@ -63,22 +63,54 @@ schoolbell-daemon (systemd)
 
 ---
 
-## Installatie
+## Installatie in 3 commando’s
+
+> Getest op **Raspberry Pi OS (Debian)**
+> Vereist: sudo-rechten en internetverbinding
 
 ```bash
-cd /home/pi/schoolbell
-python3 -m venv venv
-source venv/bin/activate
-pip install flask flask_httpauth pygame schedule requests gunicorn
+git clone https://github.com/<jouw-account>/schoolbell.git
+cd schoolbell
+sudo ./install.sh
 ```
 
-Controleer dat deze bestanden bestaan:
+Na afloop:
+
+* draait de webinterface via *Nginx + Gunicorn*
+* draait de schoolbel als *systemd-daemon*
+* zijn logging, logrotate en basisconfig ingericht
+
+Open daarna in je browser:
 
 ```
-/etc/schoolbell/config.json
-/home/pi/schoolbell/certs/   (alleen nodig als TLS niet via Nginx loopt)
+http://<ip-van-de-pi>/
 ```
 
+---
+
+## Wat doet het installatiescript?
+
+Het script `install.sh` voert automatisch uit:
+
+* installeren van systeempackages (nginx, audio, python)
+* aanmaken van een Python virtual environment
+* installeren van Python dependencies (`requirements.txt`)
+* aanmaken van:
+
+  * `/etc/schoolbell/config.json`
+  * `data/` en `static/geluiden/`
+* installeren en activeren van:
+
+  * `schoolbell-web.service` (Gunicorn)
+  * `schoolbell-daemon.service`
+* configureren van:
+
+  * Nginx reverse proxy (poort 80 → Gunicorn op 5000)
+  * logrotate voor `data/events.jsonl`
+
+Het script is **veilig opnieuw uit te voeren** (idempotent).
+
+---
 ### Voorbeeld `/etc/schoolbell/config.json`
 
 ```json
