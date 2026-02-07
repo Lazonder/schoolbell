@@ -18,14 +18,14 @@ print("[BOOT] Polling interval (sec):", settings.poll_interval_sec)
 
 BACKOFF_ON_ERROR = 5 * 60      # 5 minuten wachten bij fout
 
-API_BASE = os.getenv("API_BASE", "https://127.0.0.1:5000")
+API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
 API_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
-API_PASS = os.getenv("SCHOOLBELL_WEB_PASS", "geheim123")  # PLAINTEXT wachtwoord
+API_PASS = os.getenv("SCHOOLBELL_WEB_PASS")  # geen PLAINTEXT wachtwoord
 
 # --- HTTP session (auth + self-signed TLS accepteren) ---
 _http = requests.Session()
 _http.auth = (API_USER, API_PASS)
-_http.verify = False  # self-signed cert accepteren; zet op True als je CA vertrouwt
+_http.verify = True  # self-signed cert accepteren; zet op True als je CA vertrouwt
 
 # --- Hot-reload vlag ---
 _reload_settings = False
