@@ -15,17 +15,18 @@ EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")
 # === Instellingen (kunnen herladen worden) ===
 settings = Settings.load()
 print("[BOOT] Polling interval (sec):", settings.poll_interval_sec)
+stop_event = threading.Event()
 
 BACKOFF_ON_ERROR = 5 * 60      # 5 minuten wachten bij fout
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
-API_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
+API_USER = os.getenv("SCHOOLBELL_WEB_USER")
 API_PASS = os.getenv("SCHOOLBELL_WEB_PASS")  # geen PLAINTEXT wachtwoord
 
 # --- HTTP session (auth + self-signed TLS accepteren) ---
 _http = requests.Session()
 _http.auth = (API_USER, API_PASS)
-_http.verify = True  # self-signed cert accepteren; zet op True als je CA vertrouwt
+#_http.verify = False  # _http.verify heeft alleen effect bij https; bij http kun je dit weglaten.
 
 # --- Hot-reload vlag ---
 _reload_settings = False
@@ -35,6 +36,21 @@ def _on_sighup(signum, frame):
     print("[SIGHUP] Reload settings aangevraagd.")
 
 signal.signal(signal.SIGHUP, _on_sighup)
+
+def _on_sigterm(signum, frame):
+    print("[SIGTERM] Stop aangevraagd, daemon sluit af…")
+    stop_event.set()
+    try:
+        pygame.mixer.music.stop()
+    except Exception:
+        pass
+    try:
+        pygame.mixer.quit()
+    except Exception:
+        pass
+
+signal.signal(signal.SIGTERM, _on_sigterm)
+signal.signal(signal.SIGINT, _on_sigterm)
 
 # --- Logging van bel-events (UI leest dit in Logboek) ---
 def log_bell_event(data: dict):
@@ -177,7 +193,7 @@ def schedule_poller_loop():
     global settings, _reload_settings
     last_sig = None
 
-    while True:
+    while not stop_event.is_set():
         now = datetime.now()
 
         # 1) Herlaad settings als SIGHUP ontvangen is
@@ -212,11 +228,11 @@ def schedule_poller_loop():
             next_midnight = _local_next_midnight(now)
             to_midnight = max(1, int((next_midnight - now).total_seconds()))
             sleep_s = max(1, min(int(settings.poll_interval_sec), to_midnight))
-            time.sleep(sleep_s)
+            stop_event.wait(sleep_s) 
 
         except Exception:
-            # Fout bij ophalen/parsen → korte backoff
-            time.sleep(BACKOFF_ON_ERROR)
+            # Fout bij ophalen/parsen → backoff, maar wel netjes stopbaar
+            stop_event.wait(BACKOFF_ON_ERROR)
 
 # === Main ===
 def main():
@@ -229,9 +245,9 @@ def main():
     t.start()
 
     # Schedule-loop (blijft pending jobs draaien)
-    while True:
+    while not stop_event.is_set():
         schedule.run_pending()
-        time.sleep(1)
+        stop_event.wait(1)
 
 if __name__ == "__main__":
     main()
