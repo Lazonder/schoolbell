@@ -170,3 +170,4 @@ systemctl --no-pager --full status schoolbell-web.service || true
 systemctl --no-pager --full status schoolbell-daemon.service || true
 echo "Re-run safe: ja"
 echo "To uninstall: stop + disable services, remove files + dirs created by this script."
+echo "De webinterface draait op Flask 3.x via Gunicorn; handmatig starten van de Flask dev server wordt niet ondersteund."
