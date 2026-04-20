@@ -39,8 +39,23 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 # Zet een ruime bovengrens. De echte limiet handhaven we per request via Settings.
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GiB
 app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minuten
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Lees een env-variabele als boolean.
+    Niet gezet -> default. '0', 'false', 'no', 'off' (case-insensitive) of leeg -> False.
+    Alles anders -> True. Voorkomt de klassieke bug dat bool("0") True is.
+    """
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    return v.strip().lower() not in ("0", "false", "no", "off", "")
+
+# SESSION_COOKIE_SECURE moet True staan bij HTTPS (browser stuurt cookie
+# alleen terug over TLS). Bij HTTP-deploy (standaard install.sh setup, Nginx
+# op poort 80) moet dit False zijn, anders werkt inloggen niet.
+# Default in de code: True (veilig). install.sh zet expliciet =0 in web.env.
 app.config.update(
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SECURE=_env_bool("SCHOOLBELL_SECURE_COOKIES", default=True),
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
@@ -116,16 +131,17 @@ def get_csrf_token() -> str:
 
 @app.before_request
 def csrf_protect():
-    # Alleen POST's in de UI controleren; de API laat je daemon ongemoeid.
-    if request.method == "POST":
-        # exempt voor API endpoints (daemon gebruikt Basic Auth, geen CSRF)
-        if request.path.startswith("/api/"):
-            return
-        # loginpagina laten we ook controleren (heeft hidden _csrf)
-        form_token = request.form.get("_csrf", "")
-        sess_token = session.get("csrf", "")
-        if not sess_token or not form_token or form_token != sess_token:
-            return "CSRF token invalid or missing", 400
+    # Alleen POST's controleren.
+    if request.method != "POST":
+        return
+    # Daemon-endpoint gebruikt Basic Auth vanaf localhost, geen browser -> geen CSRF.
+    if request.path == "/api/effectief-rooster":
+        return
+    # Accepteer zowel form-veld (UI-forms) als header (JSON-API vanuit settings.html).
+    sess_token = session.get("csrf", "")
+    form_token = request.form.get("_csrf") or request.headers.get("X-CSRF-Token", "")
+    if not sess_token or not form_token or form_token != sess_token:
+        return "CSRF token invalid or missing", 400
 
 # ---------- Helpers ----------
 @app.errorhandler(413)
@@ -143,9 +159,15 @@ def verify_password(username, password):
         return password == FALLBACK_PLAIN  # alleen voor eerste test
     return False
 
-def require_admin(f):  # placeholder: koppel eventueel aan sessie/rol
+def require_admin(f):
+    """Vereist een ingelogde admin-sessie.
+    Voor API-routes geven we 401 JSON terug in plaats van een redirect,
+    zodat fetch()-clients een machine-leesbaar antwoord krijgen.
+    """
     @wraps(f)
     def wrapper(*args, **kwargs):
+        if not ui_logged_in():
+            return jsonify(error="auth_required"), 401
         return f(*args, **kwargs)
     return wrapper
 

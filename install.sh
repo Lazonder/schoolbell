@@ -98,6 +98,11 @@ if [[ ! -f "${WEB_ENV}" && ! -f "${DAEMON_ENV}" ]]; then
 SCHOOLBELL_WEB_USER=${ADMIN_USER}
 SCHOOLBELL_WEB_PWHASH=${ADMIN_HASH}
 SCHOOLBELL_SECRET=${SECRET}
+
+# Deze install draait Nginx op HTTP (poort 80). Sessie-cookies mogen dus
+# geen Secure-flag hebben, anders stuurt de browser ze niet terug.
+# Zet op 1 zodra je HTTPS hebt geconfigureerd in Nginx.
+SCHOOLBELL_SECURE_COOKIES=0
 EOF
   cat > "${DAEMON_ENV}" <<EOF
 # Gegenereerd door install.sh — niet committen.
