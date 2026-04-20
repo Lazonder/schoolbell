@@ -4,8 +4,13 @@ from dataclasses import dataclass, asdict
 from typing import List
 from pathlib import Path
 
-# Waar het configuratiebestand staat (kan je aanpassen of via een env variabele zetten)
-CONFIG_PATH = Path(__file__).with_name("config.json")
+# Waar het configuratiebestand staat.
+# Voorrang: de env-variabele SCHOOLBELL_CONFIG (gezet door de systemd-units).
+# Fallback: config.json naast dit Python-bestand (handig bij lokaal draaien).
+CONFIG_PATH = Path(
+    os.environ.get("SCHOOLBELL_CONFIG")
+    or Path(__file__).with_name("config.json")
+)
 
 @dataclass
 class Settings:
