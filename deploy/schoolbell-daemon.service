@@ -12,8 +12,7 @@ EnvironmentFile=/etc/schoolbell/daemon.env
 
 Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
 Environment="API_BASE=http://127.0.0.1:5000"
-Environment="SCHOOLBELL_WEB_USER=admin"
-Environment="SCHOOLBELL_WEB_PASS=geheim123"
+# SCHOOLBELL_WEB_USER en SCHOOLBELL_WEB_PASS komen uit daemon.env
 
 ExecStart=/home/pi/schoolbell/venv/bin/python -u /home/pi/schoolbell/schoolbelldaemon.py
 

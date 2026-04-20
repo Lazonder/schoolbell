@@ -77,6 +77,56 @@ else
   echo "Exists: ${CONFIG_DIR}/config.json"
 fi
 
+echo "== 4b) Generate env files (credentials + session secret) if missing =="
+WEB_ENV="${CONFIG_DIR}/web.env"
+DAEMON_ENV="${CONFIG_DIR}/daemon.env"
+
+if [[ ! -f "${WEB_ENV}" && ! -f "${DAEMON_ENV}" ]]; then
+  ADMIN_USER="admin"
+  # Gebruik Python voor de password-generatie i.p.v. `tr | head`, om SIGPIPE
+  # onder `set -o pipefail` te vermijden. Ook cryptografisch correct via secrets.
+  ADMIN_PASS="$("${APP_DIR}/venv/bin/python" -c \
+    'import secrets, string; print("".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16)))')"
+  ADMIN_HASH="$(printf '%s' "${ADMIN_PASS}" \
+    | "${APP_DIR}/venv/bin/python" -c \
+      'import sys; from werkzeug.security import generate_password_hash; print(generate_password_hash(sys.stdin.read()))')"
+  SECRET="$("${APP_DIR}/venv/bin/python" -c 'import secrets; print(secrets.token_hex(32))')"
+
+  umask 077
+  cat > "${WEB_ENV}" <<EOF
+# Gegenereerd door install.sh — niet committen.
+SCHOOLBELL_WEB_USER=${ADMIN_USER}
+SCHOOLBELL_WEB_PWHASH=${ADMIN_HASH}
+SCHOOLBELL_SECRET=${SECRET}
+EOF
+  cat > "${DAEMON_ENV}" <<EOF
+# Gegenereerd door install.sh — niet committen.
+SCHOOLBELL_WEB_USER=${ADMIN_USER}
+SCHOOLBELL_WEB_PASS=${ADMIN_PASS}
+EOF
+  umask 022
+
+  chown root:"${APP_USER}" "${WEB_ENV}" "${DAEMON_ENV}"
+  chmod 640 "${WEB_ENV}" "${DAEMON_ENV}"
+
+  echo ""
+  echo "=============================================================="
+  echo "  Admin-login gegenereerd. NOTEER NU (wordt niet herhaald):"
+  echo ""
+  echo "    Gebruiker:   ${ADMIN_USER}"
+  echo "    Wachtwoord:  ${ADMIN_PASS}"
+  echo ""
+  echo "  Wijzigen kan door ${WEB_ENV} en ${DAEMON_ENV} te bewerken."
+  echo "=============================================================="
+  echo ""
+elif [[ -f "${WEB_ENV}" && -f "${DAEMON_ENV}" ]]; then
+  echo "Env-bestanden bestaan al, overgeslagen: ${WEB_ENV}, ${DAEMON_ENV}"
+else
+  echo "ERROR: slechts één van ${WEB_ENV} / ${DAEMON_ENV} bestaat."
+  echo "Verwijder beide en draai opnieuw, of bewerk handmatig."
+  exit 1
+fi
+
 echo "== 5) systemd units =="
 cat > /etc/systemd/system/schoolbell-web.service <<EOF
 [Unit]
@@ -86,6 +136,7 @@ After=network.target
 [Service]
 User=${APP_USER}
 WorkingDirectory=${APP_DIR}
+EnvironmentFile=${WEB_ENV}
 Environment="SCHOOLBELL_CONFIG=${CONFIG_DIR}/config.json"
 ExecStart=${APP_DIR}/venv/bin/gunicorn \
   --workers ${GUNICORN_WORKERS} \
@@ -110,7 +161,9 @@ After=network.target schoolbell-web.service
 [Service]
 User=${APP_USER}
 WorkingDirectory=${APP_DIR}
+EnvironmentFile=${DAEMON_ENV}
 Environment="SCHOOLBELL_CONFIG=${CONFIG_DIR}/config.json"
+Environment="API_BASE=http://127.0.0.1:5000"
 ExecStart=${APP_DIR}/venv/bin/python ${APP_DIR}/schoolbelldaemon.py
 Restart=always
 RestartSec=2

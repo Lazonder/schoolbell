@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=pi
 WorkingDirectory=/home/pi/schoolbell
+EnvironmentFile=/etc/schoolbell/web.env
 Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
 ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
   --workers 2 \
