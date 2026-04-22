@@ -21,39 +21,6 @@ def fail(msg):
     print(f"[FAIL] {msg}", file=sys.stderr)
     sys.exit(1)
 
-def get_csrf_from_html(html: str) -> str:
-    # eerst meta-tag zoeken (base.html)
-    m = re.search(r'<meta[^>]+name=["\']csrf-token["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
-    if m:
-        return m.group(1)
-    # anders hidden input (login.html)
-    m = re.search(r'<input[^>]+name=["\']_csrf["\'][^>]+value=["\']([^"\']+)["\']', html, re.I)
-    if m:
-        return m.group(1)
-    return ""
-
-def login():
-    # 1) GET /login → CSRF uit meta of hidden input
-    r = sess.get(f"{BASE_URL}/login", timeout=10)
-    if r.status_code != 200:
-        fail(f"Login-pagina niet bereikbaar: {r.status_code}")
-
-    csrf = get_csrf_from_html(r.text)
-    if not csrf:
-        fail("CSRF token niet gevonden op loginpagina (meta of hidden input).")
-
-    # 2) POST /login
-    data = {
-        "_csrf": csrf,
-        "username": ADMIN_USER,
-        "password": ADMIN_PASS or "",
-    }
-    r = sess.post(f"{BASE_URL}/login", data=data, timeout=10, allow_redirects=False)
-    if r.status_code not in (302, 303):
-        fail(f"Inloggen mislukt: status {r.status_code}")
-
-    ok("Inloggen gelukt")
-
 def ok(msg):
     print(f"[ OK ] {msg}")
 
