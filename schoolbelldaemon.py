@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, time, json, threading, signal
+import os, sys, time, json, threading, signal
 from datetime import datetime, timezone, date, time as dtime, timedelta
 import requests         # pip install requests
 import schedule         # pip install schedule
@@ -23,7 +23,19 @@ BACKOFF_ON_ERROR = 5 * 60      # 5 minuten wachten bij fout
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
 API_USER = os.getenv("SCHOOLBELL_WEB_USER")
-API_PASS = os.getenv("SCHOOLBELL_WEB_PASS")  # geen PLAINTEXT wachtwoord
+API_PASS = os.getenv("SCHOOLBELL_WEB_PASS")  # moet klartext zijn; daemon logt in bij web-API
+
+# Harde fail als credentials ontbreken. Anders zou _http.auth = (None, None)
+# zijn, wat requests een cryptische traceback oplevert bij de eerste call.
+# systemd krijgt nu een begrijpelijke regel in de log en restart-loop wordt
+# duidelijker te diagnosticeren.
+if not API_USER or not API_PASS:
+    print(
+        "[FATAL] SCHOOLBELL_WEB_USER en/of SCHOOLBELL_WEB_PASS niet gezet. "
+        "Zie /etc/schoolbell/daemon.env (of draai install.sh opnieuw).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 # --- HTTP session (auth + self-signed TLS accepteren) ---
 _http = requests.Session()
