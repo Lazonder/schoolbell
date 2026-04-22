@@ -11,11 +11,11 @@ Ontwikkeld voor gebruik binnen het schoolnetwerk (optioneel via VPN extern berei
 
 ```
 Browser
-  ↓ HTTPS
-Nginx
+  ↓ HTTP (LAN; HTTPS staat op de todo-lijst)
+Nginx (poort 80)
   ↓ proxy_pass
-Gunicorn (Flask app)
-  ↓ API
+Gunicorn (Flask app, 127.0.0.1:5000)
+  ↓ API (Basic Auth, localhost)
 schoolbell-daemon (systemd)
 ```
 
@@ -55,11 +55,12 @@ schoolbell-daemon (systemd)
 
 ## Beveiliging
 
-* HTTPS via Nginx
+* Nginx draait voorlopig op **plain HTTP** (poort 80). HTTPS staat op de roadmap — tot die tijd alleen in vertrouwd LAN/VPN draaien.
 * Sessiegebaseerde login met CSRF-bescherming
-* Basic Auth voor daemon-API
+* Basic Auth voor de daemon → web-API (over localhost)
+* Admin-wachtwoord wordt bij installatie willekeurig gegenereerd en als werkzeug-scrypt-hash opgeslagen (zie [Credentials & wachtwoord](#credentials--wachtwoord))
+* Session-secret wordt bij installatie willekeurig gegenereerd (64 hex-bytes)
 * Upload-limiet en extensie-check via `config.json`
-* Webinterface alleen toegankelijk binnen LAN/VPN
 
 ---
 
@@ -74,11 +75,13 @@ cd schoolbell
 sudo ./install.sh
 ```
 
+> **Belangrijk bij de eerste run:** het script genereert een willekeurig admin-wachtwoord en toont dat **één keer** in de output, in een omkaderd blok. Noteer het meteen. Kwijtgeraakt? Zie [Credentials & wachtwoord](#credentials--wachtwoord).
+
 Na afloop:
 
 * draait de webinterface via *Nginx + Gunicorn*
 * draait de schoolbel als *systemd-daemon*
-* zijn logging, logrotate en basisconfig ingericht
+* zijn credentials, session-secret, logging, logrotate en basisconfig ingericht
 
 Open daarna in je browser:
 
@@ -98,6 +101,7 @@ Het script `install.sh` voert automatisch uit:
 * aanmaken van:
 
   * `/etc/schoolbell/config.json`
+  * `/etc/schoolbell/web.env` en `daemon.env` (admin-credentials + session-secret, alleen bij eerste run)
   * `data/` en `static/geluiden/`
 * installeren en activeren van:
 
@@ -108,7 +112,7 @@ Het script `install.sh` voert automatisch uit:
   * Nginx reverse proxy (poort 80 → Gunicorn op 5000)
   * logrotate voor `data/events.jsonl`
 
-Het script is **veilig opnieuw uit te voeren** (idempotent).
+Het script is **veilig opnieuw uit te voeren** (idempotent): bestaande env-files worden niet overschreven, en beide services worden aan het eind altijd herstart zodat nieuwe code/config direct wordt opgepikt.
 
 ---
 ### Voorbeeld `/etc/schoolbell/config.json`
@@ -122,6 +126,57 @@ Het script is **veilig opnieuw uit te voeren** (idempotent).
   "allowed_extensions": [".mp3", ".wav", ".ogg"]
 }
 ```
+
+---
+
+## Credentials & wachtwoord
+
+Bij de eerste `install.sh`-run worden twee env-files aangemaakt. Beide hebben `chmod 640` met eigenaar `root:pi`.
+
+* `/etc/schoolbell/web.env` — wordt gelezen door `schoolbell-web.service`:
+  * `SCHOOLBELL_WEB_USER` — admin-gebruikersnaam
+  * `SCHOOLBELL_WEB_PWHASH` — werkzeug-scrypt-hash van het wachtwoord
+  * `SCHOOLBELL_SECRET` — Flask session-secret (64 hex)
+  * `SCHOOLBELL_SECURE_COOKIES` — zie hieronder
+* `/etc/schoolbell/daemon.env` — wordt gelezen door `schoolbell-daemon.service`:
+  * `SCHOOLBELL_WEB_USER` — dezelfde gebruikersnaam
+  * `SCHOOLBELL_WEB_PASS` — het wachtwoord in klare tekst (de daemon moet ermee inloggen op de web-API, dus een hash volstaat daar niet)
+
+### Wachtwoord kwijt?
+
+Het wachtwoord wordt maar één keer in de install-output getoond. Terug te vinden op de Pi:
+
+```bash
+sudo cat /etc/schoolbell/daemon.env
+```
+
+### Wachtwoord wijzigen
+
+Genereer eerst een nieuwe hash:
+
+```bash
+/home/pi/schoolbell/venv/bin/python -c \
+  'from werkzeug.security import generate_password_hash; print(generate_password_hash("nieuw-wachtwoord"))'
+```
+
+Werk vervolgens beide files bij:
+* `web.env` → plak de hash in `SCHOOLBELL_WEB_PWHASH`
+* `daemon.env` → plak het klare wachtwoord in `SCHOOLBELL_WEB_PASS`
+
+Daarna:
+
+```bash
+sudo systemctl restart schoolbell-web.service schoolbell-daemon.service
+```
+
+### `SCHOOLBELL_SECURE_COOKIES`
+
+Regelt de `Secure`-flag op de sessie-cookie.
+
+* `0` — cookies mogen ook over plain HTTP. **Noodzakelijk zolang Nginx op HTTP draait**, anders weigert de browser de cookie terug te sturen en werkt inloggen niet.
+* `1` — cookies alleen over HTTPS. Zet deze waarde zodra je HTTPS op Nginx hebt geconfigureerd.
+
+De installer zet deze standaard op `0`. Tip: edit `/etc/schoolbell/web.env` en herstart `schoolbell-web.service` om te wisselen.
 
 ---
 
@@ -143,21 +198,21 @@ ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
   --timeout 30 \
   --max-requests 1000 \
   --max-requests-jitter 100 \
-  --bind 127.0.0.1:8000 \
+  --bind 127.0.0.1:5000 \
   webinterface:app
 ```
 
 ### Nginx
 
-* Verzorgt HTTPS
-* Reverse proxy naar Gunicorn
-* Afhandeling van certificaten
-* Eventueel IP-restricties
+* Luistert op poort 80 (plain HTTP)
+* Reverse proxy naar Gunicorn op `127.0.0.1:5000`
+* HTTPS + certificaten zijn **nog niet geconfigureerd** — optionele toekomstige uitbreiding (self-signed of Let's Encrypt, daarna 80→443 redirect)
+* Eventueel IP-restricties via `allow`/`deny` in het server-blok
 
 Toegang:
 
 ```
-https://<pi-ip>/
+http://<pi-ip>/
 ```
 
 ---
@@ -212,8 +267,10 @@ Gebruik `health_check.py`:
 
 ```bash
 source venv/bin/activate
-export SCHOOLBELL_BASE="https://127.0.0.1"
+# Via Nginx (poort 80), plain HTTP zolang HTTPS nog niet aan staat.
+export SCHOOLBELL_BASE="http://127.0.0.1"
 export SCHOOLBELL_WEB_USER="admin"
+# Zie /etc/schoolbell/daemon.env voor het gegenereerde wachtwoord.
 export SCHOOLBELL_WEB_PASS="jouw-wachtwoord"
 python health_check.py
 ```
