@@ -216,9 +216,13 @@ ${APP_DIR}/data/events.jsonl {
 }
 EOF
 
-echo "== 8) Enable + start services =="
-systemctl enable --now schoolbell-web.service
-systemctl enable --now schoolbell-daemon.service
+echo "== 8) Enable + (re)start services =="
+# `enable` zorgt dat de services bij boot starten. Losse `restart` i.p.v.
+# `--now` zodat bij een re-run ook daadwerkelijk nieuwe code, env-files
+# en unit-file-wijzigingen worden opgepikt. Restart op een niet-lopende
+# service werkt gewoon (systemd ziet het als start).
+systemctl enable schoolbell-web.service schoolbell-daemon.service
+systemctl restart schoolbell-web.service schoolbell-daemon.service
 
 echo "== DONE =="
 echo "Open: http://<pi-ip>/"
