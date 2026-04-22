@@ -683,7 +683,7 @@ def agenda():
         tab="agenda",
         csrf_token=get_csrf_token(),
         weeks=weeks,
-        opties=opjes if (opjes := opties) else [""]
+        opties=opties
     )
 
 @app.route("/api/effectief-rooster", methods=["GET"])
