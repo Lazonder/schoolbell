@@ -38,7 +38,17 @@ class Settings:
         return cls(**merged)
 
     def save(self):
-        """Sla de instellingen op naar CONFIG_PATH."""
+        """Sla de instellingen atomair op naar CONFIG_PATH.
+
+        Eerst naar een tmp-bestand in dezelfde directory schrijven, daarna
+        `os.replace()`. Die replace is atomair binnen één filesystem — bij
+        een crash of power-loss staat er dus óf nog de oude file, óf de
+        volledige nieuwe. Nooit een half-geschreven JSON.
+        """
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-        with open(CONFIG_PATH, "w") as f:
+        tmp = CONFIG_PATH.with_suffix(CONFIG_PATH.suffix + ".tmp")
+        with open(tmp, "w") as f:
             json.dump(asdict(self), f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, CONFIG_PATH)
