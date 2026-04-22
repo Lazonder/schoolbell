@@ -93,41 +93,14 @@
   })();
   </script>
 
-  <script>
-  (async () => {
-    function applyTheme(mode) {
-      if (mode === "auto") {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
-      } else {
-        document.documentElement.setAttribute("data-theme", mode);
-      }
-    }
-
-    // Default — gebruikt op pagina's waar we (nog) niet zijn ingelogd,
-    // bv. /login. Dan geeft /api/settings een 401 terug en blijven we
-    // stil op 'light' staan.
-    let mode = "light";
-
-    try {
-      const r = await fetch("/api/settings", { credentials: "same-origin" });
-      if (r.ok) {
-        const settings = await r.json();
-        mode = settings.theme_mode || "light";
-      }
-      // Niet-ok (401/403/5xx) → stil de default houden; geen console error.
-    } catch (_e) {
-      // Netwerkfout → idem, default houden.
-    }
-
-    applyTheme(mode);
-
-    // Als user OS-thema wijzigt en 'auto' staat aan → meteen omschakelen.
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (mode === "auto") applyTheme("auto");
-    });
-  })();
-  </script>
+  {#
+    Plek voor een toekomstige dark-mode/auto-theme switcher.
+    Eerder stond hier een fetch('/api/settings') die probeerde een
+    theme_mode te lezen, maar dat veld bestond niet in Settings, dus het
+    viel altijd terug op 'light'. Halfwerk; weggehaald. Wanneer dark mode
+    een echte feature wordt: voeg theme_mode toe aan Settings, expose het
+    via de settings-UI, en zet hier de fetch + applyTheme-logica weer neer.
+  #}
 
 </body>
 </html>
