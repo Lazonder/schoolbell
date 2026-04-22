@@ -63,6 +63,13 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
+# Maak `now()` beschikbaar in alle templates. Gebruikt o.a. in base.html
+# voor het footer-jaartal. Zonder deze processor gaf `{{ now().year }}`
+# een UndefinedError; daarom stond er eerder een permanent-falsy dummy.
+@app.context_processor
+def _inject_now():
+    return {"now": datetime.now}
+
 # Tijd-Regex: 24-uurs klok 00–23, met optionele seconden (HH:MM of HH:MM:SS)
 TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
 WEEKDAYS = [
