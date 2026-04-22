@@ -7,7 +7,9 @@ import pygame           # pip install pygame
 from settings_store import Settings
 
 # === Paden / constante waarden ===
-BASE_DIR = "/home/pi/schoolbell"
+# Voorrang: SCHOOLBELL_BASE_DIR env var. Fallback: directory waarin dit
+# bestand zelf staat. Vroeger hardcoded "/home/pi/schoolbell".
+BASE_DIR = os.environ.get("SCHOOLBELL_BASE_DIR") or os.path.dirname(os.path.abspath(__file__))
 AUDIO_DIR = os.path.join(BASE_DIR, "static", "geluiden")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")

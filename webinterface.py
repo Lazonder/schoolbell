@@ -21,7 +21,11 @@ FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # alleen voor eerste test
 NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 
 # === Padconfiguratie ===
-BASE_DIR = "/home/pi/schoolbell"
+# Voorrang: SCHOOLBELL_BASE_DIR env var (handig voor tests of niet-standaard
+# installaties). Fallback: de directory waarin dit bestand zelf staat.
+# Vroeger stond hier hardcoded "/home/pi/schoolbell" — dat brak zodra je als
+# andere user dan `pi` installeerde.
+BASE_DIR = os.environ.get("SCHOOLBELL_BASE_DIR") or os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 AUDIO_DIR = os.path.join(BASE_DIR, "static", "geluiden")
 WEEKDISABLE_PATH = os.path.join(DATA_DIR, "weken_uit.json")
