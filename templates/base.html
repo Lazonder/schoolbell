@@ -96,11 +96,6 @@
 
   <script>
   (async () => {
-    // haal thema-instelling op
-    const r = await fetch("/api/settings", { credentials:"same-origin" });
-    const settings = await r.json();
-    const mode = settings.theme_mode || "light";
-
     function applyTheme(mode) {
       if (mode === "auto") {
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -110,10 +105,26 @@
       }
     }
 
+    // Default — gebruikt op pagina's waar we (nog) niet zijn ingelogd,
+    // bv. /login. Dan geeft /api/settings een 401 terug en blijven we
+    // stil op 'light' staan.
+    let mode = "light";
+
+    try {
+      const r = await fetch("/api/settings", { credentials: "same-origin" });
+      if (r.ok) {
+        const settings = await r.json();
+        mode = settings.theme_mode || "light";
+      }
+      // Niet-ok (401/403/5xx) → stil de default houden; geen console error.
+    } catch (_e) {
+      // Netwerkfout → idem, default houden.
+    }
+
     applyTheme(mode);
 
-    // als user OS-thema wijzigt en 'auto' staat aan → meteen omschakelen
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+    // Als user OS-thema wijzigt en 'auto' staat aan → meteen omschakelen.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       if (mode === "auto") applyTheme("auto");
     });
   })();
