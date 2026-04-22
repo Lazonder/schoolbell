@@ -59,6 +59,17 @@ mkdir -p "${CONFIG_DIR}" "${LOG_DIR}"
 mkdir -p "${APP_DIR}/data" "${APP_DIR}/static/geluiden"
 chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}/data" "${APP_DIR}/static/geluiden" "${LOG_DIR}"
 
+# ${CONFIG_DIR} moet groep-schrijfbaar zijn voor ${APP_USER}. Reden:
+# settings_store.save() schrijft atomair via een tmp-bestand dat eerst in
+# deze map aangemaakt wordt en daarna over config.json wordt ge-rename'd.
+# Als de map root:root 755 is (Linux-default) kan de webinterface (die
+# onder ${APP_USER} draait) geen tmp-bestand aanmaken → PermissionError.
+# setgid (2775 = rwxrwsr-x) zorgt bovendien dat nieuwe bestanden in deze
+# map automatisch groep=${APP_USER} erven, zodat web + daemon beide
+# toegang houden zonder dat we umask moeten tunen.
+chown root:"${APP_USER}" "${CONFIG_DIR}"
+chmod 2775 "${CONFIG_DIR}"
+
 echo "== 4) Create default config if missing =="
 if [[ ! -f "${CONFIG_DIR}/config.json" ]]; then
   cat > "${CONFIG_DIR}/config.json" <<'JSON'
