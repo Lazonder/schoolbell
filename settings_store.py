@@ -1,6 +1,6 @@
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List
 from pathlib import Path
 
@@ -18,7 +18,12 @@ class Settings:
     max_file_size_mb: int = 15            # 1..1024
     poll_interval_sec: int = 2            # 1..60
     timezone: str = "Europe/Amsterdam"
-    allowed_extensions: List[str] = (".mp3", ".wav", ".ogg")
+    # field(default_factory=...) is de juiste manier om een mutable default
+    # voor een dataclass-veld op te geven. Voorheen stond hier een tuple,
+    # wat niet matchte met de List[str]-annotatie.
+    allowed_extensions: List[str] = field(
+        default_factory=lambda: [".mp3", ".wav", ".ogg"]
+    )
 
     @classmethod
     def load(cls) -> "Settings":
