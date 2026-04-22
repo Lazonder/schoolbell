@@ -18,7 +18,8 @@ events.jsonl.*
 static/geluiden/*.mp3
 static/geluiden/*.wav
 
-# Config (echte data)
+# Config (echte data) — zie config.example.json voor een template
+config.json
 roosters.json
 dagplanning.json
 standaardweek.json
