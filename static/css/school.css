@@ -565,3 +565,35 @@ html[data-theme="dark"] body {
 html[data-theme="dark"] .sb-brand__logo {
   filter: invert(1) hue-rotate(180deg);
 }
+
+/* Tabelrijen, hover en thead hebben in light mode een hardcoded
+   witte/lichtgrijze achtergrond (zie regels ~86-97). Die bijten met
+   dark-mode tekstkleur → onleesbaar. Hier overschrijven we ze met
+   donkere equivalenten. TODO (zie #21): hardcoded #fff vervangen door
+   CSS-variabelen in het hoofdblok, dan kan dit simpeler. */
+html[data-theme="dark"] .sb-table thead th {
+  background: var(--sb-color-surface);
+  border-bottom-color: var(--sb-color-border);
+}
+html[data-theme="dark"] .sb-table tbody tr:nth-child(even) {
+  background: var(--sb-color-surface);
+}
+html[data-theme="dark"] .sb-table tbody tr:nth-child(odd) {
+  background: #1a1f2e; /* iets donkerder dan surface voor zebrastrepen */
+}
+html[data-theme="dark"] .sb-table tbody tr:hover {
+  background: #262a3e; /* subtiel lichter als hover-cue */
+}
+
+/* Inputs/selects hebben ook background:#fff hardcoded. */
+html[data-theme="dark"] .sb-input,
+html[data-theme="dark"] .sb-select {
+  background: var(--sb-color-surface);
+  color: var(--sb-color-text);
+  border-color: var(--sb-color-border);
+}
+
+/* Alerts idem. */
+html[data-theme="dark"] .sb-alert {
+  background: var(--sb-color-surface);
+}
