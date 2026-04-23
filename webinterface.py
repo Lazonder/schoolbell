@@ -66,9 +66,22 @@ app.config.update(
 # Maak `now()` beschikbaar in alle templates. Gebruikt o.a. in base.html
 # voor het footer-jaartal. Zonder deze processor gaf `{{ now().year }}`
 # een UndefinedError; daarom stond er eerder een permanent-falsy dummy.
+#
+# theme_mode wordt hier óók geïnjecteerd zodat base.html het server-side kan
+# inbakken (voorkomt een flash-of-wrong-theme en werkt ook op /login, waar
+# /api/settings 401 zou geven omdat de gebruiker nog niet is ingelogd).
 @app.context_processor
-def _inject_now():
-    return {"now": datetime.now}
+def _inject_template_globals():
+    try:
+        mode = Settings.load().theme_mode
+    except Exception:
+        mode = "light"
+    if mode not in ("light", "dark", "auto"):
+        mode = "light"
+    return {
+        "now": datetime.now,
+        "theme_mode": mode,
+    }
 
 # Tijd-Regex: 24-uurs klok 00–23, met optionele seconden (HH:MM of HH:MM:SS)
 TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
@@ -202,6 +215,12 @@ def _settings_validate_and_apply(payload):
     if "timezone" in payload:
         tz = str(payload["timezone"])
         s.timezone = tz
+
+    if "theme_mode" in payload:
+        tm = str(payload["theme_mode"]).strip().lower()
+        if tm not in ("light", "dark", "auto"):
+            abort(400, "theme_mode must be one of: light, dark, auto")
+        s.theme_mode = tm
 
     return s
 

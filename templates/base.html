@@ -1,5 +1,17 @@
 <!doctype html>
-<html lang="nl">
+{#
+  data-theme-mode = opgeslagen gebruikersvoorkeur ("light" | "dark" | "auto").
+  data-theme      = het effectief toegepaste thema ("light" of "dark"),
+                    waar de CSS op filtert (html[data-theme="dark"] ...).
+
+  Voor "light"/"dark" bakken we dat server-side al in, zodat de CSS direct
+  klopt bij eerste render (voorkomt flash-of-wrong-theme). Voor "auto"
+  starten we met "light" als voorzichtige default en corrigeren we meteen
+  in een inline <script> in <head>, nog vóór <body> rendert.
+#}
+<html lang="nl"
+      data-theme-mode="{{ theme_mode|default('light') }}"
+      data-theme="{{ 'dark' if theme_mode == 'dark' else 'light' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -11,8 +23,23 @@
   <!-- Huisstijl -->
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/school.css') }}">
+
+  <script>
+  // Auto-mode: systeemvoorkeur onmiddellijk toepassen, vóór eerste paint.
+  // Staat bewust in <head> en is synchroon (geen async/defer), zodat er
+  // géén flicker optreedt tussen light → dark. Voor vaste "light"/"dark"
+  // modes staat data-theme al correct op <html> (server-side gezet), dus
+  // dan doet dit script niets.
+  (() => {
+    const root = document.documentElement;
+    if (root.getAttribute('data-theme-mode') === 'auto') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    }
+  })();
+  </script>
 </head>
-<body data-theme="light">
+<body>
   <!-- HEADER -->
   <header class="sb-header">
     <div class="sb-container sb-header__inner">
@@ -93,14 +120,18 @@
   })();
   </script>
 
-  {#
-    Plek voor een toekomstige dark-mode/auto-theme switcher.
-    Eerder stond hier een fetch('/api/settings') die probeerde een
-    theme_mode te lezen, maar dat veld bestond niet in Settings, dus het
-    viel altijd terug op 'light'. Halfwerk; weggehaald. Wanneer dark mode
-    een echte feature wordt: voeg theme_mode toe aan Settings, expose het
-    via de settings-UI, en zet hier de fetch + applyTheme-logica weer neer.
-  #}
+  <!-- Auto-mode: blijf luisteren naar systeem-wijzigingen. Relevant als
+       de gebruiker z'n OS-thema switcht terwijl de pagina open staat. -->
+  <script>
+  (() => {
+    const root = document.documentElement;
+    if (root.getAttribute('data-theme-mode') !== 'auto') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => root.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+    else if (mq.addListener) mq.addListener(apply); // Safari < 14 fallback
+  })();
+  </script>
 
 </body>
 </html>

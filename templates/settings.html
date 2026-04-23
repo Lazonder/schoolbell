@@ -124,6 +124,16 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
 
     if (r.ok) {
       status.textContent = "Opgeslagen ✔";
+      // Thema-wijziging meteen toepassen, zonder refresh. Als mode=auto:
+      // kijk naar systeemvoorkeur. Anders: gebruik de gekozen waarde.
+      if (payload.theme_mode) {
+        const root = document.documentElement;
+        root.setAttribute("data-theme-mode", payload.theme_mode);
+        const effective = payload.theme_mode === "auto"
+          ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+          : payload.theme_mode;
+        root.setAttribute("data-theme", effective);
+      }
     } else {
       console.error("Fout bij opslaan:", r.status, await r.text());
       status.textContent = "Fout bij opslaan";
