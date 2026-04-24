@@ -36,12 +36,20 @@ EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # gedeeld log (UI + da
 
 # === Flask ===
 app = Flask(__name__)
-app.config["TEMPLATES_AUTO_RELOAD"] = True
-app.jinja_env.auto_reload = True
+# TEMPLATES_AUTO_RELOAD doet een stat() op elk template-bestand bij élke
+# render. Handig tijdens dev; overbodig I/O in productie achter Gunicorn.
+# Aanzetten via SCHOOLBELL_DEBUG=1 als je lokaal bezig bent.
+_debug_mode = os.environ.get("SCHOOLBELL_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
+app.config["TEMPLATES_AUTO_RELOAD"] = _debug_mode
+app.jinja_env.auto_reload = _debug_mode
 app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-# Zet een ruime bovengrens. De echte limiet handhaven we per request via Settings.
-app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GiB
+# Hard limit op uploadgrootte — Flask/Werkzeug weigert groter met 413
+# vóór de handler draait (voorkomt dat kwaadwillend verkeer een Pi met
+# weinig RAM/disk kan belasten). De soft limit uit Settings
+# (max_file_size_mb) wordt daarna in de handler gehandhaafd voor nette
+# foutmeldingen; die moet dus <= dit getal blijven.
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MiB
 app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minuten
 
 def _env_bool(name: str, default: bool) -> bool:
