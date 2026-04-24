@@ -135,6 +135,12 @@ def login():
         u = (request.form.get("username") or "").strip()
         p = request.form.get("password") or ""
         if u == ADMIN_USER and _check_password(p):
+            # Session fixation dichtzetten: gooi alles wat vóór login in de
+            # session stond (incl. het CSRF-token dat op de login-pagina al
+            # was gegenereerd) weg, zodat een eventueel ondergeschoven cookie
+            # direct waardeloos is. get_csrf_token() genereert daarna een
+            # vers token bij de eerste volgende render.
+            session.clear()
             session.permanent = True
             session["user"] = ADMIN_USER
             return redirect(next_url)
@@ -150,7 +156,10 @@ def login():
 
 @app.route("/logout", methods=["POST", "GET"])
 def logout():
-    session.pop("user", None)
+    # session.clear() i.p.v. alleen pop("user"): zo gooien we ook het
+    # CSRF-token en session.permanent-flag weg. Bij de volgende login wordt
+    # alles vers opgebouwd.
+    session.clear()
     return redirect(url_for("login"))
 
 # --- CSRF helpers ---
