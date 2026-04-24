@@ -19,6 +19,10 @@ settings = Settings.load()
 print("[BOOT] Polling interval (sec):", settings.poll_interval_sec)
 stop_event = threading.Event()
 
+# Debug-flag voor extra verbose logging (bv. 'Geen wijzigingen in
+# dagrooster' bij elke poll). Default uit om journalctl schoon te houden.
+DEBUG = os.getenv("SCHOOLBELL_DAEMON_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
+
 BACKOFF_ON_ERROR = 5 * 60      # 5 minuten wachten bij fout
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
@@ -37,10 +41,20 @@ if not API_USER or not API_PASS:
     )
     sys.exit(1)
 
-# --- HTTP session (auth + self-signed TLS accepteren) ---
+# --- HTTP session (auth + TLS-verificatie) ---
+# Default: requests valideert het TLS-cert tegen het systeem-CA-bundle.
+# Dat is alleen relevant als API_BASE naar https wijst; bij http (install.sh
+# default: http://127.0.0.1:5000) doet verify niets. Als iemand later een
+# self-signed cert gebruikt kan men SCHOOLBELL_API_VERIFY_TLS=0 zetten.
+# NIET uitzetten voor productie-HTTPS.
 _http = requests.Session()
 _http.auth = (API_USER, API_PASS)
-#_http.verify = False  # _http.verify heeft alleen effect bij https; bij http kun je dit weglaten.
+if os.getenv("SCHOOLBELL_API_VERIFY_TLS", "1").strip().lower() in ("0", "false", "no", "off"):
+    _http.verify = False
+    # Onderdruk de InsecureRequestWarning die requests anders per call logt.
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    print("[WARN] TLS-verificatie is UITGESCHAKELD (SCHOOLBELL_API_VERIFY_TLS=0).", file=sys.stderr)
 
 # --- Hot-reload vlag ---
 _reload_settings = False
@@ -234,7 +248,7 @@ def schedule_poller_loop():
                     apply_day_schedule(data["momenten"])
                     print(f"[INFO] Dagrooster geladen: {data['rooster_naam']} ({len(data['momenten'])} momenten)")
                     last_sig = sig
-                else:
+                elif DEBUG:
                     print("[DEBUG] Geen wijzigingen in dagrooster.")
 
             # 2) Slaaptijd: neem de ingestelde poll_interval_sec,
