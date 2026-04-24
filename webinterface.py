@@ -529,13 +529,42 @@ def add_rooster():
 def delete_rooster(rooster):
     ensure_dirs()
     roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    if rooster in roosters:
-        del roosters[rooster]
-        save_json(ROOSTERS_PATH, roosters)
-        log_event("ui", {"action": "delete_rooster", "rooster": rooster})
-        flash(f"Rooster '{rooster}' verwijderd.")
-    else:
+    if rooster not in roosters:
         flash("Onbekend rooster.")
+        return redirect(url_for("roosters"))
+
+    # Vóórdat we verwijderen: check of het rooster nog ergens wordt gebruikt.
+    # Zonder deze check bleven referenties in standaardweek.json en
+    # dagplanning.json naar een verdwenen rooster wijzen — in de UI zag je
+    # nog de naam, maar er ging geen bel meer (stille bug).
+    # We kiezen bewust voor block-and-warn i.p.v. cascaderend verwijderen:
+    # je wilt niet dat een klik in het Roosters-scherm stilletjes dagen uit
+    # de agenda haalt. De gebruiker moet eerst zelf in Standaardweek en
+    # Agenda die verwijzingen weghalen en het dan opnieuw proberen.
+    stdweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
+    dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
+
+    gebruikt_in_stdweek = [dag for dag, r in stdweek.items() if r == rooster]
+    gebruikt_in_dagplanning = sorted(d for d, r in dagplanning.items() if r == rooster)
+
+    if gebruikt_in_stdweek or gebruikt_in_dagplanning:
+        delen = []
+        if gebruikt_in_stdweek:
+            delen.append(f"Standaardweek ({', '.join(gebruikt_in_stdweek)})")
+        if gebruikt_in_dagplanning:
+            voorb = ", ".join(gebruikt_in_dagplanning[:3])
+            meer = "" if len(gebruikt_in_dagplanning) <= 3 else f" en {len(gebruikt_in_dagplanning) - 3} meer"
+            delen.append(f"Agenda ({voorb}{meer})")
+        flash(
+            f"Rooster '{rooster}' is nog in gebruik bij: {'; '.join(delen)}. "
+            f"Haal deze verwijzingen eerst weg voordat je het rooster verwijdert."
+        )
+        return redirect(url_for("roosters"))
+
+    del roosters[rooster]
+    save_json(ROOSTERS_PATH, roosters)
+    log_event("ui", {"action": "delete_rooster", "rooster": rooster})
+    flash(f"Rooster '{rooster}' verwijderd.")
     return redirect(url_for("roosters"))
 
 @app.route("/roosters/<rooster>/add-moment", methods=["POST"])
