@@ -28,6 +28,13 @@
   --sb-shadow: 0 6px 20px rgba(0,0,0,.06);
   --sb-container: 1080px;
   --sb-gap: 16px;
+
+  /* Laat de browser native controls (scrollbars, <option>-dropdown,
+     date-picker, focus-ringen) automatisch in light-variant tekenen. In
+     de dark-mode-block hieronder wordt dit geflipt naar 'dark'. Zonder
+     dit gebruikt de UA default-tekstkleuren (zwart) binnen selects en
+     inputs, wat dan onleesbaar is op een donkere achtergrond. */
+  color-scheme: light;
 }
 
 /* 2) Basistypografie en layout */
@@ -109,7 +116,8 @@ body{
 .sb-label{ font-size:.95rem; color: var(--sb-color-muted); }
 .sb-input, .sb-select{
   width:100%; border:1px solid var(--sb-color-border);
-  border-radius:12px; padding:10px 12px; background: var(--sb-color-bg);
+  border-radius:12px; padding:10px 12px;
+  background: var(--sb-color-bg); color: var(--sb-color-text);
 }
 .sb-help{ font-size:.85rem; color: var(--sb-color-muted); }
 
@@ -328,6 +336,7 @@ form.inline {
   border-radius: 10px;
   border: 1px solid var(--sb-color-border);
   background: var(--sb-color-bg);
+  color: var(--sb-color-text);
   font: inherit;
   line-height: 1.3;
 }
@@ -550,6 +559,12 @@ html[data-theme="dark"] {
   --sb-color-row-alt: #1a1f2e;      /* iets lichter dan surface voor zebra */
   --sb-color-row-hover: #262a3e;    /* subtiel lichter als hover-cue */
   --sb-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+
+  /* Flip ook de UA-native controls mee: <option>-dropdowns, scrollbars,
+     native date/time-pickers, focus-ringen. Zonder dit blijft de
+     browser-default licht en zijn de items in een opengeklapte <select>
+     zwart-op-wit terwijl de rest van de UI donker is. */
+  color-scheme: dark;
 }
 
 /* Header gebruikt in light mode een gradient van de primaire kleuren.
