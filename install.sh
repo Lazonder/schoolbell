@@ -35,13 +35,16 @@ fi
 
 echo "== 1) System packages =="
 apt-get update
+# libasound2 is het runtime-pakket waar pygame mee linkt. Eerder stond
+# hier libasound2-dev (header-files); die zijn alleen nodig om iets te
+# compileren dat ermee wil linken, niet om te draaien.
 apt-get install -y \
   nginx \
   python3 python3-venv python3-pip \
   logrotate \
   ffmpeg \
   alsa-utils \
-  libasound2-dev
+  libasound2
 
 echo "== 2) Python venv + deps (requirements.txt) =="
 cd "${APP_DIR}"
