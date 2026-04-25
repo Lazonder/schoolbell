@@ -11,20 +11,20 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 auth = HTTPBasicAuth()
 
-# Haal credentials uit environment
+# Fetch credentials from environment
 ADMIN_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
-# Zet óf SCHOOLBELL_WEB_PWHASH (aanrader) óf tijdelijk SCHOOLBELL_WEB_PASS
-ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # bijv. pbkdf2:sha256:...
-FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # alleen voor eerste test
+# Set either SCHOOLBELL_WEB_PWHASH (recommended) or temporarily SCHOOLBELL_WEB_PASS
+ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # e.g. pbkdf2:sha256:...
+FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
 
-# Naamvalidatie: 1–35 tekens, alleen letters/cijfers/spatie/_/-
+# Name validation: 1–35 chars, letters/digits/space/_/- only
 NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 
-# === Padconfiguratie ===
-# Voorrang: SCHOOLBELL_BASE_DIR env var (handig voor tests of niet-standaard
-# installaties). Fallback: de directory waarin dit bestand zelf staat.
-# Vroeger stond hier hardcoded "/home/pi/schoolbell" — dat brak zodra je als
-# andere user dan `pi` installeerde.
+# === Path configuration ===
+# Priority: SCHOOLBELL_BASE_DIR env var (useful for tests or non-standard
+# installations). Fallback: the directory containing this file itself.
+# Previously hardcoded "/home/pi/schoolbell" — that broke when installing as
+# a user other than `pi`.
 BASE_DIR = os.environ.get("SCHOOLBELL_BASE_DIR") or os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 AUDIO_DIR = os.path.join(BASE_DIR, "static", "geluiden")
@@ -32,52 +32,52 @@ WEEKDISABLE_PATH = os.path.join(DATA_DIR, "weken_uit.json")
 ROOSTERS_PATH = os.path.join(DATA_DIR, "roosters.json")
 DAGPLANNING_PATH = os.path.join(DATA_DIR, "dagplanning.json")
 STANDAARDWEEK_PATH = os.path.join(DATA_DIR, "standaardweek.json")
-EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # gedeeld log (UI + daemon)
+EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # shared log (UI + daemon)
 
 # === Flask ===
 app = Flask(__name__)
-# TEMPLATES_AUTO_RELOAD doet een stat() op elk template-bestand bij élke
-# render. Handig tijdens dev; overbodig I/O in productie achter Gunicorn.
-# Aanzetten via SCHOOLBELL_DEBUG=1 als je lokaal bezig bent.
+# TEMPLATES_AUTO_RELOAD stats each template file on every render. Useful
+# during dev; unnecessary I/O in production behind Gunicorn. Enable via
+# SCHOOLBELL_DEBUG=1 when working locally.
 _debug_mode = os.environ.get("SCHOOLBELL_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
 app.config["TEMPLATES_AUTO_RELOAD"] = _debug_mode
 app.jinja_env.auto_reload = _debug_mode
 app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-# Hard limit op uploadgrootte — Flask/Werkzeug weigert groter met 413
-# vóór de handler draait (voorkomt dat kwaadwillend verkeer een Pi met
-# weinig RAM/disk kan belasten). De soft limit uit Settings
-# (max_file_size_mb) wordt daarna in de handler gehandhaafd voor nette
-# foutmeldingen; die moet dus <= dit getal blijven.
+# Hard limit on upload size — Flask/Werkzeug rejects larger with 413
+# before the handler runs (prevents malicious traffic from straining a Pi with
+# limited RAM/disk). The soft limit from Settings (max_file_size_mb) is then
+# enforced in the handler for clean error messages; it must therefore be
+# <= this number.
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MiB
-app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minuten
+app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minutes
 
 def _env_bool(name: str, default: bool) -> bool:
-    """Lees een env-variabele als boolean.
-    Niet gezet -> default. '0', 'false', 'no', 'off' (case-insensitive) of leeg -> False.
-    Alles anders -> True. Voorkomt de klassieke bug dat bool("0") True is.
+    """Read an env variable as a boolean.
+    Not set -> default. '0', 'false', 'no', 'off' (case-insensitive) or empty -> False.
+    Everything else -> True. Prevents the classic bug that bool("0") is True.
     """
     v = os.environ.get(name)
     if v is None:
         return default
     return v.strip().lower() not in ("0", "false", "no", "off", "")
 
-# SESSION_COOKIE_SECURE moet True staan bij HTTPS (browser stuurt cookie
-# alleen terug over TLS). Bij HTTP-deploy (standaard install.sh setup, Nginx
-# op poort 80) moet dit False zijn, anders werkt inloggen niet.
-# Default in de code: True (veilig). install.sh zet expliciet =0 in web.env.
+# SESSION_COOKIE_SECURE must be True for HTTPS (browser only sends cookie back
+# over TLS). For HTTP deployment (default install.sh setup, Nginx on port 80)
+# this must be False, or login won't work. Default in code: True (secure).
+# install.sh explicitly sets =0 in web.env.
 app.config.update(
     SESSION_COOKIE_SECURE=_env_bool("SCHOOLBELL_SECURE_COOKIES", default=True),
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
-# Maak `now()` beschikbaar in alle templates. Gebruikt o.a. in base.html
-# voor het footer-jaartal. Zonder deze processor gaf `{{ now().year }}`
-# een UndefinedError; daarom stond er eerder een permanent-falsy dummy.
+# Make `now()` available in all templates. Used e.g. in base.html for the
+# footer year. Without this processor, `{{ now().year }}` would give an
+# UndefinedError; previously there was a permanent-falsy dummy.
 #
-# theme_mode wordt hier óók geïnjecteerd zodat base.html het server-side kan
-# inbakken (voorkomt een flash-of-wrong-theme en werkt ook op /login, waar
-# /api/settings 401 zou geven omdat de gebruiker nog niet is ingelogd).
+# theme_mode is also injected here so base.html can bake it server-side
+# (avoids flash-of-wrong-theme and works on /login, where /api/settings
+# would return 401 because the user isn't logged in yet).
 @app.context_processor
 def _inject_template_globals():
     try:
@@ -91,7 +91,7 @@ def _inject_template_globals():
         "theme_mode": mode,
     }
 
-# Tijd-Regex: 24-uurs klok 00–23, met optionele seconden (HH:MM of HH:MM:SS)
+# Time regex: 24-hour clock 00–23, with optional seconds (HH:MM or HH:MM:SS)
 TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
 WEEKDAYS = [
     ("Mon", "Maandag"),
@@ -119,7 +119,7 @@ def ui_login_required(view):
     def wrapper(*args, **kwargs):
         if ui_logged_in():
             return view(*args, **kwargs)
-        # onthoud waarheen we terug moeten
+        # remember where we need to return to
         nxt = request.full_path if request.query_string else request.path
         return redirect(url_for("login", next=nxt))
     return wrapper
@@ -135,11 +135,10 @@ def login():
         u = (request.form.get("username") or "").strip()
         p = request.form.get("password") or ""
         if u == ADMIN_USER and _check_password(p):
-            # Session fixation dichtzetten: gooi alles wat vóór login in de
-            # session stond (incl. het CSRF-token dat op de login-pagina al
-            # was gegenereerd) weg, zodat een eventueel ondergeschoven cookie
-            # direct waardeloos is. get_csrf_token() genereert daarna een
-            # vers token bij de eerste volgende render.
+            # Close session fixation: discard everything that was in the session
+            # before login (including the CSRF token that was already generated
+            # on the login page), so any injected cookie is immediately worthless.
+            # get_csrf_token() then generates a fresh token on the first next render.
             session.clear()
             session.permanent = True
             session["user"] = ADMIN_USER
@@ -151,14 +150,14 @@ def login():
         next_url=next_url,
         admin_user=ADMIN_USER,
         csrf_token=get_csrf_token(),
-        tab=None  # geen actieve tab op loginpagina
+        tab=None  # no active tab on the login page
     )
 
 @app.route("/logout", methods=["POST", "GET"])
 def logout():
-    # session.clear() i.p.v. alleen pop("user"): zo gooien we ook het
-    # CSRF-token en session.permanent-flag weg. Bij de volgende login wordt
-    # alles vers opgebouwd.
+    # session.clear() instead of just pop("user"): this also discards the
+    # CSRF token and session.permanent flag. On the next login, everything
+    # is rebuilt fresh.
     session.clear()
     return redirect(url_for("login"))
 
@@ -172,13 +171,13 @@ def get_csrf_token() -> str:
 
 @app.before_request
 def csrf_protect():
-    # Alleen POST's controleren.
+    # Only check POST requests.
     if request.method != "POST":
         return
-    # Daemon-endpoint gebruikt Basic Auth vanaf localhost, geen browser -> geen CSRF.
+    # Daemon endpoint uses Basic Auth from localhost, no browser -> no CSRF.
     if request.path == "/api/effectief-rooster":
         return
-    # Accepteer zowel form-veld (UI-forms) als header (JSON-API vanuit settings.html).
+    # Accept both form field (UI forms) and header (JSON API from settings.html).
     sess_token = session.get("csrf", "")
     form_token = request.form.get("_csrf") or request.headers.get("X-CSRF-Token", "")
     if not sess_token or not form_token or form_token != sess_token:
@@ -197,13 +196,13 @@ def verify_password(username, password):
     if ADMIN_HASH:
         return check_password_hash(ADMIN_HASH, password)
     if FALLBACK_PLAIN:
-        return password == FALLBACK_PLAIN  # alleen voor eerste test
+        return password == FALLBACK_PLAIN  # only for first test
     return False
 
 def require_admin(f):
-    """Vereist een ingelogde admin-sessie.
-    Voor API-routes geven we 401 JSON terug in plaats van een redirect,
-    zodat fetch()-clients een machine-leesbaar antwoord krijgen.
+    """Require a logged-in admin session.
+    For API routes we return 401 JSON instead of a redirect, so that
+    fetch() clients get a machine-readable response.
     """
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -241,7 +240,7 @@ def _settings_validate_and_apply(payload):
 
     return s
 
-# -- Settings API (geen blueprint; eenvoudige app-routes) --
+# -- Settings API (no blueprint; simple app routes) --
 @app.route("/api/settings", methods=["GET"])
 @require_admin
 def api_settings_get():
@@ -266,7 +265,7 @@ def load_json(path, default):
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
-        print(f"[WARN] Kon {path} niet laden: {e}")
+        print(f"[WARN] Could not load {path}: {e}")
     return default
 
 def save_json(path, obj):
@@ -276,7 +275,7 @@ def save_json(path, obj):
     os.replace(tmp, path)
 
 def list_audio():
-    """Toon bestanden volgens allowed_extensions uit Settings."""
+    """Show files according to allowed_extensions from Settings."""
     ensure_dirs()
     s = Settings.load()
     allowed_exts = tuple(e.lower() for e in s.allowed_extensions)
@@ -288,7 +287,7 @@ def list_audio():
     return files
 
 def safe_audio_filename(base_no_ext: str, ext: str) -> str:
-    """Valideer naam en plak de gekozen extensie eraan vast (ext bevat punt, bv '.mp3')."""
+    """Validate name and append the chosen extension (ext contains dot, e.g. '.mp3')."""
     base_no_ext = base_no_ext.strip()
     if not NAME_RE.match(base_no_ext):
         return ""
@@ -298,8 +297,8 @@ def safe_audio_filename(base_no_ext: str, ext: str) -> str:
 
 def normalize_time(t: str) -> str:
     """
-    Accepteert '8:05', '08:05', '11:30:00', etc.
-    Geeft altijd 'HH:MM' terug, of '' als de tijd ongeldig is.
+    Accepts '8:05', '08:05', '11:30:00', etc.
+    Always returns 'HH:MM', or '' if the time is invalid.
     """
     t = (t or "").strip()
     if not TIME_RE.match(t):
@@ -308,7 +307,7 @@ def normalize_time(t: str) -> str:
     if len(parts) < 2:
         return ""
     hh, mm = parts[0], parts[1]
-    # voorkom rare dingen als '007:03'
+    # prevent odd things like '007:03'
     try:
         hh_int = int(hh)
         mm_int = int(mm)
@@ -341,7 +340,7 @@ def default_dagplanning_obj():
     return {}
 
 def default_standaardweek_obj():
-    # Standaard: geen rooster ingevuld
+    # Default: no rooster filled in
     return {k: "" for k, _ in WEEKDAYS}
 
 def weekday_key(d: date) -> str:
@@ -376,8 +375,8 @@ def log_event(ev_type: str, data: dict):
         print(f"[WARN] log_event failed: {e}")
 
 def read_events(limit=200, max_bytes=256_000):
-    #Lees de laatste 'limit' events uit EVENTS_LOG_PATH zonder het hele bestand te lezen.
-    #max_bytes bepaalt hoeveel bytes vanaf het einde we bekijken.    
+    # Read the last 'limit' events from EVENTS_LOG_PATH without reading the entire file.
+    # max_bytes determines how many bytes from the end we look at.
     try:
         with open(EVENTS_LOG_PATH, "rb") as f:
             f.seek(0, os.SEEK_END)
@@ -386,7 +385,7 @@ def read_events(limit=200, max_bytes=256_000):
             f.seek(start)
             chunk = f.read()
 
-        # Als we niet bij 0 begonnen, kunnen we midden in een regel zitten -> drop eerste partial line
+        # If we didn't start at 0, we might be mid-line -> drop first partial line
         lines = chunk.splitlines()
         if start > 0 and lines:
             lines = lines[1:]
@@ -533,14 +532,13 @@ def delete_rooster(rooster):
         flash("Onbekend rooster.")
         return redirect(url_for("roosters"))
 
-    # Vóórdat we verwijderen: check of het rooster nog ergens wordt gebruikt.
-    # Zonder deze check bleven referenties in standaardweek.json en
-    # dagplanning.json naar een verdwenen rooster wijzen — in de UI zag je
-    # nog de naam, maar er ging geen bel meer (stille bug).
-    # We kiezen bewust voor block-and-warn i.p.v. cascaderend verwijderen:
-    # je wilt niet dat een klik in het Roosters-scherm stilletjes dagen uit
-    # de agenda haalt. De gebruiker moet eerst zelf in Standaardweek en
-    # Agenda die verwijzingen weghalen en het dan opnieuw proberen.
+    # Before deleting: check if the rooster is still used somewhere.
+    # Without this check, references in standaardweek.json and dagplanning.json
+    # would point to a deleted rooster — in the UI you'd still see the name,
+    # but no bell would ring (silent bug). We deliberately choose block-and-warn
+    # instead of cascading delete: you don't want a click in the Roosters
+    # screen to silently remove days from the agenda. The user must first
+    # manually remove those references in Standaardweek and Agenda, then retry.
     stdweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
     dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
 
@@ -576,7 +574,7 @@ def add_moment(rooster):
         flash("Onbekend rooster.")
         return redirect(url_for("roosters"))
 
-    # Nieuw: rauwe tijd uit het formulier, daarna normaliseren
+    # New: raw time from form, then normalize
     tijd_raw = request.form.get("tijd", "")
     tijd = normalize_time(tijd_raw)
 
@@ -662,7 +660,7 @@ def standaardweek():
         opties=opties,
     )
 
-# -- Agenda (per datum overschrijft standaardweek) --
+# -- Agenda (per-date override of standaardweek) --
 @app.route("/agenda", methods=["GET", "POST"])
 @ui_login_required
 def agenda():
@@ -674,9 +672,9 @@ def agenda():
 
     opties = [""] + list(roosters.keys())
 
-    # --- POST: opslaan ---
+    # --- POST: save ---
     if request.method == "POST" and request.form.get("_action") == "bulk_save":
-        # Dagplanning bijwerken
+        # Update day planning
         updated_dagplanning = dagplanning.copy()
         for key in request.form.keys():
             if key.startswith("day[") and key.endswith("]"):
@@ -690,7 +688,7 @@ def agenda():
                 else:
                     updated_dagplanning.pop(datum, None)
 
-        # Weken uit bijwerken
+        # Update weeks off
         today = date.today()
         first_monday = today - timedelta(days=today.weekday())
         weeks_list = [first_monday + timedelta(weeks=i) for i in range(52)]
@@ -718,7 +716,7 @@ def agenda():
         flash("Agenda opgeslagen.")
         return redirect(url_for("agenda"))
 
-    # --- GET: render data voor template ---
+    # --- GET: render data for template ---
     today = date.today()
     first_monday = today - timedelta(days=today.weekday())
     weeks_list = [first_monday + timedelta(weeks=i) for i in range(52)]
@@ -762,10 +760,10 @@ def agenda():
 @auth.login_required
 def api_effectief_rooster():
     """
-    Geeft het effectieve rooster voor een bepaalde dag terug.
-    Queryparams:
-      - datum=YYYY-MM-DD (optioneel, standaard vandaag)
-      - empty_204=1       -> stuur 204 terug bij leeg rooster/week uit
+    Return the effective schedule for a given day.
+    Query params:
+      - datum=YYYY-MM-DD (optional, default today)
+      - empty_204=1       -> return 204 for empty schedule/week off
     """
     ensure_dirs()
 
@@ -776,7 +774,7 @@ def api_effectief_rooster():
         try:
             d = datetime.strptime(datum_qs, "%Y-%m-%d").date()
         except ValueError:
-            return {"error": "Ongeldige datum. Gebruik YYYY-MM-DD."}, 400
+            return {"error": "Invalid date. Use YYYY-MM-DD."}, 400
     else:
         d = date.today()
     d_iso = d.isoformat()
@@ -840,7 +838,7 @@ def geluiden():
     ensure_dirs()
     files = list_audio()
 
-    # Lees settings voor accept/hint
+    # Read settings for accept/hint
     s = Settings.load()
     allowed_exts = [e.lower() for e in s.allowed_extensions]
     accept_attr = ",".join(allowed_exts)
@@ -874,7 +872,7 @@ def geluiden_upload():
         flash("Geen bestand geselecteerd.")
         return redirect(url_for("geluiden"))
 
-    # Extensie + validatie
+    # Extension + validation
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in allowed_exts:
         flash(f"Alleen bestanden met deze extensies zijn toegestaan: {', '.join(allowed_exts)}.")
@@ -890,12 +888,12 @@ def geluiden_upload():
         flash("Er bestaat al een audiobestand met deze naam. Kies een andere naam.")
         return redirect(url_for("geluiden"))
 
-    # Snelle pre-check
+    # Quick pre-check
     if request.content_length and request.content_length > max_bytes + 64 * 1024:
         flash(f"Bestand is groter dan de ingestelde limiet van {s.max_file_size_mb} MB.")
         return redirect(url_for("geluiden"))
 
-    # Nauwkeurige check
+    # Precise check
     try:
         f.stream.seek(0, os.SEEK_END)
         size = f.stream.tell()

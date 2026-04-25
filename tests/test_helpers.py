@@ -1,31 +1,30 @@
 """
-Unit-tests voor de pure helper-functies uit webinterface.py.
+Unit tests for the pure helper functions from webinterface.py.
 
-'Pure' = geen side-effects (geen I/O, geen globale state), dus we kunnen
-ze veilig rechtstreeks importeren en aanroepen — geen fixtures of
-mocking nodig. Dit is de meest waardevolle set om als eerste te
-beschermen tegen regressies: deze functies doen het échte werk
-(tijd-normalisatie, bestandsnaam-validatie, dagrooster-selectie),
-terwijl de Flask-routes er bovenop slechts dun zijn.
+'Pure' = no side effects (no I/O, no global state), so we can safely
+import and call them directly — no fixtures or mocking needed. This is
+the most valuable set to lock down first against regressions: these
+functions do the real work (time normalization, filename validation,
+day-schedule selection), while the Flask routes on top are thin.
 
-Gebruikelijke testvorm (AAA):
-  - Arrange: bouw input op
-  - Act:     roep de functie aan
-  - Assert:  controleer het resultaat
+Common test shape (AAA):
+  - Arrange: build up the input
+  - Act:     call the function
+  - Assert:  check the result
 
-Draaien:
+Run:
   pip install -r requirements-dev.txt
-  pytest            # vanuit de project-root
-  pytest -v         # verbose: laat per test zien of hij slaagt
+  pytest            # from the project root
+  pytest -v         # verbose: show pass/fail per test
 """
 
 from datetime import date
 
 import pytest
 
-# Deze import heeft als bijeffect dat webinterface.py wordt uitgevoerd.
-# Dat is OK: alle side-effects in dat bestand (Flask-app aanmaken,
-# env-vars lezen) zijn idempotent en raken de filesystem niet.
+# Importing this has the side effect of executing webinterface.py.
+# That's OK: all side effects in that file (creating the Flask app,
+# reading env vars) are idempotent and don't touch the filesystem.
 from webinterface import (
     _env_bool,
     effectieve_rooster_naam_for_date,
@@ -38,20 +37,20 @@ from webinterface import (
 
 
 # ---------------------------------------------------------------------------
-# normalize_time: string -> "HH:MM" of ""
+# normalize_time: string -> "HH:MM" or ""
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     "raw, expected",
     [
-        ("8:05", "08:05"),      # enkele-digit uur wordt gepadded
-        ("08:05", "08:05"),     # al goed, blijft zo
-        ("08:5", ""),           # minuten moeten altijd 2 digits zijn (regex)
-        ("23:59", "23:59"),     # bovengrens geldig
-        ("00:00", "00:00"),     # ondergrens geldig
-        ("11:30:00", "11:30"),  # seconden worden weggesneden
-        ("  9:15  ", "09:15"),  # strip() werkt
+        ("8:05", "08:05"),      # single-digit hour gets padded
+        ("08:05", "08:05"),     # already correct, stays
+        ("08:5", ""),           # minutes must always be 2 digits (regex)
+        ("23:59", "23:59"),     # upper bound valid
+        ("00:00", "00:00"),     # lower bound valid
+        ("11:30:00", "11:30"),  # seconds get stripped
+        ("  9:15  ", "09:15"),  # strip() works
     ],
 )
 def test_normalize_time_happy_path(raw, expected):
@@ -61,24 +60,24 @@ def test_normalize_time_happy_path(raw, expected):
 @pytest.mark.parametrize(
     "raw",
     [
-        "",         # leeg
-        "abc",      # geen tijd
-        "24:00",    # uur uit range
-        "12:60",    # minuut uit range
-        "007:03",   # drie digits uur: regex matcht niet
-        "12",       # mist :mm
-        ":30",      # mist uur
-        None,       # None-invoer wordt door strip() op "" geforceerd
+        "",         # empty
+        "abc",      # not a time
+        "24:00",    # hour out of range
+        "12:60",    # minute out of range
+        "007:03",   # three-digit hour: regex doesn't match
+        "12",       # missing :mm
+        ":30",      # missing hour
+        None,       # None input gets coerced to "" by strip()
     ],
 )
 def test_normalize_time_invalid_returns_empty(raw):
-    # normalize_time() geeft bewust "" terug i.p.v. None, zodat callers
-    # in templates een `if tijd:` kunnen doen zonder type-check.
+    # normalize_time() deliberately returns "" instead of None, so that
+    # callers in templates can do `if tijd:` without a type check.
     assert normalize_time(raw) == ""
 
 
 # ---------------------------------------------------------------------------
-# safe_audio_filename: voorkomt path-traversal en rommel in filenames
+# safe_audio_filename: prevents path traversal and junk in filenames
 # ---------------------------------------------------------------------------
 
 
@@ -93,39 +92,39 @@ def test_safe_audio_filename_strips_whitespace():
 @pytest.mark.parametrize(
     "base",
     [
-        "../etc/passwd",     # path-traversal poging
-        "bel/01",            # slash verboden
-        "bel\\01",           # backslash verboden
-        "bel.01",            # punt verboden (zou dubbele extensie geven)
-        "",                  # leeg
-        "a" * 36,            # 1 te lang (limiet is 35)
-        "bel@home",          # @ verboden
-        "héllo",             # accent verboden (buiten [A-Za-z0-9 _-])
+        "../etc/passwd",     # path-traversal attempt
+        "bel/01",            # slash forbidden
+        "bel\\01",           # backslash forbidden
+        "bel.01",            # dot forbidden (would create a double extension)
+        "",                  # empty
+        "a" * 36,            # 1 too long (limit is 35)
+        "bel@home",          # @ forbidden
+        "héllo",             # accent forbidden (outside [A-Za-z0-9 _-])
     ],
 )
 def test_safe_audio_filename_rejects_invalid(base):
-    # Bij een ongeldige naam krijg je een lege string terug.
-    # De caller hoort daarop te checken en te weigeren.
+    # On an invalid name you get an empty string back. The caller is
+    # expected to check for that and refuse.
     assert safe_audio_filename(base, ".mp3") == ""
 
 
 # ---------------------------------------------------------------------------
-# normalize_and_sort_moments: cleanup + sort van een lijst bel-momenten
+# normalize_and_sort_moments: cleanup + sort of a list of bell moments
 # ---------------------------------------------------------------------------
 
 
 def test_normalize_and_sort_moments_drops_invalid_and_sorts():
     input_moments = [
         {"tijd": "10:05", "naam": "Pauze", "bestand": "pauze.mp3"},
-        {"tijd": "bogus", "naam": "X", "bestand": "x.mp3"},          # ongeldige tijd
-        {"tijd": "8:00", "naam": "Start", "bestand": "start.mp3"},    # niet-gepadded
-        {"tijd": "09:15", "naam": "", "bestand": "a.mp3"},            # lege naam
-        {"tijd": "09:20", "naam": "Z", "bestand": ""},                # leeg bestand
+        {"tijd": "bogus", "naam": "X", "bestand": "x.mp3"},          # invalid time
+        {"tijd": "8:00", "naam": "Start", "bestand": "start.mp3"},    # not zero-padded
+        {"tijd": "09:15", "naam": "", "bestand": "a.mp3"},            # empty name
+        {"tijd": "09:20", "naam": "Z", "bestand": ""},                # empty file
     ]
 
     result = normalize_and_sort_moments(input_moments)
 
-    # Alleen de twee geldige blijven over, en ze staan op tijd-volgorde.
+    # Only the two valid ones remain, sorted by time.
     assert result == [
         {"tijd": "08:00", "naam": "Start", "bestand": "start.mp3"},
         {"tijd": "10:05", "naam": "Pauze", "bestand": "pauze.mp3"},
@@ -138,12 +137,12 @@ def test_normalize_and_sort_moments_empty_list():
 
 # ---------------------------------------------------------------------------
 # weekday_key + effectieve_rooster_naam_for_date:
-# de kern van "welk rooster geldt op een gegeven datum?"
+# the core of "which schedule applies on a given date?"
 # ---------------------------------------------------------------------------
 
 
 def test_weekday_key_mapping():
-    # 2026-04-20 is een maandag, 04-26 een zondag — handige checkset.
+    # 2026-04-20 is a Monday, 04-26 a Sunday — handy check set.
     assert weekday_key(date(2026, 4, 20)) == "Mon"
     assert weekday_key(date(2026, 4, 21)) == "Tue"
     assert weekday_key(date(2026, 4, 22)) == "Wed"
@@ -154,8 +153,8 @@ def test_weekday_key_mapping():
 
 
 def test_effectief_rooster_dagplanning_wint_van_standaardweek():
-    # Dagplanning is een per-datum-override: als er voor die dag iets
-    # staat, gaat dat voor boven de standaardweek.
+    # Day plan is a per-date override: if there's something for that day,
+    # it takes precedence over the standard week.
     dagplanning = {"2026-04-20": "feestdag"}
     standaardweek = {"Mon": "gewone_week", "Tue": "gewone_week"}
 
@@ -166,7 +165,7 @@ def test_effectief_rooster_dagplanning_wint_van_standaardweek():
 
 
 def test_effectief_rooster_valt_terug_op_standaardweek():
-    # Geen dagplanning-entry → neem de weekdag uit standaardweek.
+    # No day-plan entry → use the weekday from the standard week.
     dagplanning = {}
     standaardweek = {"Mon": "gewone_week", "Tue": "andere_week"}
 
@@ -179,17 +178,17 @@ def test_effectief_rooster_valt_terug_op_standaardweek():
 
 
 def test_effectief_rooster_lege_state_geeft_lege_string():
-    # Niks bekend → "", niet None. Dat houdt de aanroepende code simpel.
+    # Nothing known → "", not None. That keeps caller code simple.
     assert effectieve_rooster_naam_for_date(
         date(2026, 4, 20), {}, {},
     ) == ""
 
 
 def test_effectief_rooster_dagplanning_met_lege_waarde_valt_terug():
-    # Regel uit de code: `if d_iso in dagplanning and dagplanning[d_iso]`
-    # — een lege string in dagplanning telt NIET als override. Belangrijk,
-    # want de UI zet soms bewust "" om een dag leeg te maken, en in die
-    # gevallen moet standaardweek de fallback zijn.
+    # Rule from the code: `if d_iso in dagplanning and dagplanning[d_iso]`
+    # — an empty string in dagplanning does NOT count as an override.
+    # Important, because the UI sometimes intentionally sets "" to clear
+    # a day, and in those cases standaardweek must be the fallback.
     dagplanning = {"2026-04-20": ""}
     standaardweek = {"Mon": "gewone_week"}
 
@@ -199,31 +198,32 @@ def test_effectief_rooster_dagplanning_met_lege_waarde_valt_terug():
 
 
 # ---------------------------------------------------------------------------
-# iso_week_key: formatteert een datum als "YYYY-Www"
+# iso_week_key: formats a date as "YYYY-Www"
 # ---------------------------------------------------------------------------
 
 
 def test_iso_week_key_format():
-    # 2026-01-05 = maandag van ISO-week 2. Handige edge: rond jaarwissel
-    # kan de ISO-week een ander jaar dragen, dat willen we goed testen.
+    # 2026-01-05 = Monday of ISO week 2. Handy edge: around the year
+    # turn, the ISO week may carry a different year, which we want to
+    # test correctly.
     assert iso_week_key(date(2026, 1, 5)) == "2026-W02"
 
 
 def test_iso_week_key_rond_jaarwissel():
-    # 2025-12-29 valt in ISO-week 1 van 2026 (eerste week met 4+ dagen
-    # in het nieuwe jaar). Die grensgevallen zijn regressie-gevoelig
-    # bij refactors van datumcode.
+    # 2025-12-29 falls in ISO week 1 of 2026 (first week with 4+ days
+    # in the new year). Those edge cases are regression-prone when
+    # date code is refactored.
     assert iso_week_key(date(2025, 12, 29)) == "2026-W01"
 
 
 # ---------------------------------------------------------------------------
-# _env_bool: environment-parsing met monkeypatch
+# _env_bool: environment parsing with monkeypatch
 # ---------------------------------------------------------------------------
 
 
 def test_env_bool_default_bij_onzet(monkeypatch):
-    # monkeypatch.delenv met raising=False doet niks als de var al niet
-    # bestaat, maar verzekert ons dat we een clean state hebben.
+    # monkeypatch.delenv with raising=False does nothing if the var
+    # isn't set, but ensures we have a clean state.
     monkeypatch.delenv("FAKE_FLAG", raising=False)
 
     assert _env_bool("FAKE_FLAG", default=True) is True

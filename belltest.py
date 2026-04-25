@@ -1,13 +1,13 @@
 import pygame
 import time
 
-# Initialiseer de mixer
+# Initialize the mixer
 pygame.mixer.init()
 
-# Laad en speel het geluid af
-pygame.mixer.music.load("/home/pi/schoolbell/static/geluiden/1 ivko schoolbel.mp3")  # Zorg dat dit bestand in dezelfde map staat
+# Load and play the sound
+pygame.mixer.music.load("/home/pi/schoolbell/static/geluiden/1 ivko schoolbel.mp3")  # Make sure this file lives in the same folder
 pygame.mixer.music.play()
 
-# Wacht tot het geluid klaar is
+# Wait for the sound to finish
 while pygame.mixer.music.get_busy():
     time.sleep(0.1)

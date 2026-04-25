@@ -96,14 +96,14 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
   const form = e.currentTarget;
   const payload = Object.fromEntries(new FormData(form).entries());
 
-  // numerieke velden omzetten naar Number
+  // convert numeric fields to Number
   for (const k of ["volume_percent","max_file_size_mb","poll_interval_sec"]) {
     if (payload[k] !== undefined && payload[k] !== "") {
       payload[k] = Number(payload[k]);
     }
   }
 
-  // CSRF-token uit <meta name="csrf-token">
+  // CSRF token from <meta name="csrf-token">
   const meta = document.querySelector('meta[name="csrf-token"]');
   const csrfToken = meta ? meta.content : null;
 
@@ -115,7 +115,7 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // meest gebruikte headernaam; jouw CSRF-wrapper kijkt hier waarschijnlijk naar
+        // most common header name; your CSRF wrapper probably reads this
         "X-CSRF-Token": csrfToken || ""
       },
       credentials: "same-origin",
@@ -124,8 +124,8 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
 
     if (r.ok) {
       status.textContent = "Opgeslagen ✔";
-      // Thema-wijziging meteen toepassen, zonder refresh. Als mode=auto:
-      // kijk naar systeemvoorkeur. Anders: gebruik de gekozen waarde.
+      // Apply theme change immediately, no refresh. If mode=auto:
+      // check system preference. Otherwise: use the chosen value.
       if (payload.theme_mode) {
         const root = document.documentElement;
         root.setAttribute("data-theme-mode", payload.theme_mode);
