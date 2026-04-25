@@ -382,12 +382,22 @@ def read_events(limit=200, max_bytes=256_000):
             f.seek(0, os.SEEK_END)
             size = f.tell()
             start = max(0, size - max_bytes)
+            # Peek at the byte just before `start`. If it is a newline,
+            # the chunk begins exactly on a line boundary and the first
+            # line is complete. Otherwise we landed mid-line and must
+            # drop the first (truncated) line. Without this peek, the
+            # old code unconditionally dropped the first line whenever
+            # start > 0, silently losing a valid record whenever the
+            # window happened to align with a newline.
+            prev_is_newline = False
+            if start > 0:
+                f.seek(start - 1)
+                prev_is_newline = f.read(1) == b"\n"
             f.seek(start)
             chunk = f.read()
 
-        # If we didn't start at 0, we might be mid-line -> drop first partial line
         lines = chunk.splitlines()
-        if start > 0 and lines:
+        if start > 0 and not prev_is_newline and lines:
             lines = lines[1:]
 
         out = []
