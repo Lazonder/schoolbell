@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os, json, re, secrets
+import os, json, re, secrets, fcntl
+from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
 from dataclasses import asdict
 from flask import Flask, request, redirect, url_for, flash, send_from_directory, session, jsonify, abort, render_template
@@ -274,6 +275,58 @@ def save_json(path, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
 
+@contextmanager
+def locked_json(path, default):
+    """Read-modify-write a JSON state file under an exclusive lock.
+
+    Why this exists: save_json() writes atomically (tmp + os.replace),
+    but the typical request flow is load -> mutate -> save. Two
+    concurrent requests can both load the same state, each mutate
+    their own copy, and both save — the second one overwrites the
+    first, silently losing an update. With Gunicorn at 2 workers ×
+    4 threads that race is real: two people clicking 'add moment'
+    at the same time can lose one of the moments.
+
+    Usage:
+        with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (data, save):
+            data["new"] = []
+            save(data)
+
+    The lock is released when the with-block exits, whether or not
+    save() was called. If validation fails, just return without calling
+    save() and the file is untouched.
+
+    Implementation notes:
+    - We lock a sidecar `.lock` file rather than the data file itself.
+      save_json() replaces the data file via os.replace(), which would
+      invalidate any fd we held open against the original inode. The
+      sidecar lock decouples lock identity from data identity.
+    - fcntl.flock is advisory: it only blocks other processes/threads
+      that also call flock on the same file. That's fine here — we
+      control all writers (web routes via this helper).
+    - Locks are per-process-fd, so within Gunicorn this serializes
+      writers across both threads (in one worker) and across workers.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    lock_path = path + ".lock"
+    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        data = load_json(path, default)
+
+        def _save(new_data):
+            # Caller passes the data they want persisted, so reassigning
+            # `data = ...` inside the with-block still works. If they
+            # mutate in place, just call save(data).
+            save_json(path, new_data)
+
+        yield data, _save
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        finally:
+            os.close(lock_fd)
+
 def list_audio():
     """Show files according to allowed_extensions from Settings."""
     ensure_dirs()
@@ -382,12 +435,22 @@ def read_events(limit=200, max_bytes=256_000):
             f.seek(0, os.SEEK_END)
             size = f.tell()
             start = max(0, size - max_bytes)
+            # Peek at the byte just before `start`. If it is a newline,
+            # the chunk begins exactly on a line boundary and the first
+            # line is complete. Otherwise we landed mid-line and must
+            # drop the first (truncated) line. Without this peek, the
+            # old code unconditionally dropped the first line whenever
+            # start > 0, silently losing a valid record whenever the
+            # window happened to align with a newline.
+            prev_is_newline = False
+            if start > 0:
+                f.seek(start - 1)
+                prev_is_newline = f.read(1) == b"\n"
             f.seek(start)
             chunk = f.read()
 
-        # If we didn't start at 0, we might be mid-line -> drop first partial line
         lines = chunk.splitlines()
-        if start > 0 and lines:
+        if start > 0 and not prev_is_newline and lines:
             lines = lines[1:]
 
         out = []
@@ -502,23 +565,25 @@ def roosters():
 @ui_login_required
 def add_rooster():
     ensure_dirs()
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
     naam = (request.form.get("naam") or "").strip()
     if not naam:
         flash("Naam van rooster is verplicht.")
         return redirect(url_for("roosters"))
-    if naam in roosters:
-        flash("Er bestaat al een rooster met deze naam.")
-        return redirect(url_for("roosters"))
 
-    kopieer = "kopieer_van_eerste" in request.form
-    if kopieer and roosters:
-        first_name = next(iter(roosters.keys()))
-        roosters[naam] = normalize_and_sort_moments(roosters[first_name])
-    else:
-        roosters[naam] = []
+    with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
+        if naam in roosters:
+            flash("Er bestaat al een rooster met deze naam.")
+            return redirect(url_for("roosters"))
 
-    save_json(ROOSTERS_PATH, roosters)
+        kopieer = "kopieer_van_eerste" in request.form
+        if kopieer and roosters:
+            first_name = next(iter(roosters.keys()))
+            roosters[naam] = normalize_and_sort_moments(roosters[first_name])
+        else:
+            roosters[naam] = []
+
+        save(roosters)
+
     log_event("ui", {"action": "add_rooster", "rooster": naam})
     flash(f"Rooster '{naam}' aangemaakt.")
     return redirect(url_for("roosters"))
@@ -527,40 +592,44 @@ def add_rooster():
 @ui_login_required
 def delete_rooster(rooster):
     ensure_dirs()
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    if rooster not in roosters:
-        flash("Onbekend rooster.")
-        return redirect(url_for("roosters"))
+    with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
+        if rooster not in roosters:
+            flash("Onbekend rooster.")
+            return redirect(url_for("roosters"))
 
-    # Before deleting: check if the rooster is still used somewhere.
-    # Without this check, references in standaardweek.json and dagplanning.json
-    # would point to a deleted rooster — in the UI you'd still see the name,
-    # but no bell would ring (silent bug). We deliberately choose block-and-warn
-    # instead of cascading delete: you don't want a click in the Roosters
-    # screen to silently remove days from the agenda. The user must first
-    # manually remove those references in Standaardweek and Agenda, then retry.
-    stdweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
-    dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
+        # Before deleting: check if the rooster is still used somewhere.
+        # Without this check, references in standaardweek.json and dagplanning.json
+        # would point to a deleted rooster — in the UI you'd still see the name,
+        # but no bell would ring (silent bug). We deliberately choose block-and-warn
+        # instead of cascading delete: you don't want a click in the Roosters
+        # screen to silently remove days from the agenda. The user must first
+        # manually remove those references in Standaardweek and Agenda, then retry.
+        # These two reads don't need their own lock: save_json is atomic, so a
+        # reader sees either the old or the new file, never partial. The check
+        # is best-effort against very recent writes, not a guarantee.
+        stdweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
+        dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
 
-    gebruikt_in_stdweek = [dag for dag, r in stdweek.items() if r == rooster]
-    gebruikt_in_dagplanning = sorted(d for d, r in dagplanning.items() if r == rooster)
+        gebruikt_in_stdweek = [dag for dag, r in stdweek.items() if r == rooster]
+        gebruikt_in_dagplanning = sorted(d for d, r in dagplanning.items() if r == rooster)
 
-    if gebruikt_in_stdweek or gebruikt_in_dagplanning:
-        delen = []
-        if gebruikt_in_stdweek:
-            delen.append(f"Standaardweek ({', '.join(gebruikt_in_stdweek)})")
-        if gebruikt_in_dagplanning:
-            voorb = ", ".join(gebruikt_in_dagplanning[:3])
-            meer = "" if len(gebruikt_in_dagplanning) <= 3 else f" en {len(gebruikt_in_dagplanning) - 3} meer"
-            delen.append(f"Agenda ({voorb}{meer})")
-        flash(
-            f"Rooster '{rooster}' is nog in gebruik bij: {'; '.join(delen)}. "
-            f"Haal deze verwijzingen eerst weg voordat je het rooster verwijdert."
-        )
-        return redirect(url_for("roosters"))
+        if gebruikt_in_stdweek or gebruikt_in_dagplanning:
+            delen = []
+            if gebruikt_in_stdweek:
+                delen.append(f"Standaardweek ({', '.join(gebruikt_in_stdweek)})")
+            if gebruikt_in_dagplanning:
+                voorb = ", ".join(gebruikt_in_dagplanning[:3])
+                meer = "" if len(gebruikt_in_dagplanning) <= 3 else f" en {len(gebruikt_in_dagplanning) - 3} meer"
+                delen.append(f"Agenda ({voorb}{meer})")
+            flash(
+                f"Rooster '{rooster}' is nog in gebruik bij: {'; '.join(delen)}. "
+                f"Haal deze verwijzingen eerst weg voordat je het rooster verwijdert."
+            )
+            return redirect(url_for("roosters"))
 
-    del roosters[rooster]
-    save_json(ROOSTERS_PATH, roosters)
+        del roosters[rooster]
+        save(roosters)
+
     log_event("ui", {"action": "delete_rooster", "rooster": rooster})
     flash(f"Rooster '{rooster}' verwijderd.")
     return redirect(url_for("roosters"))
@@ -569,33 +638,32 @@ def delete_rooster(rooster):
 @ui_login_required
 def add_moment(rooster):
     ensure_dirs()
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    if rooster not in roosters:
-        flash("Onbekend rooster.")
-        return redirect(url_for("roosters"))
 
-    # New: raw time from form, then normalize
+    # Validate form input outside the lock — no need to block other
+    # writers while we check for empty fields.
     tijd_raw = request.form.get("tijd", "")
     tijd = normalize_time(tijd_raw)
-
     naam = (request.form.get("naam") or "").strip()
     bestand = (request.form.get("bestand") or "").strip()
 
     if not tijd:
         flash("Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05).")
         return redirect(url_for("roosters"))
-
     if not naam:
         flash("Naam is verplicht.")
         return redirect(url_for("roosters"))
-
     if not bestand:
         flash("Kies een geluidsbestand.")
         return redirect(url_for("roosters"))
 
-    roosters[rooster].append({"tijd": tijd, "naam": naam, "bestand": bestand})
-    roosters[rooster] = normalize_and_sort_moments(roosters[rooster])
-    save_json(ROOSTERS_PATH, roosters)
+    with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
+        if rooster not in roosters:
+            flash("Onbekend rooster.")
+            return redirect(url_for("roosters"))
+
+        roosters[rooster].append({"tijd": tijd, "naam": naam, "bestand": bestand})
+        roosters[rooster] = normalize_and_sort_moments(roosters[rooster])
+        save(roosters)
 
     log_event(
         "ui",
@@ -614,19 +682,19 @@ def add_moment(rooster):
 @ui_login_required
 def delete_moment(rooster, index):
     ensure_dirs()
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    if rooster not in roosters:
-        flash("Onbekend rooster.")
-        return redirect(url_for("roosters"))
-    moments = roosters[rooster]
-    if 0 <= index < len(moments):
-        removed = moments.pop(index)
-        roosters[rooster] = normalize_and_sort_moments(moments)
-        save_json(ROOSTERS_PATH, roosters)
-        log_event("ui", {"action": "delete_moment", "rooster": rooster, "tijd": removed.get("tijd",""), "naam": removed.get("naam","")})
-        flash(f"Moment '{removed.get('naam','')}' verwijderd uit '{rooster}'.")
-    else:
-        flash("Onbekende regel.")
+    with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
+        if rooster not in roosters:
+            flash("Onbekend rooster.")
+            return redirect(url_for("roosters"))
+        moments = roosters[rooster]
+        if 0 <= index < len(moments):
+            removed = moments.pop(index)
+            roosters[rooster] = normalize_and_sort_moments(moments)
+            save(roosters)
+            log_event("ui", {"action": "delete_moment", "rooster": rooster, "tijd": removed.get("tijd",""), "naam": removed.get("naam","")})
+            flash(f"Moment '{removed.get('naam','')}' verwijderd uit '{rooster}'.")
+        else:
+            flash("Onbekende regel.")
     return redirect(url_for("roosters"))
 
 # -- Standaardweek --
@@ -634,21 +702,26 @@ def delete_moment(rooster, index):
 @ui_login_required
 def standaardweek():
     ensure_dirs()
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    std = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
 
     if request.method == "POST":
-        for key, _label in WEEKDAYS:
-            keuze = (request.form.get(f"rooster_{key}") or "").strip()
-            if keuze and keuze not in roosters:
-                flash(f"'{keuze}' bestaat niet als rooster; overslaan voor {_label}.")
-                continue
-            std[key] = keuze
-        save_json(STANDAARDWEEK_PATH, std)
-        log_event("ui", {"action": "save_standaardweek", "keuzes": std})
+        # Read roosters without a lock — best-effort validation against
+        # currently known roosters. The lock on standaardweek is what
+        # protects us from concurrent saves of the standard week itself.
+        roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
+        with locked_json(STANDAARDWEEK_PATH, default_standaardweek_obj()) as (std, save):
+            for key, _label in WEEKDAYS:
+                keuze = (request.form.get(f"rooster_{key}") or "").strip()
+                if keuze and keuze not in roosters:
+                    flash(f"'{keuze}' bestaat niet als rooster; overslaan voor {_label}.")
+                    continue
+                std[key] = keuze
+            save(std)
+            log_event("ui", {"action": "save_standaardweek", "keuzes": std})
         flash("Standaardweek opgeslagen.")
         return redirect(url_for("standaardweek"))
 
+    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
+    std = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
     opties = list(roosters.keys())
 
     return render_template(
@@ -674,34 +747,42 @@ def agenda():
 
     # --- POST: save ---
     if request.method == "POST" and request.form.get("_action") == "bulk_save":
-        # Update day planning
-        updated_dagplanning = dagplanning.copy()
-        for key in request.form.keys():
-            if key.startswith("day[") and key.endswith("]"):
-                datum = key[4:-1]
-                waarde = (request.form.get(key) or "").strip()
-                if waarde:
-                    if waarde in roosters:
-                        updated_dagplanning[datum] = waarde
+        # Two files are written here: dagplanning.json and weken_uit.json.
+        # We acquire both locks. The order (dagplanning first, weken_uit
+        # second) is fixed across all writers so there's no risk of
+        # deadlock between concurrent requests. Currently this is the
+        # only multi-file write path; if more are added, keep the same
+        # alphabetical-by-path lock order.
+        with locked_json(DAGPLANNING_PATH, default_dagplanning_obj()) as (dag_state, save_dag), \
+             locked_json(WEEKDISABLE_PATH, default_weken_uit_obj()) as (_wk_state, save_wk):
+
+            updated_dagplanning = dag_state.copy()
+            for key in request.form.keys():
+                if key.startswith("day[") and key.endswith("]"):
+                    datum = key[4:-1]
+                    waarde = (request.form.get(key) or "").strip()
+                    if waarde:
+                        if waarde in roosters:
+                            updated_dagplanning[datum] = waarde
+                        else:
+                            flash(f"Ongeldig rooster voor {datum}: '{waarde}' bestaat niet. Overgeslagen.")
                     else:
-                        flash(f"Ongeldig rooster voor {datum}: '{waarde}' bestaat niet. Overgeslagen.")
-                else:
-                    updated_dagplanning.pop(datum, None)
+                        updated_dagplanning.pop(datum, None)
 
-        # Update weeks off
-        today = date.today()
-        first_monday = today - timedelta(days=today.weekday())
-        weeks_list = [first_monday + timedelta(weeks=i) for i in range(52)]
+            # Update weeks off
+            today = date.today()
+            first_monday = today - timedelta(days=today.weekday())
+            weeks_list = [first_monday + timedelta(weeks=i) for i in range(52)]
 
-        new_weken_uit = {}
-        for wk_start in weeks_list:
-            y, w, _ = wk_start.isocalendar()
-            wk_key = f"{y}-W{w:02d}"
-            if f"week_off[{wk_key}]" in request.form:
-                new_weken_uit[wk_key] = True
+            new_weken_uit = {}
+            for wk_start in weeks_list:
+                y, w, _ = wk_start.isocalendar()
+                wk_key = f"{y}-W{w:02d}"
+                if f"week_off[{wk_key}]" in request.form:
+                    new_weken_uit[wk_key] = True
 
-        save_json(DAGPLANNING_PATH, updated_dagplanning)
-        save_json(WEEKDISABLE_PATH, new_weken_uit)
+            save_dag(updated_dagplanning)
+            save_wk(new_weken_uit)
 
         # Logging + feedback
         dagen_keys = sorted(updated_dagplanning.keys())
