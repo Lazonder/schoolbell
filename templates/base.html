@@ -1,13 +1,13 @@
 <!doctype html>
 {#
-  data-theme-mode = opgeslagen gebruikersvoorkeur ("light" | "dark" | "auto").
-  data-theme      = het effectief toegepaste thema ("light" of "dark"),
-                    waar de CSS op filtert (html[data-theme="dark"] ...).
+  data-theme-mode = stored user preference ("light" | "dark" | "auto").
+  data-theme      = the effectively applied theme ("light" or "dark"),
+                    which the CSS filters on (html[data-theme="dark"] ...).
 
-  Voor "light"/"dark" bakken we dat server-side al in, zodat de CSS direct
-  klopt bij eerste render (voorkomt flash-of-wrong-theme). Voor "auto"
-  starten we met "light" als voorzichtige default en corrigeren we meteen
-  in een inline <script> in <head>, nog vóór <body> rendert.
+  For "light"/"dark" we bake it in server-side so the CSS is correct
+  on first render (prevents flash-of-wrong-theme). For "auto" we start
+  with "light" as a cautious default and correct it immediately in an
+  inline <script> in <head>, before <body> renders.
 #}
 <html lang="nl"
       data-theme-mode="{{ theme_mode|default('light') }}"
@@ -17,19 +17,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}Schoolbel{% endblock %} · IVKO</title>
 
-  <!-- CSRF token beschikbaar voor JS -->
+  <!-- CSRF token available to JS -->
   <meta name="csrf-token" content="{{ csrf_token }}">
 
-  <!-- Huisstijl -->
+  <!-- Brand styles -->
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/school.css') }}">
 
   <script>
-  // Auto-mode: systeemvoorkeur onmiddellijk toepassen, vóór eerste paint.
-  // Staat bewust in <head> en is synchroon (geen async/defer), zodat er
-  // géén flicker optreedt tussen light → dark. Voor vaste "light"/"dark"
-  // modes staat data-theme al correct op <html> (server-side gezet), dus
-  // dan doet dit script niets.
+  // Auto-mode: apply system preference immediately, before first paint.
+  // Deliberately in <head> and synchronous (no async/defer), so there
+  // is no flicker between light → dark. For fixed "light"/"dark" modes
+  // data-theme is already set correctly on <html> (server-side), so
+  // this script does nothing.
   (() => {
     const root = document.documentElement;
     if (root.getAttribute('data-theme-mode') === 'auto') {
@@ -52,7 +52,7 @@
         <span class="sb-brand__name">IVKO Schoolbel</span>
       </a>
 
-      <!-- Navigatie -->
+      <!-- Navigation -->
       <nav class="sb-nav">
         <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda') }}">Agenda</a>        
         <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters') }}">Roosters</a>
@@ -74,7 +74,7 @@
   <!-- MAIN -->
   <main class="sb-container sb-main">
 
-    <!-- Flash-berichten -->
+    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=false) %}
       {% if messages %}
         <div class="sb-alerts">
@@ -85,10 +85,10 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Pagina-inhoud -->
+    <!-- Page content -->
     {% block content %}{% endblock %}
 
-    <!-- Optionele hint -->
+    <!-- Optional hint -->
     {% block hint %}{% endblock %}
 
   </main>
@@ -100,7 +100,7 @@
     </div>
   </footer>
 
-  <!-- CSRF auto-inject voor POST-formulieren -->
+  <!-- CSRF auto-inject for POST forms -->
   <script>
   (() => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -120,8 +120,8 @@
   })();
   </script>
 
-  <!-- Auto-mode: blijf luisteren naar systeem-wijzigingen. Relevant als
-       de gebruiker z'n OS-thema switcht terwijl de pagina open staat. -->
+  <!-- Auto-mode: keep listening for system changes. Relevant if the
+       user switches their OS theme while the page is open. -->
   <script>
   (() => {
     const root = document.documentElement;

@@ -7,7 +7,7 @@
   <div class="sb-card sb-login-card">
     <h1 class="sb-card__title">Schoolbel — Inloggen</h1>
 
-    {# Flashes ook binnen de kaart tonen, naast de globale in base.html #}
+    {# Show flashes inside the card too, alongside the global one in base.html #}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="sb-alerts" style="margin-bottom: var(--sb-gap);">

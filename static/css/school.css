@@ -3,41 +3,41 @@
   --sb-font-sans: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   --sb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
-  /* Voorbeeldkleuren – vervang door jullie huisstijl */
+  /* Sample colors – replace with your house style */
   --sb-color-bg: #ffffff;
   --sb-color-surface: #f7f7f9;
   --sb-color-text: #1c1c1e;
   --sb-color-muted: #666a73;
 
-  --sb-color-primary: #5b62ff;     /* Primair (schoolkleur) */
+  --sb-color-primary: #5b62ff;     /* Primary (school color) */
   --sb-color-primary-600: #444bdb;
-  --sb-color-accent: #ff6b3d;      /* Accent/cta */
+  --sb-color-accent: #ff6b3d;      /* Accent / CTA */
   --sb-color-border: #e4e6eb;
   --sb-color-success: #1c9c6b;
   --sb-color-warning: #e6a700;
   --sb-color-danger:  #db3a34;
 
-  /* Afgeleide kleuren voor tabelrijen. Staan hier als variabele zodat
-     dark mode ze in één keer kan overschrijven — voorheen stond er op
-     meerdere plekken een hardcoded #fff/#fafbfc/#f0f4ff, waardoor de
-     dark-mode overrides uit de pas liepen met de rest. */
-  --sb-color-row-alt: #fafbfc;     /* Zebra voor odd-rows */
-  --sb-color-row-hover: #f0f4ff;   /* Hover-cue */
+  /* Derived colors for table rows. Defined as variables so dark mode
+     can override them in one go — previously there was a hardcoded
+     #fff/#fafbfc/#f0f4ff in several places, causing the dark-mode
+     overrides to drift out of sync with the rest. */
+  --sb-color-row-alt: #fafbfc;     /* Zebra for odd rows */
+  --sb-color-row-hover: #f0f4ff;   /* Hover cue */
 
   --sb-radius: 14px;
   --sb-shadow: 0 6px 20px rgba(0,0,0,.06);
   --sb-container: 1080px;
   --sb-gap: 16px;
 
-  /* Laat de browser native controls (scrollbars, <option>-dropdown,
-     date-picker, focus-ringen) automatisch in light-variant tekenen. In
-     de dark-mode-block hieronder wordt dit geflipt naar 'dark'. Zonder
-     dit gebruikt de UA default-tekstkleuren (zwart) binnen selects en
-     inputs, wat dan onleesbaar is op een donkere achtergrond. */
+  /* Let the browser draw native controls (scrollbars, <option> dropdown,
+     date picker, focus rings) automatically in the light variant. In
+     the dark-mode block below this is flipped to 'dark'. Without it
+     the UA uses default text colors (black) inside selects and inputs,
+     which is unreadable on a dark background. */
   color-scheme: light;
 }
 
-/* 2) Basistypografie en layout */
+/* 2) Base typography and layout */
 html, body { height: 100%; }
 body{
   margin: 0;
@@ -51,7 +51,7 @@ body{
   margin-inline: auto;
 }
 
-/* 3) Header & navigatie */
+/* 3) Header & navigation */
 .sb-header{
   background: linear-gradient(0deg, var(--sb-color-primary-600), var(--sb-color-primary));
   color: #fff;
@@ -71,7 +71,7 @@ body{
 }
 .sb-nav__link:hover{ background: rgba(255,255,255,.12); }
 
-/* 4) Kaarten & secties */
+/* 4) Cards & sections */
 .sb-main{ padding-block: 24px 48px; }
 .sb-card{
   background: var(--sb-color-surface);
@@ -82,7 +82,7 @@ body{
 }
 .sb-card + .sb-card{ margin-top: 16px; }
 
-/* 5) Knoppen */
+/* 5) Buttons */
 .sb-btn{
   display:inline-flex; align-items:center; gap:8px;
   border:1px solid transparent; border-radius: 12px;
@@ -97,7 +97,7 @@ body{
 .sb-btn--danger{ background: var(--sb-color-danger); }
 .sb-btn--success{ background: var(--sb-color-success); }
 
-/* 6) Tabellen */
+/* 6) Tables */
 .sb-table{
   width:100%; border-collapse: collapse; overflow:hidden;
   border:1px solid var(--sb-color-border); border-radius: 12px;
@@ -111,7 +111,7 @@ body{
 .sb-table tbody tr:nth-child(odd){ background: var(--sb-color-row-alt); }
 .sb-table tbody tr:hover{ background: var(--sb-color-row-hover); }
 
-/* 7) Formulieren */
+/* 7) Forms */
 .sb-field{ display:grid; gap:6px; margin-bottom:12px; }
 .sb-label{ font-size:.95rem; color: var(--sb-color-muted); }
 .sb-input, .sb-select{
@@ -138,10 +138,10 @@ body{
   padding: 16px 0; background: var(--sb-color-bg);
 }
 /* =========================================================
-   Layout voor de roosterpagina
+   Layout for the schedules page
    ========================================================= */
 
-/* Grid waarin roosters naast elkaar komen */
+/* Grid that places schedules side by side */
 .grid-roosters {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -150,12 +150,12 @@ body{
 }
 
 
-/* Kaartstijl uitbreiden voor roosters (optioneel) */
+/* Extend card style for schedules (optional) */
 .card.rooster {
   min-width: 360px;
 }
 
-/* Formulier-layout voor het toevoegen van momenten */
+/* Form layout for adding moments */
 .add-form {
   display: grid;
   grid-template-columns: 1fr;
@@ -177,12 +177,12 @@ body{
   align-items: center;
 }
 
-/* Zorg dat inline-formulieren netjes horizontaal blijven */
+/* Keep inline forms neatly horizontal */
 form.inline {
   display: inline;
 }
 
-/* Pagina-header bovenaan een pagina */
+/* Page header at the top of a page */
 .sb-page-header {
   display: flex;
   align-items: center;
@@ -195,12 +195,12 @@ form.inline {
   margin: 0;
 }
 
-/* Kleine card tweaks voor secties */
+/* Small card tweaks for sections */
 .sb-card--section {
   margin-top: var(--sb-gap);
 }
 
-/* Titel in een kaart */
+/* Title inside a card */
 .sb-card__title {
   margin: 0 0 8px 0;
 }
@@ -211,7 +211,7 @@ form.inline {
   font-size: 0.95em;
 }
 
-/* Grid waarin roosters naast elkaar komen */
+/* Grid that places schedules side by side */
 .grid-roosters {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -219,12 +219,12 @@ form.inline {
   align-items: start;
 }
 
-/* Roosterkaarten kunnen, als nodig, een min-breedte hebben */
+/* Schedule cards can have a min width if needed */
 .card.rooster {
-  min-width: 0; /* laat grid de breedte bepalen */
+  min-width: 0; /* let the grid decide the width */
 }
 
-/* Kolombreedtes in roostertabel */
+/* Column widths in the schedule table */
 .sb-table .col-tijd {
   width: 6.5rem;
 }
@@ -234,7 +234,7 @@ form.inline {
   text-align: right;
 }
 
-/* Formulier-layout voor het toevoegen van momenten */
+/* Form layout for adding moments */
 .add-form {
   display: grid;
   grid-template-columns: 1fr;
@@ -256,7 +256,7 @@ form.inline {
   align-items: center;
 }
 
-/* Nieuw rooster formulier onderaan */
+/* New-schedule form at the bottom */
 .sb-new-rooster-row {
   display: flex;
   flex-wrap: wrap;
@@ -269,19 +269,19 @@ form.inline {
   flex: 1 1 220px;
 }
 
-/* Checkboxrij netjes uitlijnen */
+/* Align a row of checkboxes neatly */
 .sb-checkbox-row {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-/* Inline formulieren voor kleine acties (zoals verwijderen) */
+/* Inline forms for small actions (like delete) */
 form.inline {
   display: inline;
 }
 
-/* Basisbutton */
+/* Base button */
 .sb-btn {
   display: inline-flex;
   align-items: center;
@@ -302,12 +302,12 @@ form.inline {
   background: var(--sb-color-primary-600);
 }
 
-/* Icon-only buttons (bv. ✕) */
+/* Icon-only buttons (e.g. ✕) */
 .sb-btn--icon {
   padding-inline: 8px;
 }
 
-/* Varianten */
+/* Variants */
 .sb-btn--ghost {
   background: transparent;
   color: var(--sb-color-primary);
@@ -349,11 +349,11 @@ form.inline {
 }
 
 /* =========================================
-   Login-pagina
+   Login page
    ========================================= */
 
 .sb-login-page {
-  min-height: calc(100vh - 140px); /* header + footer marge */
+  min-height: calc(100vh - 140px); /* header + footer margin */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,10 +377,10 @@ form.inline {
 }
 
 /* =========================================
-   Geluiden-pagina
+   Sounds page
    ========================================= */
 
-/* Lijst van audiobestanden */
+/* List of audio files */
 .audio-list {
   list-style: none;
   padding: 0;
@@ -403,7 +403,7 @@ form.inline {
   flex: 1 1 auto;
 }
 
-/* Actieknoppen (play / delete) naast elkaar */
+/* Action buttons (play / delete) side by side */
 .audio-actions {
   display: flex;
   gap: 6px;
@@ -411,7 +411,7 @@ form.inline {
   flex-shrink: 0;
 }
 
-/* Uploadformulier layout */
+/* Upload form layout */
 .upload-form {
   display: grid;
   grid-template-columns: 1fr;
@@ -426,71 +426,71 @@ form.inline {
   align-items: center;
 }
 
-/* File input ietsje compacter */
+/* File input slightly more compact */
 .sb-input--file {
   padding: 4px 6px;
 }
 
-/* Hinttekst onder het formulier */
+/* Hint text under the form */
 .upload-hint {
   font-size: 0.9em;
 }
 
-/* Actieknoppen onder upload-form */
+/* Action buttons under the upload form */
 .upload-actions {
   display: flex;
   justify-content: flex-end;
 }
 
-/* Verborgen audio-player totdat er iets wordt afgespeeld */
+/* Hidden audio player until something is played */
 .audio-player-hidden {
   display: none;
 }
 
-/* Als je de player altijd onderaan zichtbaar wilt hebben:
-   .audio-player-hidden { display: block; opacity: 0.6; } enz. */
+/* If you want the player always visible at the bottom:
+   .audio-player-hidden { display: block; opacity: 0.6; } etc. */
 
    /* =========================================
-   Logboek-pagina
+   Log page
    ========================================= */
 
-/* Grid-indeling van de logkaarten */
+/* Grid layout for the log cards */
 .log-grid {
   display: grid;
   gap: var(--sb-gap);
   grid-template-columns: 1fr;
 }
 
-/* Op bredere schermen de twee bovenste kaarten naast elkaar */
+/* On wider screens, the top two cards side by side */
 @media (min-width: 1000px) {
   .log-grid {
     grid-template-columns: 1fr 1fr;
   }
 
-  /* onderste (daemon) kaart over volle breedte */
+  /* bottom (daemon) card spans full width */
   .log-bell-card {
     grid-column: 1 / -1;
   }
 }
 
-/* Datum/tijd kolommen: niet afbreken */
+/* Date/time columns: do not wrap */
 .dt {
   white-space: nowrap;
 }
 
-/* Monospace-stijl voor bestandsnamen / JSON */
+/* Monospace style for filenames / JSON */
 .mono {
   font-family: var(--sb-font-mono);
 }
 
-/* Optioneel: JSON niet te groot maken in UI-acties */
+/* Optional: keep JSON from getting too big in UI actions */
 .sb-table code.sb-code-mono {
   font-size: 0.85em;
   word-break: break-all;
 }
 
 /* =========================================
-   Standaardweek-pagina
+   Standard-week page
    ========================================= */
 
 .stdweek-table {
@@ -503,12 +503,12 @@ form.inline {
   white-space: nowrap;
 }
 
-/* Selects netjes over de breedte van de tweede kolom */
+/* Selects sized neatly to the width of the second column */
 .stdweek-select {
   width: 100%;
 }
 
-/* Opslaan-knop onder de tabel rechts uitlijnen */
+/* Right-align the Save button below the table */
 .stdweek-actions {
   margin-top: var(--sb-gap);
   display: flex;
@@ -516,7 +516,7 @@ form.inline {
 }
 
 /* =========================================
-   Voorkeuren / settings-pagina
+   Preferences / settings page
    ========================================= */
 
 .sb-settings-form {
@@ -525,7 +525,7 @@ form.inline {
   gap: var(--sb-gap);
 }
 
-/* Actierij onderaan het formulier */
+/* Action row at the bottom of the form */
 .sb-settings-actions {
   margin-top: var(--sb-gap);
   display: flex;
@@ -533,7 +533,7 @@ form.inline {
   gap: var(--sb-gap);
 }
 
-/* Status-tekst links van de knop */
+/* Status text to the left of the button */
 .sb-settings-status {
   min-height: 1.2em;
 }
@@ -541,11 +541,11 @@ form.inline {
 /* =========================================
    DARK MODE
 
-   Dankzij de CSS-variabelen hierboven flipt het merendeel van de UI
-   automatisch zodra deze waarden overschreven worden: .sb-card,
-   .sb-footer, .sb-input, .sb-alert, de tabelrijen en hun hover-cue —
-   allemaal via var(). Alleen echt style-verschuivende overrides
-   (header-gradient → flat, logo-invert) staan hieronder.
+   Thanks to the CSS variables above, most of the UI flips automatically
+   once these values are overridden: .sb-card, .sb-footer, .sb-input,
+   .sb-alert, the table rows and their hover cue — all via var(). Only
+   real style-shifting overrides (header-gradient → flat, logo-invert)
+   live below.
    ========================================= */
 
 html[data-theme="dark"] {
@@ -556,24 +556,24 @@ html[data-theme="dark"] {
   --sb-color-border: #262a36;
   --sb-color-primary: #7a81ff;
   --sb-color-primary-600: #6167e6;
-  --sb-color-row-alt: #1a1f2e;      /* iets lichter dan surface voor zebra */
-  --sb-color-row-hover: #262a3e;    /* subtiel lichter als hover-cue */
+  --sb-color-row-alt: #1a1f2e;      /* slightly lighter than surface for zebra */
+  --sb-color-row-hover: #262a3e;    /* subtly lighter as a hover cue */
   --sb-shadow: 0 6px 20px rgba(0, 0, 0, .4);
 
-  /* Flip ook de UA-native controls mee: <option>-dropdowns, scrollbars,
-     native date/time-pickers, focus-ringen. Zonder dit blijft de
-     browser-default licht en zijn de items in een opengeklapte <select>
-     zwart-op-wit terwijl de rest van de UI donker is. */
+  /* Flip the UA-native controls along too: <option> dropdowns,
+     scrollbars, native date/time pickers, focus rings. Without this
+     the browser default stays light, and items in an opened <select>
+     are black-on-white while the rest of the UI is dark. */
   color-scheme: dark;
 }
 
-/* Header gebruikt in light mode een gradient van de primaire kleuren.
-   In dark mode willen we een rustig, vlak paneel. */
+/* Header uses a gradient of the primary colors in light mode. In dark
+   mode we want a calm, flat panel. */
 html[data-theme="dark"] .sb-header {
   background: var(--sb-color-surface);
 }
 
-/* Logo is ontworpen voor lichte achtergronden — inverteren voor dark mode. */
+/* Logo is designed for light backgrounds — invert it for dark mode. */
 html[data-theme="dark"] .sb-brand__logo {
   filter: invert(1) hue-rotate(180deg);
 }
