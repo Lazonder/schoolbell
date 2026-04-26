@@ -1,5 +1,7 @@
+import fcntl
 import json
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass, asdict, field
 from typing import List
 from pathlib import Path
@@ -56,6 +58,10 @@ class Settings:
         The replace is atomic within a single filesystem — on a crash or
         power loss there is therefore either the old file or the complete
         new one. Never a half-written JSON.
+
+        Note: this is atomic per call, but a load -> mutate -> save
+        sequence by a route handler is not race-free without an
+        additional lock. Use Settings.locked() for that pattern.
         """
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         tmp = CONFIG_PATH.with_suffix(CONFIG_PATH.suffix + ".tmp")
@@ -64,3 +70,41 @@ class Settings:
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, CONFIG_PATH)
+
+
+@contextmanager
+def locked():
+    """Hold an exclusive lock for read-modify-write of the settings file.
+
+    Same pattern as webinterface.locked_json: a sidecar `.lock` file is
+    locked via fcntl.flock LOCK_EX for the duration of the with-block.
+    Loads inside the lock, yields the Settings instance for the caller
+    to mutate, and saves on a clean exit. If the with-body raises, no
+    save happens — useful when validation rejects an incoming payload.
+
+    Usage:
+        with settings_store.locked() as s:
+            s.volume_percent = 80
+            # automatic save on exit
+
+    Why a separate lock helper here (instead of webinterface.locked_json):
+    settings live at /etc/schoolbell/config.json, outside of DATA_DIR,
+    and have their own dedicated load/save methods on the Settings
+    dataclass. Keeping the lock here means callers don't have to know
+    about CONFIG_PATH — they just say `with locked()`.
+    """
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    lock_path = str(CONFIG_PATH) + ".lock"
+    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        s = Settings.load()
+        yield s
+        # Reached only if the with-body completed without raising;
+        # callers that want to bail without saving should raise.
+        s.save()
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        finally:
+            os.close(lock_fd)

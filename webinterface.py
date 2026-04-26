@@ -7,6 +7,7 @@ from flask import Flask, request, redirect, url_for, flash, send_from_directory,
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
 from functools import wraps
+import settings_store
 from settings_store import Settings
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -218,8 +219,14 @@ def require_admin(f):
         return f(*args, **kwargs)
     return wrapper
 
-def _settings_validate_and_apply(payload):
-    s = Settings.load()
+def _apply_settings_payload(s: Settings, payload: dict) -> None:
+    """Mutate `s` in place from `payload`, validating each field.
+
+    Raises Flask abort(400) on invalid input — when called inside
+    settings_store.locked(), the abort propagates through the
+    context manager, which means save() is NOT called and the file
+    is left untouched. That's the right behavior for invalid input.
+    """
     if "volume_percent" in payload:
         v = int(payload["volume_percent"])
         if not (0 <= v <= 100): abort(400, "volume_percent must be 0..100")
@@ -244,8 +251,6 @@ def _settings_validate_and_apply(payload):
             abort(400, "theme_mode must be one of: light, dark, auto")
         s.theme_mode = tm
 
-    return s
-
 # -- Settings API (no blueprint; simple app routes) --
 @app.route("/api/settings", methods=["GET"])
 @require_admin
@@ -257,9 +262,18 @@ def api_settings_get():
 def api_settings_post():
     if not request.is_json:
         abort(400, "JSON expected")
-    settings = _settings_validate_and_apply(request.get_json() or {})
-    settings.save()
-    return jsonify(asdict(settings)), 200
+    payload = request.get_json() or {}
+    # Hold the settings file lock for the entire load -> mutate ->
+    # save sequence. Without the lock, two concurrent POSTs could
+    # both load v1, each apply their own payload, and both save —
+    # last write wins, the first user's change is silently lost.
+    # If validation fails, _apply_settings_payload aborts, the
+    # context manager unwinds without calling save(), and the file
+    # is untouched.
+    with settings_store.locked() as s:
+        _apply_settings_payload(s, payload)
+        result = asdict(s)
+    return jsonify(result), 200
 
 def ensure_dirs():
     os.makedirs(DATA_DIR, exist_ok=True)
