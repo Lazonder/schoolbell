@@ -23,7 +23,14 @@ stop_event = threading.Event()
 # on every poll). Default off to keep journalctl clean.
 DEBUG = os.getenv("SCHOOLBELL_DAEMON_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
 
-BACKOFF_ON_ERROR = 5 * 60      # wait 5 minutes on error
+# Wait this long before retrying after a fetch error. Was 5 minutes,
+# which is fine for mid-day recovery but too long at boot: if the
+# daemon starts shortly before the first scheduled bell and the very
+# first API call fails (e.g. nginx isn't ready yet), waiting 5 minutes
+# could mean missing that first bell entirely. 1 minute gives us 5
+# tries inside that 5-minute window — enough recovery time without
+# blowing past the next scheduled moment.
+BACKOFF_ON_ERROR = 60          # seconds
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
 API_USER = os.getenv("SCHOOLBELL_WEB_USER")
