@@ -31,6 +31,7 @@ from webinterface import (
     iso_week_key,
     normalize_and_sort_moments,
     normalize_time,
+    prune_past_dates,
     safe_audio_filename,
     weekday_key,
 )
@@ -240,3 +241,51 @@ def test_env_bool_false_varianten(monkeypatch, value):
 def test_env_bool_true_varianten(monkeypatch, value):
     monkeypatch.setenv("FAKE_FLAG", value)
     assert _env_bool("FAKE_FLAG", default=False) is True
+
+
+# ---------------------------------------------------------------------------
+# prune_past_dates: drops dagplanning entries from before today
+# ---------------------------------------------------------------------------
+
+
+def test_prune_past_dates_keeps_today_and_future():
+    today = date(2026, 4, 26)
+    dag = {
+        "2026-04-25": "feestdag",   # yesterday → drop
+        "2026-04-26": "feestdag",   # today → keep (bell may still ring)
+        "2026-04-27": "lesvrij",    # tomorrow → keep
+        "2027-01-01": "nieuwjaar",  # far future → keep
+    }
+    result = prune_past_dates(dag, today)
+    assert result == {
+        "2026-04-26": "feestdag",
+        "2026-04-27": "lesvrij",
+        "2027-01-01": "nieuwjaar",
+    }
+
+
+def test_prune_past_dates_empty_dict():
+    assert prune_past_dates({}, date(2026, 4, 26)) == {}
+
+
+def test_prune_past_dates_returns_a_copy():
+    # The agenda route stores the result back; making sure we don't
+    # alias the input dict avoids accidental in-place mutation later.
+    dag = {"2026-04-26": "x"}
+    result = prune_past_dates(dag, date(2026, 4, 26))
+    result["2026-04-26"] = "MUTATED"
+    assert dag == {"2026-04-26": "x"}
+
+
+def test_prune_past_dates_keeps_unparseable_keys():
+    # If a malformed key sneaks into the file, we keep it rather than
+    # silently delete data we don't understand. Surfacing oddness is
+    # better than swallowing it.
+    today = date(2026, 4, 26)
+    dag = {
+        "2026-04-25": "drop_me",
+        "not-a-date": "weird",
+        "": "empty_key",
+    }
+    result = prune_past_dates(dag, today)
+    assert result == {"not-a-date": "weird", "": "empty_key"}

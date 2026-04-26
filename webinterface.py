@@ -411,6 +411,31 @@ def iso_week_key(d: date) -> str:
     y, w, _ = d.isocalendar()
     return f"{y}-W{w:02d}"
 
+def prune_past_dates(dagplanning: dict, today: date) -> dict:
+    """Return a copy of dagplanning without entries whose date is before today.
+
+    The agenda accumulates per-date overrides. Once a date has passed,
+    its entry is dead weight: the bell already rang (or didn't), and
+    events.jsonl is the historical record we actually want to keep.
+    Without this prune, dagplanning.json grows unbounded — every
+    holiday, every snow day, forever.
+
+    Today is kept (the bell may still ring later today). Entries with
+    a date string that doesn't parse as ISO YYYY-MM-DD are also kept,
+    so we don't silently drop unexpected data; if there's garbage in
+    the file it's better to surface it than to delete it.
+    """
+    keep = {}
+    for k, v in dagplanning.items():
+        try:
+            entry_date = date.fromisoformat(k)
+        except (TypeError, ValueError):
+            keep[k] = v
+            continue
+        if entry_date >= today:
+            keep[k] = v
+    return keep
+
 def _next_local_midnight(now: datetime) -> datetime:
     tomorrow = now.date() + timedelta(days=1)
     return datetime.combine(tomorrow, time(0, 0, 0))
@@ -779,6 +804,13 @@ def agenda():
                 wk_key = f"{y}-W{w:02d}"
                 if f"week_off[{wk_key}]" in request.form:
                     new_weken_uit[wk_key] = True
+
+            # Drop dagplanning entries from the past so the file doesn't
+            # grow unbounded. Done at save time (rather than via a cron)
+            # because save is the natural choke-point — the user just
+            # made an explicit edit, so doing housekeeping here is the
+            # least surprising moment to lose stale data.
+            updated_dagplanning = prune_past_dates(updated_dagplanning, today)
 
             save_dag(updated_dagplanning)
             save_wk(new_weken_uit)
