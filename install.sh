@@ -46,6 +46,25 @@ apt-get install -y \
   alsa-utils \
   libasound2
 
+echo "== 1b) OS timezone =="
+# The schoolbell runs on local time. The application no longer carries
+# its own timezone setting (was unused and confusing as a second source
+# of truth) — the OS timezone is authoritative. Set it explicitly here
+# so a freshly imaged Pi (often UTC by default) doesn't ring at the
+# wrong moment. Idempotent: setting the same tz twice is a no-op.
+TARGET_TZ="${SCHOOLBELL_TZ:-Europe/Amsterdam}"
+if command -v timedatectl >/dev/null 2>&1; then
+  CURRENT_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo '')"
+  if [[ "${CURRENT_TZ}" != "${TARGET_TZ}" ]]; then
+    timedatectl set-timezone "${TARGET_TZ}"
+    echo "OS timezone set to ${TARGET_TZ} (was: ${CURRENT_TZ:-unknown})"
+  else
+    echo "OS timezone already ${TARGET_TZ}"
+  fi
+else
+  echo "WARN: timedatectl not available, skipping OS timezone step."
+fi
+
 echo "== 2) Python venv + deps (requirements.txt) =="
 cd "${APP_DIR}"
 if [[ ! -d venv ]]; then
@@ -80,7 +99,6 @@ if [[ ! -f "${CONFIG_DIR}/config.json" ]]; then
   "volume_percent": 70,
   "max_file_size_mb": 15,
   "poll_interval_sec": 2,
-  "timezone": "Europe/Amsterdam",
   "allowed_extensions": [".mp3", ".wav", ".ogg"]
 }
 JSON

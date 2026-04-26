@@ -17,7 +17,6 @@ class Settings:
     volume_percent: int = 70              # 0..100
     max_file_size_mb: int = 15            # 1..1024
     poll_interval_sec: int = 2            # 1..60
-    timezone: str = "Europe/Amsterdam"
     # UI theme. "auto" follows the browser's system preference
     # (prefers-color-scheme). See base.html for the application.
     theme_mode: str = "light"             # "light" | "dark" | "auto"
@@ -40,9 +39,14 @@ class Settings:
         except json.JSONDecodeError as e:
             raise RuntimeError(f"Config file is invalid JSON: {e}")
 
-        # Merge defaults with loaded data (so new fields always have a value)
+        # Merge defaults with loaded data, but only keep keys that the
+        # current dataclass actually defines. This makes the loader
+        # forward-compatible: an existing config.json with a removed
+        # field (e.g. the old "timezone" setting) doesn't crash with
+        # `TypeError: __init__() got an unexpected keyword argument`.
         defaults = cls()
-        merged = {**asdict(defaults), **data}
+        known_keys = {f.name for f in cls.__dataclass_fields__.values()}
+        merged = {**asdict(defaults), **{k: v for k, v in data.items() if k in known_keys}}
         return cls(**merged)
 
     def save(self):

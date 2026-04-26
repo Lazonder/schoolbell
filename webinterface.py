@@ -229,9 +229,8 @@ def _settings_validate_and_apply(payload):
         if not (1 <= p <= 60): abort(400, "poll_interval_sec must be 1..60")
         s.poll_interval_sec = p
 
-    if "timezone" in payload:
-        tz = str(payload["timezone"])
-        s.timezone = tz
+    # Note: a "timezone" key in the payload is silently ignored. The
+    # field was removed; the OS timezone is the source of truth.
 
     if "theme_mode" in payload:
         tm = str(payload["theme_mode"]).strip().lower()

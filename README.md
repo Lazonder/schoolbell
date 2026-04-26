@@ -122,7 +122,6 @@ Het script is **veilig opnieuw uit te voeren** (idempotent): bestaande env-files
   "volume_percent": 70,
   "max_file_size_mb": 15,
   "poll_interval_sec": 2,
-  "timezone": "Europe/Amsterdam",
   "allowed_extensions": [".mp3", ".wav", ".ogg"]
 }
 ```
