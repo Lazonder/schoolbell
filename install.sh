@@ -265,3 +265,6 @@ systemctl --no-pager --full status schoolbell-daemon.service || true
 echo "Re-run safe: yes"
 echo "To uninstall: stop + disable services, remove files + dirs created by this script."
 echo "The webinterface runs on Flask 3.x via Gunicorn; running the Flask dev server manually is not supported."
+echo
+echo "Tip: verify audio output independently of the daemon with:"
+echo "     ${APP_DIR}/venv/bin/python ${APP_DIR}/tools/belltest.py <path-to-audio-file>"
