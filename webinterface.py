@@ -1173,15 +1173,23 @@ def geluiden_delete():
         flash(f"Kon niet verwijderen: {e}")
     return redirect(url_for("geluiden"))
 
-# ---------- Start ----------
+# ---------- Dev server ----------
+# The previous version of this block also pre-created roosters.json,
+# dagplanning.json, standaardweek.json and weken_uit.json with empty
+# defaults. That bootstrap was dead in production: Gunicorn never runs
+# `__main__`, it imports the app object. So in production the files
+# only existed after the first save anyway. Removed because:
+#
+#   1. load_json() already returns the right default when the file
+#      is missing, so the routes work fine without the files.
+#   2. Hoisting the bootstrap to module level would also fire on
+#      every `import webinterface` (including from pytest), creating
+#      stray files in the project's data/ folder.
+#
+# Net result: missing JSON state files are handled lazily everywhere.
+# First save by any route creates the file (atomically via tmp+
+# os.replace).
 if __name__ == "__main__":
-    ensure_dirs()
-    if not os.path.exists(ROOSTERS_PATH):
-        save_json(ROOSTERS_PATH, default_roosters_obj())
-    if not os.path.exists(DAGPLANNING_PATH):
-        save_json(DAGPLANNING_PATH, default_dagplanning_obj())
-    if not os.path.exists(STANDAARDWEEK_PATH):
-        save_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
-    if not os.path.exists(WEEKDISABLE_PATH):
-        save_json(WEEKDISABLE_PATH, default_weken_uit_obj())
+    # Production runs through Gunicorn (see install.sh / systemd unit);
+    # this block only runs `python3 webinterface.py` for local hacking.
     app.run(host="127.0.0.1", port=5000) #, ssl_context=("certs/cert.pem", "certs/key.pem"))
