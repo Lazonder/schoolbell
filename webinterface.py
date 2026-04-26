@@ -1129,6 +1129,28 @@ def geluiden_delete():
     if not os.path.isfile(path):
         flash("Bestand niet gevonden.")
         return redirect(url_for("geluiden"))
+
+    # Block-and-warn if the file is still used by any rooster moment.
+    # Without this check, deletion would succeed silently and the
+    # daemon would later log 'File not found' when that bell tried
+    # to ring — the bell wouldn't go off and the user wouldn't know
+    # why. Mirrors the same pattern as delete_rooster.
+    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
+    used_by = []
+    for rooster_naam, momenten in roosters.items():
+        for m in momenten:
+            if (m.get("bestand") or "") == name:
+                used_by.append(f"{rooster_naam}: {m.get('tijd','??:??')} {m.get('naam','')}".rstrip())
+                break  # one mention per rooster is enough
+    if used_by:
+        voorb = "; ".join(used_by[:3])
+        meer = "" if len(used_by) <= 3 else f" en {len(used_by) - 3} meer"
+        flash(
+            f"Geluid '{name}' wordt nog gebruikt door: {voorb}{meer}. "
+            f"Verwijder of vervang deze momenten eerst voordat je het bestand verwijdert."
+        )
+        return redirect(url_for("geluiden"))
+
     try:
         os.remove(path)
         log_event("ui", {"action": "delete_audio", "filename": name})
