@@ -538,6 +538,26 @@ form.inline {
   min-height: 1.2em;
 }
 
+/* Range slider in the settings form. We don't try to fully restyle
+   the native slider (cross-browser pain for little gain) — just give
+   it a sensible width and a bit of vertical breathing room so it
+   lines up with the other inputs. */
+.sb-range {
+  width: 100%;
+  accent-color: var(--sb-color-primary);
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+/* The numeric value next to the slider's label. Using <output> for
+   semantics; this just keeps the number from jumping around as
+   digits change width (tabular-nums) and pads it visually. */
+.sb-field output {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--sb-color-primary);
+}
+
 /* =========================================
    DARK MODE
 

@@ -16,13 +16,17 @@
   <form id="settingsForm" class="sb-settings-form">
 
     <div class="sb-field">
-      <label class="sb-label" for="volume_percent">Belvolume (0–100)</label>
-      <input type="number"
+      <label class="sb-label" for="volume_percent">
+        Belvolume:
+        <output id="volume_percent_display" for="volume_percent">—</output>%
+      </label>
+      <input type="range"
              name="volume_percent"
              id="volume_percent"
-             class="sb-input"
+             class="sb-range"
              min="0"
-             max="100">
+             max="100"
+             step="1">
       <p class="sb-help">Standaard afspeelvolume van de bel.</p>
     </div>
 
@@ -68,6 +72,15 @@
 </div>
 
 <script>
+// Keep the slider's numeric display in sync with its value while
+// the user drags. 'input' fires continuously during a drag, 'change'
+// only on release — we want the live feedback.
+const volumeSlider = document.getElementById("volume_percent");
+const volumeDisplay = document.getElementById("volume_percent_display");
+volumeSlider.addEventListener("input", () => {
+  volumeDisplay.textContent = volumeSlider.value;
+});
+
 async function loadSettings() {
   const r = await fetch("/api/settings", { credentials: "same-origin" });
   if (!r.ok) {
@@ -77,7 +90,13 @@ async function loadSettings() {
   const data = await r.json();
   for (const [k, v] of Object.entries(data)) {
     const el = document.querySelector(`[name="${k}"]`);
-    if (el) el.value = v;
+    if (el) {
+      el.value = v;
+      // Setting .value programmatically does NOT fire 'input', so the
+      // slider's display would stay at its placeholder ('—'). Dispatch
+      // the event manually so the listener above runs.
+      el.dispatchEvent(new Event("input"));
+    }
   }
 }
 
