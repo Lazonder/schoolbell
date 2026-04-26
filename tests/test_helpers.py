@@ -27,6 +27,8 @@ import pytest
 # reading env vars) are idempotent and don't touch the filesystem.
 from webinterface import (
     _env_bool,
+    DAGPLANNING_SILENT_FORM_VALUE,
+    NAME_RE,
     effective_rooster_for_date,
     effectieve_rooster_naam_for_date,
     iso_week_key,
@@ -108,6 +110,19 @@ def test_safe_audio_filename_rejects_invalid(base):
     # On an invalid name you get an empty string back. The caller is
     # expected to check for that and refuse.
     assert safe_audio_filename(base, ".mp3") == ""
+
+
+def test_name_re_rejects_silence_sentinel():
+    # Critical invariant: the agenda dropdown sentinel for 'silence
+    # override' (currently '!off') must NOT be a valid rooster name.
+    # If it were, a user could create a rooster called '!off', which
+    # would appear in the agenda dropdown — and selecting it would
+    # be misinterpreted as the silence sentinel. The '!' character
+    # is outside [A-Za-z0-9 _-] so NAME_RE rejects it.
+    #
+    # If anyone ever changes either NAME_RE or the sentinel, this
+    # test catches the regression before it ships.
+    assert NAME_RE.match(DAGPLANNING_SILENT_FORM_VALUE) is None
 
 
 # ---------------------------------------------------------------------------

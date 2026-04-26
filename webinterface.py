@@ -637,6 +637,16 @@ def add_rooster():
     if not naam:
         flash("Naam van rooster is verplicht.")
         return redirect(url_for("roosters"))
+    # Validate against NAME_RE so the rooster name can be used safely
+    # everywhere it ends up (dropdown values, JSON keys, log lines).
+    # Without this, a user could create '!off' which collides with
+    # the silence sentinel in the agenda dropdown — the rooster would
+    # appear as an option but selecting it would be misinterpreted as
+    # an explicit silence override. The regex also blocks weirdness
+    # like '../', '<script>', newlines, etc.
+    if not NAME_RE.match(naam):
+        flash("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -.")
+        return redirect(url_for("roosters"))
 
     with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if naam in roosters:
