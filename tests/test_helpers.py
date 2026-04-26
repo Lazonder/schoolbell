@@ -27,6 +27,7 @@ import pytest
 # reading env vars) are idempotent and don't touch the filesystem.
 from webinterface import (
     _env_bool,
+    effective_rooster_for_date,
     effectieve_rooster_naam_for_date,
     iso_week_key,
     normalize_and_sort_moments,
@@ -217,6 +218,60 @@ def test_effectief_rooster_silence_override_with_no_standaardweek():
     assert effectieve_rooster_naam_for_date(
         date(2026, 4, 20), {"2026-04-20": None}, {},
     ) == ""
+
+
+# ---------------------------------------------------------------------------
+# effective_rooster_for_date: tuple version (name, bron)
+# Used by the API and compute_upcoming so the response can tell the user
+# *why* a given day is silent or active.
+# ---------------------------------------------------------------------------
+
+
+def test_effective_rooster_for_date_dagplanning_override_returns_dagplanning_bron():
+    name, bron = effective_rooster_for_date(
+        date(2026, 4, 20),
+        {"2026-04-20": "feestdag"},
+        {"Mon": "gewone_week"},
+    )
+    assert name == "feestdag"
+    assert bron == "dagplanning"
+
+
+def test_effective_rooster_for_date_silence_override_keeps_dagplanning_bron():
+    # A silence override is still 'from dagplanning' — the user made an
+    # explicit choice, even if the choice is 'no bell'. The empty name
+    # signals silence; the bron tells the API caller why.
+    name, bron = effective_rooster_for_date(
+        date(2026, 4, 20),
+        {"2026-04-20": None},
+        {"Mon": "gewone_week"},
+    )
+    assert name == ""
+    assert bron == "dagplanning"
+
+
+def test_effective_rooster_for_date_no_override_returns_standaardweek_bron():
+    name, bron = effective_rooster_for_date(
+        date(2026, 4, 20),
+        {},
+        {"Mon": "gewone_week"},
+    )
+    assert name == "gewone_week"
+    assert bron == "standaardweek"
+
+
+def test_effective_rooster_for_date_legacy_empty_string_falls_through():
+    # Legacy behavior: an empty string in dagplanning is treated as 'no
+    # override'. bron must report standaardweek to match — otherwise
+    # the API would say bron='dagplanning' but actually be using the
+    # standaardweek answer, which is misleading.
+    name, bron = effective_rooster_for_date(
+        date(2026, 4, 20),
+        {"2026-04-20": ""},
+        {"Mon": "gewone_week"},
+    )
+    assert name == "gewone_week"
+    assert bron == "standaardweek"
 
 
 # ---------------------------------------------------------------------------

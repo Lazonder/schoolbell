@@ -404,28 +404,48 @@ def default_standaardweek_obj():
 def weekday_key(d: date) -> str:
     return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d.weekday()]
 
-def effectieve_rooster_naam_for_date(d: date, dagplanning: dict, standaardweek: dict) -> str:
-    """Resolve which rooster (if any) applies on date d.
+def effective_rooster_for_date(d: date, dagplanning: dict, standaardweek: dict) -> tuple[str, str]:
+    """Resolve which rooster applies on date d, plus where the answer came from.
+
+    Returns (rooster_name, bron):
+      - rooster_name: "" means no schedule (silence override OR no
+        standaardweek entry for this weekday).
+      - bron: "dagplanning" if there was an override on this date
+        (whether to a rooster or to silence), else "standaardweek".
 
     Three cases for dagplanning entries:
-      - value is a non-empty string  -> override to that rooster
-      - value is None (JSON null)    -> explicit silence override (no bell)
-      - value is "" or key missing   -> no override, fall back to standaardweek
+      - non-empty string -> override to that rooster
+      - None (JSON null) -> explicit silence override (no bell)
+      - "" or key missing -> no override, fall back to standaardweek
 
     The empty-string case is kept as 'no override' for backwards
     compatibility: older dagplanning.json files (or manual edits) may
     contain "" — treating that as silence would change behavior on
     upgrade. Explicit silence is signalled by None / null only.
+
+    This is the single source of truth for 'which schedule applies on
+    a given date' — every callsite (agenda render, agenda save, the
+    /api/effectief-rooster endpoint, compute_upcoming) must go through
+    this function so they can't drift apart on edge cases.
     """
     d_iso = d.isoformat()
     if d_iso in dagplanning:
         v = dagplanning[d_iso]
         if v is None:
-            return ""  # explicit silence override
+            return ("", "dagplanning")  # explicit silence override
         if v:
-            return v   # rooster name override
+            return (v, "dagplanning")
         # empty string falls through to standaardweek (legacy)
-    return (standaardweek or {}).get(weekday_key(d), "") or ""
+    name = (standaardweek or {}).get(weekday_key(d), "") or ""
+    return (name, "standaardweek")
+
+def effectieve_rooster_naam_for_date(d: date, dagplanning: dict, standaardweek: dict) -> str:
+    """Backwards-compat wrapper that returns only the rooster name.
+
+    Kept because tests already reference this name; new code should
+    prefer effective_rooster_for_date when the bron is also useful.
+    """
+    return effective_rooster_for_date(d, dagplanning, standaardweek)[0]
 
 def default_weken_uit_obj():
     return {}  # bijv. {"2025-W34": true}
@@ -531,10 +551,11 @@ def compute_upcoming(limit=20):
         wk_key = iso_week_key(day)
         if not weken_uit.get(wk_key):
             d_iso = day.isoformat()
-            if d_iso in dagplanning and dagplanning[d_iso]:
-                rname = dagplanning[d_iso]
-            else:
-                rname = standaardweek.get(weekday_key(day), "")
+            # Route via the single helper so we honour explicit silence
+            # overrides (None in dagplanning) — without this, a day that
+            # the user silenced via '— geen bel —' would still appear in
+            # the upcoming-bells list.
+            rname = effectieve_rooster_naam_for_date(day, dagplanning, standaardweek)
             moments = roosters.get(rname, []) if rname else []
             for m in moments:
                 try:
@@ -881,6 +902,12 @@ def agenda():
                            (so the user sees what *will* play if they don't
                             change anything — keeps the UI honest about
                             current effective behavior)
+
+        Note: this does its own lookup (not via the shared helper)
+        because it needs to distinguish 'silence override' from 'no
+        override', which the helper collapses into '' for both. The
+        legacy "" case still falls through to the standaardweek
+        default below, matching the helper.
         """
         d_iso = d.isoformat()
         if d_iso in dagplanning:
@@ -963,13 +990,11 @@ def api_effectief_rooster():
             "next_check_suggested": next_check_str,
         }, 200, headers)
 
-    if d_iso in dagplanning:
-        rooster_naam = dagplanning[d_iso]
-        bron = "dagplanning"
-    else:
-        wkkey = weekday_key(d)
-        rooster_naam = standaardweek.get(wkkey, "")
-        bron = "standaardweek"
+    # Route via the single helper. Without this, the API and the
+    # in-process agenda render disagreed on the legacy "" case in
+    # dagplanning (API silenced, agenda fell through). Going through
+    # the helper makes both paths see the same answer.
+    rooster_naam, bron = effective_rooster_for_date(d, dagplanning, standaardweek)
 
     momenten = []
     if rooster_naam and rooster_naam in roosters:
