@@ -21,6 +21,12 @@ FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
 # Name validation: 1–35 chars, letters/digits/space/_/- only
 NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 
+# Form-level sentinel sent by the agenda dropdown when the user picks
+# '— geen bel —' for a date. Stored as JSON null in dagplanning to mean
+# 'explicit silence override on this date'. The '!' prefix is outside
+# NAME_RE so it can never collide with a real rooster name.
+DAGPLANNING_SILENT_FORM_VALUE = "!off"
+
 # === Path configuration ===
 # Priority: SCHOOLBELL_BASE_DIR env var (useful for tests or non-standard
 # installations). Fallback: the directory containing this file itself.
@@ -399,9 +405,26 @@ def weekday_key(d: date) -> str:
     return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d.weekday()]
 
 def effectieve_rooster_naam_for_date(d: date, dagplanning: dict, standaardweek: dict) -> str:
+    """Resolve which rooster (if any) applies on date d.
+
+    Three cases for dagplanning entries:
+      - value is a non-empty string  -> override to that rooster
+      - value is None (JSON null)    -> explicit silence override (no bell)
+      - value is "" or key missing   -> no override, fall back to standaardweek
+
+    The empty-string case is kept as 'no override' for backwards
+    compatibility: older dagplanning.json files (or manual edits) may
+    contain "" — treating that as silence would change behavior on
+    upgrade. Explicit silence is signalled by None / null only.
+    """
     d_iso = d.isoformat()
-    if d_iso in dagplanning and dagplanning[d_iso]:
-        return dagplanning[d_iso]
+    if d_iso in dagplanning:
+        v = dagplanning[d_iso]
+        if v is None:
+            return ""  # explicit silence override
+        if v:
+            return v   # rooster name override
+        # empty string falls through to standaardweek (legacy)
     return (standaardweek or {}).get(weekday_key(d), "") or ""
 
 def default_weken_uit_obj():
@@ -767,7 +790,15 @@ def agenda():
     standaardweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
     weken_uit = load_json(WEEKDISABLE_PATH, default_weken_uit_obj())
 
-    opties = [""] + list(roosters.keys())
+    # Dropdown options as (value, label) tuples. Three categories:
+    #   ""    -> follow standaardweek (drops any existing override)
+    #   !off  -> explicit silence override (saved as null in dagplanning)
+    #   <r>   -> override to rooster <r>
+    opties = (
+        [("", "— volg standaardweek —"),
+         (DAGPLANNING_SILENT_FORM_VALUE, "— geen bel —")]
+        + [(r, r) for r in roosters.keys()]
+    )
 
     # --- POST: save ---
     if request.method == "POST" and request.form.get("_action") == "bulk_save":
@@ -785,13 +816,18 @@ def agenda():
                 if key.startswith("day[") and key.endswith("]"):
                     datum = key[4:-1]
                     waarde = (request.form.get(key) or "").strip()
-                    if waarde:
-                        if waarde in roosters:
-                            updated_dagplanning[datum] = waarde
-                        else:
-                            flash(f"Ongeldig rooster voor {datum}: '{waarde}' bestaat niet. Overgeslagen.")
-                    else:
+                    if waarde == "":
+                        # 'follow standaardweek' — drop any existing override
                         updated_dagplanning.pop(datum, None)
+                    elif waarde == DAGPLANNING_SILENT_FORM_VALUE:
+                        # Explicit silence override — store as JSON null.
+                        # api_effectief_rooster handles null correctly
+                        # (returns empty momenten list -> daemon silent).
+                        updated_dagplanning[datum] = None
+                    elif waarde in roosters:
+                        updated_dagplanning[datum] = waarde
+                    else:
+                        flash(f"Ongeldig rooster voor {datum}: '{waarde}' bestaat niet. Overgeslagen.")
 
             # Update weeks off
             today = date.today()
@@ -836,9 +872,24 @@ def agenda():
     weekday_key_map = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
     def selected_for_date(d: date) -> str:
+        """Which dropdown option should be marked 'selected' for date d?
+
+        Mirrors the three-option dropdown:
+          - explicit silence override (None in dagplanning) -> "!off"
+          - rooster override                                 -> rooster name
+          - no override -> show the standaardweek default for that weekday
+                           (so the user sees what *will* play if they don't
+                            change anything — keeps the UI honest about
+                            current effective behavior)
+        """
         d_iso = d.isoformat()
-        if d_iso in dagplanning and dagplanning[d_iso]:
-            return dagplanning[d_iso]
+        if d_iso in dagplanning:
+            v = dagplanning[d_iso]
+            if v is None:
+                return DAGPLANNING_SILENT_FORM_VALUE
+            if v:
+                return v
+            # empty string in dagplanning -> treat as no override (legacy)
         std_key = weekday_key_map[d.weekday()]
         return standaardweek.get(std_key, "")
 

@@ -48,9 +48,9 @@
                   <select name="day[{{ d.iso }}]"
                           class="sb-select agenda-select"
                           {{ 'disabled' if wk.off else '' }}>
-                    {% for opt in opties %}
-                      <option value="{{ opt }}" {{ 'selected' if opt == d.selected else '' }}>
-                        {{ opt if opt else '— leeg —' }}
+                    {% for value, label in opties %}
+                      <option value="{{ value }}" {{ 'selected' if value == d.selected else '' }}>
+                        {{ label }}
                       </option>
                     {% endfor %}
                   </select>

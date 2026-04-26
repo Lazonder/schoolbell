@@ -186,16 +186,37 @@ def test_effectief_rooster_lege_state_geeft_lege_string():
 
 
 def test_effectief_rooster_dagplanning_met_lege_waarde_valt_terug():
-    # Rule from the code: `if d_iso in dagplanning and dagplanning[d_iso]`
-    # — an empty string in dagplanning does NOT count as an override.
-    # Important, because the UI sometimes intentionally sets "" to clear
-    # a day, and in those cases standaardweek must be the fallback.
+    # Legacy / backwards-compat: an empty string in dagplanning is
+    # treated as 'no override' and falls through to standaardweek.
+    # This is preserved on upgrade so older dagplanning.json files
+    # don't suddenly silence days that used to ring.
     dagplanning = {"2026-04-20": ""}
     standaardweek = {"Mon": "gewone_week"}
 
     assert effectieve_rooster_naam_for_date(
         date(2026, 4, 20), dagplanning, standaardweek,
     ) == "gewone_week"
+
+
+def test_effectief_rooster_explicit_silence_override():
+    # The fix for the agenda bug: a None value in dagplanning means
+    # 'explicit silence override' and must beat the standaardweek.
+    # This is what the agenda's '— geen bel —' option saves.
+    dagplanning = {"2026-04-20": None}
+    standaardweek = {"Mon": "gewone_week"}
+
+    assert effectieve_rooster_naam_for_date(
+        date(2026, 4, 20), dagplanning, standaardweek,
+    ) == ""
+
+
+def test_effectief_rooster_silence_override_with_no_standaardweek():
+    # Symmetry check: silence override returns "" regardless of
+    # standaardweek state. Useful so the daemon (which keys on
+    # rooster_naam being truthy) sees the same 'no schedule' result.
+    assert effectieve_rooster_naam_for_date(
+        date(2026, 4, 20), {"2026-04-20": None}, {},
+    ) == ""
 
 
 # ---------------------------------------------------------------------------
