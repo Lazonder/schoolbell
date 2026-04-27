@@ -1133,6 +1133,60 @@ def geluiden_upload():
 
     return redirect(url_for("geluiden"))
 
+def _play_via_pygame(path: str, volume: float) -> None:
+    """Play an audio file through the web worker's own pygame mixer.
+
+    Used by the 'test bell' button on the geluiden page. The daemon
+    has its own mixer instance for scheduled bells; this is a
+    completely separate one in the Flask worker process. ALSA's
+    default dmix plugin lets multiple processes share the audio
+    device, so daemon + webinterface playing simultaneously is fine
+    (a scheduled bell mid-test is rare but you'd just hear both).
+
+    pygame is imported lazily so the test suite (which imports
+    webinterface) doesn't need pygame on the testbench. On the Pi
+    it's already installed via requirements.txt for the daemon.
+
+    pygame.mixer.get_init() lets us avoid a global 'is_initialized'
+    flag — pygame already tracks state for us. mixer.init() is
+    idempotent in practice but get_init() avoids the work.
+    """
+    import pygame  # local import: only when the button is actually used
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+    pygame.mixer.music.set_volume(volume)
+    pygame.mixer.music.load(path)
+    pygame.mixer.music.play()
+
+@app.route("/geluiden/play", methods=["POST"])
+@ui_login_required
+def geluiden_play():
+    """Trigger immediate playback through the school's speakers.
+
+    Logs the action so there's an audit trail — if someone abuses
+    the button you can see who and when in the Logboek.
+    """
+    ensure_dirs()
+    name = (request.form.get("filename") or "").strip()
+    name = os.path.basename(name)
+    path = os.path.join(AUDIO_DIR, name)
+    if not os.path.isfile(path):
+        flash("Bestand niet gevonden.")
+        return redirect(url_for("geluiden"))
+
+    try:
+        v = max(0, min(100, int(Settings.load().volume_percent))) / 100.0
+        _play_via_pygame(path, v)
+        log_event("ui", {"action": "test_bell", "filename": name})
+        flash(f"Test gestart: {name}")
+    except Exception as e:
+        # Common failure modes here: ALSA can't open the device
+        # (audio config wrong), or the file isn't a format pygame
+        # can decode. Surface the error so the admin can debug.
+        log_event("ui", {"action": "test_bell_error", "filename": name, "error": str(e)})
+        flash(f"Afspelen mislukt: {e}")
+    return redirect(url_for("geluiden"))
+
 @app.route("/geluiden/delete", methods=["POST"])
 @ui_login_required
 def geluiden_delete():

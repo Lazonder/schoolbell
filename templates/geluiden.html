@@ -19,9 +19,21 @@
             <button type="button"
                     class="sb-btn sb-btn--success sb-btn--icon"
                     onclick="playAudio('{{ url_for('serve_audio', filename=name) }}')"
-                    title="Afspelen">
+                    title="Voorbeeluister in browser">
               ▶
             </button>
+            <form method="post"
+                  action="{{ url_for('geluiden_play') }}"
+                  class="inline"
+                  onsubmit="return confirm('Weet je zeker dat je deze bel door de hele school wil afspelen?');">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="filename" value="{{ name }}">
+              <button type="submit"
+                      class="sb-btn sb-btn--ghost sb-btn--icon"
+                      title="Speel af via omroepinstallatie school">
+                🔊
+              </button>
+            </form>
             <form method="post"
                   action="{{ url_for('geluiden_delete') }}"
                   class="inline"
