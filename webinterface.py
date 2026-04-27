@@ -41,6 +41,11 @@ ROOSTERS_PATH = os.path.join(DATA_DIR, "roosters.json")
 DAGPLANNING_PATH = os.path.join(DATA_DIR, "dagplanning.json")
 STANDAARDWEEK_PATH = os.path.join(DATA_DIR, "standaardweek.json")
 EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # shared log (UI + daemon)
+# Optional file maintained by the admin: school holiday periods used by
+# the 'Vakanties importeren' button on the agenda page. Format: see
+# vakanties.example.json in the repo root. Missing file is fine — the
+# button just flashes a hint when it doesn't exist.
+VAKANTIES_PATH = os.path.join(DATA_DIR, "vakanties.json")
 
 # === Flask ===
 app = Flask(__name__)
@@ -467,6 +472,27 @@ def default_weken_uit_obj():
 def iso_week_key(d: date) -> str:
     y, w, _ = d.isocalendar()
     return f"{y}-W{w:02d}"
+
+def iso_weeks_in_range(start: date, end: date) -> set[str]:
+    """All ISO week keys (YYYY-Www) that contain any day in start..end.
+
+    Inclusive on both ends. Returns an empty set if end < start.
+    Iterates day-by-day rather than week-by-week so partial-week
+    edge cases (vacation Mon-Wed, vacation Sat-Sun across a week
+    boundary, ISO years where week 1 of YYYY contains Dec 31 of
+    YYYY-1, etc.) all fall out correctly without special-casing.
+
+    A vacation period of 1-2 weeks results in at most ~14 days of
+    iteration — cheap.
+    """
+    weeks: set[str] = set()
+    if end < start:
+        return weeks
+    d = start
+    while d <= end:
+        weeks.add(iso_week_key(d))
+        d += timedelta(days=1)
+    return weeks
 
 def prune_past_dates(dagplanning: dict, today: date) -> dict:
     """Return a copy of dagplanning without entries whose date is before today.
@@ -967,8 +993,95 @@ def agenda():
         tab="agenda",
         csrf_token=get_csrf_token(),
         weeks=weeks,
-        opties=opties
+        opties=opties,
+        vakanties_path_exists=os.path.exists(VAKANTIES_PATH),
     )
+
+@app.route("/agenda/import-vakanties", methods=["POST"])
+@ui_login_required
+def import_vakanties():
+    """Import school holidays from data/vakanties.json into weken_uit.
+
+    The vakanties file is admin-maintained: see vakanties.example.json
+    for the format. Each {start, eind} period is expanded to its
+    overlapping ISO weeks, and those weeks get state[wk] = True in
+    weken_uit.json.
+
+    Merge semantics: existing weken_uit entries are kept. The button
+    only ADDS to the 'off' set; it never unmarks a week. So an admin
+    can hit 'Import' multiple times safely, and any manual 'Bel uit'
+    checkboxes the user has set elsewhere stay set.
+    """
+    ensure_dirs()
+    if not os.path.exists(VAKANTIES_PATH):
+        flash(
+            f"Geen vakantiebestand gevonden ({VAKANTIES_PATH}). "
+            f"Kopieer vakanties.example.json en pas de datums aan."
+        )
+        return redirect(url_for("agenda"))
+
+    try:
+        with open(VAKANTIES_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        flash(f"Vakantiebestand is geen geldige JSON: {e}")
+        return redirect(url_for("agenda"))
+    except Exception as e:
+        flash(f"Vakantiebestand kon niet worden gelezen: {e}")
+        return redirect(url_for("agenda"))
+
+    vakanties_lijst = data.get("vakanties", [])
+    if not isinstance(vakanties_lijst, list):
+        flash("Vakantiebestand: 'vakanties' moet een lijst zijn.")
+        return redirect(url_for("agenda"))
+
+    new_weeks: set[str] = set()
+    skipped: list[str] = []
+    for v in vakanties_lijst:
+        if not isinstance(v, dict):
+            skipped.append("ongeldige entry (geen object)")
+            continue
+        try:
+            start = date.fromisoformat(v["start"])
+            eind = date.fromisoformat(v["eind"])
+        except (KeyError, TypeError, ValueError) as e:
+            skipped.append(f"{v.get('naam', '?')}: {e}")
+            continue
+        if eind < start:
+            skipped.append(f"{v.get('naam', '?')}: eind < start")
+            continue
+        new_weeks |= iso_weeks_in_range(start, eind)
+
+    if not new_weeks:
+        flash(
+            "Geen weken om te markeren. "
+            f"Controleer je vakantiebestand ({len(skipped)} ongeldige entries)."
+        )
+        return redirect(url_for("agenda"))
+
+    # Merge into existing weken_uit under the file lock so a concurrent
+    # agenda-save doesn't lose either the manual edits or the import.
+    with locked_json(WEEKDISABLE_PATH, default_weken_uit_obj()) as (state, save):
+        for wk in new_weeks:
+            state[wk] = True
+        save(state)
+
+    log_event("ui", {
+        "action": "import_vakanties",
+        "schooljaar": data.get("schooljaar", ""),
+        "regio": data.get("regio_naam", ""),
+        "weken_count": len(new_weeks),
+        "vakanties_count": len(vakanties_lijst) - len(skipped),
+        "skipped_count": len(skipped),
+    })
+
+    msg = f"{len(new_weeks)} week(weken) gemarkeerd als 'Bel uit'."
+    if skipped:
+        voorb = "; ".join(skipped[:3])
+        meer = "" if len(skipped) <= 3 else f" en {len(skipped) - 3} meer"
+        msg += f" Overgeslagen: {voorb}{meer}."
+    flash(msg)
+    return redirect(url_for("agenda"))
 
 @app.route("/api/effectief-rooster", methods=["GET"])
 @auth.login_required

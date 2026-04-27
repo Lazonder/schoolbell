@@ -3,6 +3,31 @@
 
 {% block content %}
 
+<div class="sb-card sb-card--section">
+  <h2 class="sb-card__title">Vakanties</h2>
+  <p class="sb-help">
+    Importeer schoolvakanties uit
+    <code class="sb-code-mono">data/vakanties.json</code>
+    en zet de getroffen weken automatisch op <em>Bel uit</em>.
+    Bestaande markeringen blijven staan — de import voegt alleen toe.
+    {% if not vakanties_path_exists %}
+      <br>
+      <strong>Nog geen bestand gevonden.</strong> Kopieer
+      <code class="sb-code-mono">vakanties.example.json</code>
+      naar <code class="sb-code-mono">data/vakanties.json</code>
+      en pas de datums aan.
+    {% endif %}
+  </p>
+  <form method="post" action="{{ url_for('import_vakanties') }}" class="inline">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <button type="submit" class="sb-btn sb-btn--ghost"
+            onclick="return confirm('Vakanties importeren? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan).');"
+            {{ 'disabled' if not vakanties_path_exists else '' }}>
+      Vakanties importeren
+    </button>
+  </form>
+</div>
+
 <div class="card sb-card sb-card--section">
   <form method="post" action="{{ url_for('agenda') }}">
     <input type="hidden" name="_action" value="bulk_save">

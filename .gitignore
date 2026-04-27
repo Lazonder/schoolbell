@@ -25,6 +25,7 @@ roosters.json
 dagplanning.json
 standaardweek.json
 weken_uit.json
+vakanties.json
 
 # Secrets
 .env

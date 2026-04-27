@@ -32,6 +32,7 @@ from webinterface import (
     effective_rooster_for_date,
     effectieve_rooster_naam_for_date,
     iso_week_key,
+    iso_weeks_in_range,
     normalize_and_sort_moments,
     normalize_time,
     prune_past_dates,
@@ -306,6 +307,63 @@ def test_iso_week_key_rond_jaarwissel():
     # in the new year). Those edge cases are regression-prone when
     # date code is refactored.
     assert iso_week_key(date(2025, 12, 29)) == "2026-W01"
+
+
+# ---------------------------------------------------------------------------
+# iso_weeks_in_range: expand a date range to the ISO weeks it covers
+# Used by the school-holiday import to know which weeks to mark 'off'.
+# ---------------------------------------------------------------------------
+
+
+def test_iso_weeks_in_range_single_full_week():
+    # Mon 2026-04-20 .. Sun 2026-04-26 is exactly ISO week 17 of 2026.
+    weeks = iso_weeks_in_range(date(2026, 4, 20), date(2026, 4, 26))
+    assert weeks == {"2026-W17"}
+
+
+def test_iso_weeks_in_range_spans_week_boundary():
+    # Sat 2026-04-25 .. Mon 2026-04-27 spans the Sun/Mon boundary,
+    # so weeks 17 and 18 are both covered. This is the typical
+    # vacation case (e.g. meivakantie crossing weekends).
+    weeks = iso_weeks_in_range(date(2026, 4, 25), date(2026, 4, 27))
+    assert weeks == {"2026-W17", "2026-W18"}
+
+
+def test_iso_weeks_in_range_two_full_weeks():
+    # Mon..Sun, then Mon..Sun: a clean two-week vacation.
+    weeks = iso_weeks_in_range(date(2026, 4, 20), date(2026, 5, 3))
+    assert weeks == {"2026-W17", "2026-W18"}
+
+
+def test_iso_weeks_in_range_single_day():
+    weeks = iso_weeks_in_range(date(2026, 4, 22), date(2026, 4, 22))
+    assert weeks == {"2026-W17"}
+
+
+def test_iso_weeks_in_range_end_before_start_returns_empty():
+    # Defensive: if the user mistakenly enters eind < start, we
+    # return nothing rather than wrap around or silently swap.
+    assert iso_weeks_in_range(date(2026, 4, 26), date(2026, 4, 20)) == set()
+
+
+def test_iso_weeks_in_range_crosses_iso_year_boundary():
+    # 2025-12-29 is already ISO week 1 of 2026 (>=4 days in new year).
+    # A vacation Dec 22 .. Jan 4 crosses the year and needs two
+    # different ISO years in the result.
+    weeks = iso_weeks_in_range(date(2025, 12, 22), date(2026, 1, 4))
+    assert weeks == {"2025-W52", "2026-W01"}
+
+
+def test_iso_weeks_in_range_long_vacation():
+    # ~6 weeks of summer vacation should yield 6 (or 7, depending on
+    # weekday) ISO weeks. Use the Noord example from
+    # vakanties.example.json.
+    weeks = iso_weeks_in_range(date(2026, 7, 4), date(2026, 8, 16))
+    # 2026-07-04 (Sat) is in week 27, 2026-08-16 (Sun) is in week 33.
+    # Inclusive: 27, 28, 29, 30, 31, 32, 33 -> 7 weeks.
+    assert len(weeks) == 7
+    assert "2026-W27" in weeks
+    assert "2026-W33" in weeks
 
 
 # ---------------------------------------------------------------------------
