@@ -1121,17 +1121,70 @@ def geluiden_upload():
 
     try:
         f.save(dest)
-        log_event("ui", {
-            "action": "upload_audio",
-            "filename": filename,
-            "size": size,
-            "limit_mb": s.max_file_size_mb
-        })
-        flash(f"Upload geslaagd: {filename}")
     except Exception as e:
         flash(f"Kon bestand niet opslaan: {e}")
+        return redirect(url_for("geluiden"))
 
+    # Pre-flight: try to actually load the file via pygame, the same
+    # library the daemon uses to play it. If pygame can't decode it
+    # (corrupt MP3, wrong-format renamed-to-mp3, 0-byte file with the
+    # right extension), we delete the bad upload and tell the user
+    # immediately — instead of letting it sit in the audio dir until
+    # the bell tries to ring at 8:30 and the daemon logs 'File not
+    # found' or a decoder error to events.jsonl.
+    ok, msg = _validate_audio_file(dest)
+    if not ok:
+        try:
+            os.remove(dest)
+        except OSError:
+            pass  # if cleanup fails, the user can delete via the UI
+        log_event("ui", {
+            "action": "upload_audio_rejected",
+            "filename": filename,
+            "size": size,
+            "reason": msg,
+        })
+        flash(f"Bestand afgewezen: {msg}")
+        return redirect(url_for("geluiden"))
+
+    log_event("ui", {
+        "action": "upload_audio",
+        "filename": filename,
+        "size": size,
+        "limit_mb": s.max_file_size_mb
+    })
+    flash(f"Upload geslaagd: {filename}")
     return redirect(url_for("geluiden"))
+
+def _validate_audio_file(path: str) -> tuple[bool, str]:
+    """Verify pygame can actually decode this file.
+
+    Returns (is_valid, message). Message is shown to the user when
+    invalid; ignored when valid.
+
+    We use pygame.mixer.music.load (same as the daemon) so 'pygame
+    accepts it' = 'the daemon will accept it'. No length check —
+    a 30-minute file is unusual for a school bell but technically
+    valid; the user can decide. We only block the case where pygame
+    refuses outright (corrupt, wrong format despite extension, etc.).
+
+    pygame is imported lazily (same reason as in _play_via_pygame:
+    keeps it out of the test suite).
+    """
+    try:
+        import pygame
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+        # load() raises pygame.error if the file is unparseable.
+        # It does NOT actually play; load is just metadata + decoder
+        # priming, which is exactly the validation we want.
+        pygame.mixer.music.load(path)
+        # Be polite: clear the loaded ref so we don't hold the file
+        # open for a subsequent rename/delete.
+        pygame.mixer.music.unload()
+        return True, ""
+    except Exception as e:
+        return False, f"Pygame kan dit bestand niet lezen ({e})"
 
 def _play_via_pygame(path: str, volume: float) -> None:
     """Play an audio file through the web worker's own pygame mixer.
