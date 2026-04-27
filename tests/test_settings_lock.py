@@ -35,6 +35,43 @@ def test_locked_basic_roundtrip():
     assert s2.volume_percent == 42
 
 
+def test_default_vakantieregio_is_noord():
+    # Sanity check on the new Settings field. Default is "Noord" so a
+    # fresh install can hit 'Vakanties importeren' without first
+    # opening Voorkeuren.
+    s = settings_store.Settings()
+    assert s.vakantieregio == "Noord"
+
+
+def test_vakantieregio_persists_across_save_load():
+    with settings_store.locked() as s:
+        s.vakantieregio = "Zuid"
+
+    s2 = settings_store.Settings.load()
+    assert s2.vakantieregio == "Zuid"
+
+
+def test_settings_load_handles_missing_vakantieregio_key():
+    # Forward-compat: an existing config.json from before this field
+    # was added must still load. Settings.load() filters unknown keys
+    # and merges defaults, so a legacy file without 'vakantieregio'
+    # gets the default value.
+    import json
+    with open(settings_store.CONFIG_PATH, "w") as f:
+        json.dump({
+            "volume_percent": 80,
+            "max_file_size_mb": 20,
+            "poll_interval_sec": 5,
+            "theme_mode": "dark",
+            "allowed_extensions": [".mp3"],
+            # no vakantieregio
+        }, f)
+
+    s = settings_store.Settings.load()
+    assert s.vakantieregio == "Noord"  # default kicks in
+    assert s.volume_percent == 80      # other fields preserved
+
+
 def test_locked_does_not_save_on_exception():
     # First write a baseline.
     with settings_store.locked() as s:

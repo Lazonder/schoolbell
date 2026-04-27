@@ -8,7 +8,9 @@
   <p class="sb-help">
     Importeer schoolvakanties uit
     <code class="sb-code-mono">data/vakanties.json</code>
-    en zet de getroffen weken automatisch op <em>Bel uit</em>.
+    voor regio <strong>{{ vakantieregio }}</strong>
+    (instelbaar via <a href="{{ url_for('settings_page') }}">Voorkeuren</a>).
+    De getroffen weken worden automatisch op <em>Bel uit</em> gezet.
     Bestaande markeringen blijven staan — de import voegt alleen toe.
     {% if not vakanties_path_exists %}
       <br>
@@ -21,7 +23,7 @@
   <form method="post" action="{{ url_for('import_vakanties') }}" class="inline">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <button type="submit" class="sb-btn sb-btn--ghost"
-            onclick="return confirm('Vakanties importeren? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan).');"
+            onclick="return confirm('Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan).');"
             {{ 'disabled' if not vakanties_path_exists else '' }}>
       Vakanties importeren
     </button>

@@ -22,6 +22,11 @@ class Settings:
     # UI theme. "auto" follows the browser's system preference
     # (prefers-color-scheme). See base.html for the application.
     theme_mode: str = "light"             # "light" | "dark" | "auto"
+    # Dutch school vacation region used by the 'Vakanties importeren'
+    # button on the agenda page. The shared vakanties.json file lists
+    # vacation dates per region; this picks which list to read.
+    # Allowed values: "Noord" | "Midden" | "Zuid".
+    vakantieregio: str = "Noord"
     # field(default_factory=...) is the proper way to specify a mutable
     # default for a dataclass field. Previously this was a tuple, which
     # didn't match the List[str] annotation.

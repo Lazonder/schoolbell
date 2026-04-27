@@ -28,6 +28,12 @@ NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 # NAME_RE so it can never collide with a real rooster name.
 DAGPLANNING_SILENT_FORM_VALUE = "!off"
 
+# Dutch school vacation regions. The country is split into three by
+# the Ministry of Education for staggered school holidays. Used as
+# the keys in vakanties.json's 'regios' object and as the only valid
+# values for Settings.vakantieregio.
+VAKANTIE_REGIOS = ("Noord", "Midden", "Zuid")
+
 # === Path configuration ===
 # Priority: SCHOOLBELL_BASE_DIR env var (useful for tests or non-standard
 # installations). Fallback: the directory containing this file itself.
@@ -255,6 +261,12 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
         if tm not in ("light", "dark", "auto"):
             abort(400, "theme_mode must be one of: light, dark, auto")
         s.theme_mode = tm
+
+    if "vakantieregio" in payload:
+        vr = str(payload["vakantieregio"]).strip()
+        if vr not in VAKANTIE_REGIOS:
+            abort(400, f"vakantieregio must be one of: {', '.join(VAKANTIE_REGIOS)}")
+        s.vakantieregio = vr
 
 # -- Settings API (no blueprint; simple app routes) --
 @app.route("/api/settings", methods=["GET"])
@@ -995,6 +1007,7 @@ def agenda():
         weeks=weeks,
         opties=opties,
         vakanties_path_exists=os.path.exists(VAKANTIES_PATH),
+        vakantieregio=Settings.load().vakantieregio,
     )
 
 @app.route("/agenda/import-vakanties", methods=["POST"])
@@ -1003,8 +1016,10 @@ def import_vakanties():
     """Import school holidays from data/vakanties.json into weken_uit.
 
     The vakanties file is admin-maintained: see vakanties.example.json
-    for the format. Each {start, eind} period is expanded to its
-    overlapping ISO weeks, and those weeks get state[wk] = True in
+    for the format. The file lists vacation periods per region — this
+    handler reads only the region currently configured in Voorkeuren
+    (Settings.vakantieregio). Each {start, eind} period is expanded to
+    its overlapping ISO weeks, and those weeks get state[wk] = True in
     weken_uit.json.
 
     Merge semantics: existing weken_uit entries are kept. The button
@@ -1030,9 +1045,24 @@ def import_vakanties():
         flash(f"Vakantiebestand kon niet worden gelezen: {e}")
         return redirect(url_for("agenda"))
 
-    vakanties_lijst = data.get("vakanties", [])
+    regios = data.get("regios", {})
+    if not isinstance(regios, dict):
+        flash("Vakantiebestand: 'regios' moet een object zijn met regio-namen als sleutel.")
+        return redirect(url_for("agenda"))
+
+    settings = Settings.load()
+    regio = settings.vakantieregio
+    if regio not in regios:
+        beschikbaar = ", ".join(sorted(regios.keys())) or "(geen)"
+        flash(
+            f"Regio '{regio}' (Voorkeuren) staat niet in het vakantiebestand. "
+            f"Beschikbare regio's: {beschikbaar}."
+        )
+        return redirect(url_for("agenda"))
+
+    vakanties_lijst = regios[regio]
     if not isinstance(vakanties_lijst, list):
-        flash("Vakantiebestand: 'vakanties' moet een lijst zijn.")
+        flash(f"Vakantiebestand: 'regios.{regio}' moet een lijst zijn.")
         return redirect(url_for("agenda"))
 
     new_weeks: set[str] = set()
@@ -1054,7 +1084,7 @@ def import_vakanties():
 
     if not new_weeks:
         flash(
-            "Geen weken om te markeren. "
+            f"Geen weken om te markeren voor regio {regio}. "
             f"Controleer je vakantiebestand ({len(skipped)} ongeldige entries)."
         )
         return redirect(url_for("agenda"))
@@ -1069,13 +1099,13 @@ def import_vakanties():
     log_event("ui", {
         "action": "import_vakanties",
         "schooljaar": data.get("schooljaar", ""),
-        "regio": data.get("regio_naam", ""),
+        "regio": regio,
         "weken_count": len(new_weeks),
         "vakanties_count": len(vakanties_lijst) - len(skipped),
         "skipped_count": len(skipped),
     })
 
-    msg = f"{len(new_weeks)} week(weken) gemarkeerd als 'Bel uit'."
+    msg = f"{len(new_weeks)} week(weken) gemarkeerd als 'Bel uit' (regio {regio})."
     if skipped:
         voorb = "; ".join(skipped[:3])
         meer = "" if len(skipped) <= 3 else f" en {len(skipped) - 3} meer"
