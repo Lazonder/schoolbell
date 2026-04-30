@@ -13,6 +13,11 @@ BASE_DIR = os.environ.get("SCHOOLBELL_BASE_DIR") or os.path.dirname(os.path.absp
 AUDIO_DIR = os.path.join(BASE_DIR, "static", "geluiden")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")
+VAKANTIES_PATH = os.path.join(DATA_DIR, "vakanties.json")
+# State for the August 1 auto-refresh: tracks last attempt + outcome
+# so we (a) don't refresh more than once per calendar year, and (b)
+# can still see in the UI/log when the last successful refresh was.
+VAKANTIES_FETCH_STATE_PATH = os.path.join(DATA_DIR, "vakanties_fetch_state.json")
 
 # === Settings (can be reloaded) ===
 settings = Settings.load()
@@ -222,6 +227,124 @@ def _signature(payload: dict) -> str:
     s = json.dumps(core, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
+# === Vakanties refresh cadence ===
+# Refresh the vakanties data when the last successful refresh was
+# more than this many days ago. Picked at ~30 days for two reasons:
+#   1. Rijksoverheid publishes ~5 schooljaren ahead, so a single
+#      missed refresh is never a real problem — the data we have
+#      remains valid for the bulk of the relevant year.
+#   2. Anchoring on a specific date (e.g. August 1) made the trigger
+#      brittle: a network blip or service restart on that one day
+#      would cost us a year. With a rolling 30-day window we get
+#      ~12 chances per year to pick up changes, including the
+#      flip to a new schooljaar that target_schooljaar() does at
+#      Aug 1 (we'll catch the new year on the next monthly cycle).
+VAKANTIES_REFRESH_INTERVAL_DAYS = 30
+
+def _load_vakanties_fetch_state() -> dict:
+    """Read the small JSON state file. Missing/bad file → empty dict."""
+    try:
+        with open(VAKANTIES_FETCH_STATE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    except Exception as e:
+        print(f"[WARN] Could not read {VAKANTIES_FETCH_STATE_PATH}: {e}")
+        return {}
+
+def _save_vakanties_fetch_state(state: dict) -> None:
+    """Atomically persist the fetch-state. Same tmp+os.replace pattern
+    as elsewhere — robust against power loss mid-write."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        tmp = VAKANTIES_FETCH_STATE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, VAKANTIES_FETCH_STATE_PATH)
+    except Exception as e:
+        print(f"[WARN] Could not write {VAKANTIES_FETCH_STATE_PATH}: {e}")
+
+def _should_refresh_vakanties_today(today: date, state: dict) -> bool:
+    """Should we attempt a vakanties refresh on this date?
+
+    Rule: refresh if the last successful refresh was more than
+    VAKANTIES_REFRESH_INTERVAL_DAYS ago (or never). Corrupt /
+    unparseable state is treated as 'never refreshed'.
+
+    No special-cased calendar date. The schooljaar boundary is
+    handled implicitly: target_schooljaar() flips on August 1, so
+    the next monthly refresh after that automatically picks up
+    the new year. Rijksoverheid publishes 5 years ahead anyway,
+    so we don't need a tight day-of-year anchor.
+    """
+    last_iso = state.get("last_success_at", "")
+    if not last_iso:
+        return True
+    try:
+        last_date = datetime.fromisoformat(last_iso.replace("Z", "+00:00")).date()
+    except ValueError:
+        # Corrupt timestamp -> treat as never refreshed. Better to
+        # try once than to silently never refresh again.
+        return True
+    return (today - last_date).days >= VAKANTIES_REFRESH_INTERVAL_DAYS
+
+def _maybe_refresh_vakanties() -> None:
+    """If we're due for a vakanties refresh, fetch from rijksoverheid.nl
+    and overwrite vakanties.json.
+
+    'Due' = 30+ days since last successful refresh, or never refreshed.
+    On any failure, leave the existing vakanties.json untouched and
+    record the error in the state file. Successes record the schooljaar
+    that was fetched, so the UI can later show 'last refresh: YYYY-MM-DD'.
+    """
+    today = date.today()
+    state = _load_vakanties_fetch_state()
+    if not _should_refresh_vakanties_today(today, state):
+        return
+
+    # Lazy import keeps beautifulsoup4 out of the daemon's hot path
+    # for users who don't run the August 1 refresh (or whose Pi
+    # reboots more often than once a year).
+    try:
+        import vakanties_fetcher
+    except ImportError as e:
+        print(f"[WARN] vakanties_fetcher not importable: {e}")
+        return
+
+    schooljaar = vakanties_fetcher.target_schooljaar(today)
+    print(f"[INFO] Vakanties refresh due: fetching {schooljaar} from rijksoverheid.nl")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    state["last_attempt_at"] = now_iso
+    state["last_attempt_schooljaar"] = schooljaar
+
+    try:
+        result = vakanties_fetcher.fetch_and_parse(schooljaar)
+        vakanties_fetcher.write_atomically(VAKANTIES_PATH, result.to_json_obj())
+    except Exception as e:
+        state["last_error"] = str(e)
+        _save_vakanties_fetch_state(state)
+        print(f"[WARN] Vakanties refresh failed: {e}")
+        log_bell_event({
+            "status": "error",
+            "message": f"vakanties refresh failed: {e}",
+            "schooljaar": schooljaar,
+        })
+        return
+
+    state["last_success_at"] = now_iso
+    state["last_success_schooljaar"] = schooljaar
+    state["last_error"] = ""
+    _save_vakanties_fetch_state(state)
+    print(f"[INFO] Vakanties refresh OK for {schooljaar}")
+    log_bell_event({
+        "status": "ok",
+        "message": "vakanties refresh OK",
+        "schooljaar": schooljaar,
+    })
+
 # === Poll loop (with dynamic interval + SIGHUP reload) ===
 def schedule_poller_loop():
     global settings, _reload_settings
@@ -240,6 +363,17 @@ def schedule_poller_loop():
                 print("[WARN] Settings reload failed:", e)
             _reload_settings = False
 
+        # 2) Vakanties refresh check (~monthly). Cheap (one disk
+        # read of a tiny state file plus a date comparison) so doing
+        # it on every poll is fine; the date math gates the actual
+        # network call so it only fires every VAKANTIES_REFRESH_
+        # INTERVAL_DAYS.
+        try:
+            _maybe_refresh_vakanties()
+        except Exception as e:
+            # Defensive: never let a refresh failure kill the bell loop.
+            print(f"[WARN] Unexpected error in _maybe_refresh_vakanties: {e}")
+
         try:
             data = fetch_effective_schedule()
             if data is None:
@@ -257,7 +391,7 @@ def schedule_poller_loop():
                 elif DEBUG:
                     print("[DEBUG] No changes in day schedule.")
 
-            # 2) Sleep time: use configured poll_interval_sec,
+            # 3) Sleep time: use configured poll_interval_sec,
             #    but never sleep past midnight to pick up the new schedule in time.
             next_midnight = _local_next_midnight(now)
             to_midnight = max(1, int((next_midnight - now).total_seconds()))
