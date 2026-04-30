@@ -1113,6 +1113,62 @@ def import_vakanties():
     flash(msg)
     return redirect(url_for("agenda"))
 
+@app.route("/agenda/refresh-vakanties", methods=["POST"])
+@ui_login_required
+def refresh_vakanties():
+    """Fetch the latest vakanties from rijksoverheid.nl and overwrite
+    data/vakanties.json.
+
+    Manual trigger for the same logic the daemon will run on August 1.
+    Useful (a) to seed the file the first time, (b) to verify the
+    scraper still works against the live page when something seems
+    off, (c) to pick up corrections rijksoverheid publishes mid-year.
+
+    The fetcher itself does the parse+validate; if either step fails,
+    we leave the existing vakanties.json untouched. The user gets a
+    clear flash and the events log records what went wrong.
+
+    The schooljaar to fetch is derived from today's date — same logic
+    as the daemon's auto-refresh, so 'manual' and 'automatic' always
+    target the same year.
+    """
+    # Lazy import: vakanties_fetcher pulls in beautifulsoup4 and makes
+    # a network call. The agenda render path doesn't need either, so
+    # keeping the import inside the handler keeps cold-start cheaper
+    # for the 99% of requests that don't refresh.
+    import vakanties_fetcher
+
+    schooljaar = vakanties_fetcher.target_schooljaar(date.today())
+    try:
+        result = vakanties_fetcher.fetch_and_parse(schooljaar)
+    except Exception as e:
+        # Catch broadly: HTTP errors, parse errors, validation errors
+        # all funnel through here. The user just wants to know it
+        # didn't work and (roughly) why; the events log preserves the
+        # full detail for later inspection.
+        log_event("ui", {
+            "action": "refresh_vakanties_error",
+            "schooljaar": schooljaar,
+            "error": str(e),
+        })
+        flash(f"Verversen mislukt voor schooljaar {schooljaar}: {e}")
+        return redirect(url_for("agenda"))
+
+    payload = result.to_json_obj()
+    vakanties_fetcher.write_atomically(VAKANTIES_PATH, payload)
+
+    log_event("ui", {
+        "action": "refresh_vakanties_ok",
+        "schooljaar": schooljaar,
+        "regions": [r for r in result.by_region],
+        "vakanties_per_region": {r: len(v) for r, v in result.by_region.items()},
+    })
+    flash(
+        f"Vakanties voor {schooljaar} opgehaald van rijksoverheid.nl. "
+        f"Klik 'Vakanties importeren' om ze toe te passen op de agenda."
+    )
+    return redirect(url_for("agenda"))
+
 @app.route("/api/effectief-rooster", methods=["GET"])
 @auth.login_required
 def api_effectief_rooster():

@@ -558,6 +558,17 @@ form.inline {
   color: var(--sb-color-primary);
 }
 
+/* Lay out two related inline forms side by side (e.g. the agenda's
+   Vakanties card has 'Importeren' and 'Verversen van rijksoverheid'
+   buttons that belong together but each have their own <form> for
+   CSRF reasons). flex-wrap so they stack cleanly on narrow screens. */
+.sb-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 /* =========================================
    DARK MODE
 
