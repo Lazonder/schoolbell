@@ -107,16 +107,125 @@ class VakantiesResult:
     schooljaar: str
     by_region: dict[str, list[Vakantie]] = field(default_factory=dict)
 
-    def to_json_obj(self) -> dict:
+    def to_schooljaar_block(self, fetched_at: str) -> dict:
+        """Serialize this single year as a sub-object inside the
+        combined multi-year payload (see combined_payload below)."""
         return {
-            "schooljaar": self.schooljaar,
-            "_source": "rijksoverheid.nl",
-            "_fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": fetched_at,
             "regios": {
                 region: [v.to_json_obj() for v in self.by_region.get(region, [])]
                 for region in REGIONS
             },
         }
+
+
+# -- Multi-year combined payload ----------------------------------------------
+#
+# The on-disk format for data/vakanties.json holds multiple schooljaren in
+# one file:
+#
+#   {
+#     "_source": "rijksoverheid.nl",
+#     "_fetched_at": "<ISO timestamp of last refresh attempt>",
+#     "schooljaren": {
+#       "2025-2026": { "fetched_at": "...", "regios": {Noord: [...], ...} },
+#       "2026-2027": { ... },
+#       ...
+#     }
+#   }
+#
+# Why a single file with all years instead of one file per year:
+#   - One atomic write.
+#   - The agenda's import button can apply ALL future years in one click.
+#   - The Voorkeuren status panel can list 'opgeslagen schooljaren' from
+#     a single source of truth.
+#
+# An older single-schooljaar payload (from when the fetcher only handled
+# one year) is automatically lifted into this shape — see migrate_legacy_format.
+
+
+def combined_payload(
+    successes: dict[str, "VakantiesResult"],
+    *,
+    previous: Optional[dict] = None,
+    fetched_at: Optional[str] = None,
+) -> dict:
+    """Build the multi-year on-disk payload.
+
+    `successes`: schooljaar -> freshly-parsed VakantiesResult.
+    `previous`:  the existing data/vakanties.json contents, if any.
+                 School years present in `previous` but not in `successes`
+                 are preserved in the output — that's what makes a
+                 partial fetch failure non-destructive (e.g. if 4 of 5
+                 schooljaren refreshed cleanly and 1 returned 404, the
+                 unhealthy year keeps its previously-good data instead
+                 of being dropped).
+    `fetched_at`: ISO timestamp; defaults to now-UTC.
+    """
+    if fetched_at is None:
+        fetched_at = datetime.now(timezone.utc).isoformat()
+
+    out = {
+        "_source": "rijksoverheid.nl",
+        "_fetched_at": fetched_at,
+        "schooljaren": {},
+    }
+
+    if previous and isinstance(previous.get("schooljaren"), dict):
+        for sj, block in previous["schooljaren"].items():
+            if isinstance(block, dict):
+                out["schooljaren"][sj] = block
+
+    for sj, result in successes.items():
+        out["schooljaren"][sj] = result.to_schooljaar_block(fetched_at)
+
+    return out
+
+
+def migrate_legacy_format(data: dict) -> dict:
+    """Lift an older single-schooljaar payload to the multi-year shape.
+
+    Old format (pre-multi-year):
+        {"schooljaar": "2025-2026", "regios": {...}, "_fetched_at": "..."}
+
+    New format:
+        {"schooljaren": {"2025-2026": {"fetched_at": "...", "regios": {...}}}}
+
+    Already-multi-year payloads pass through unchanged.
+    Anything we don't recognize becomes an empty multi-year payload —
+    callers should treat that as 'no data yet'.
+    """
+    if not isinstance(data, dict):
+        return {"schooljaren": {}}
+    if isinstance(data.get("schooljaren"), dict):
+        return data  # already multi-year
+    if "schooljaar" in data and isinstance(data.get("regios"), dict):
+        fetched_at = data.get("_fetched_at", "")
+        return {
+            "_source": data.get("_source", "rijksoverheid.nl"),
+            "_fetched_at": fetched_at,
+            "schooljaren": {
+                data["schooljaar"]: {
+                    "fetched_at": fetched_at,
+                    "regios": data["regios"],
+                }
+            },
+        }
+    return {"schooljaren": {}}
+
+
+def schooljaren_to_fetch(today: date, count: int = 5) -> list[str]:
+    """Return the schooljaren to refresh: current + (count-1) ahead.
+
+    Rijksoverheid publishes ~5 schooljaren ahead, so fetching the
+    current year plus the next four gives us the entire useful
+    horizon. Using more than 5 risks 404s on years rijksoverheid
+    hasn't published yet (which we'd handle as failures, but they'd
+    fill the events log with noise).
+    """
+    base = target_schooljaar(today)
+    base_start_year = int(base.split("-")[0])
+    return [f"{base_start_year + i}-{base_start_year + i + 1}" for i in range(count)]
 
 
 # -- URL / schooljaar helpers --------------------------------------------------
@@ -422,6 +531,34 @@ def fetch_and_parse(schooljaar: str, *, timeout: float = 30.0) -> VakantiesResul
     return result
 
 
+def fetch_and_parse_multi(
+    schooljaren: list[str],
+    *,
+    timeout: float = 30.0,
+) -> tuple[dict[str, VakantiesResult], list[tuple[str, str]]]:
+    """Fetch and parse a list of schooljaren independently.
+
+    Returns:
+      successes -- {schooljaar: VakantiesResult} for the years that
+                   fetched, parsed, and validated cleanly.
+      failures  -- [(schooljaar, error_message), ...] for the rest.
+
+    Independent failure handling on purpose: if rijksoverheid hasn't
+    published 2030-2031 yet, we still want the 4 years that DID work.
+    The caller (daemon / route) decides how to merge with prior data —
+    typically via combined_payload(..., previous=prior_data) so the
+    failed years keep their previously-good values.
+    """
+    successes: dict[str, VakantiesResult] = {}
+    failures: list[tuple[str, str]] = []
+    for sj in schooljaren:
+        try:
+            successes[sj] = fetch_and_parse(sj, timeout=timeout)
+        except Exception as e:
+            failures.append((sj, str(e)))
+    return successes, failures
+
+
 def write_atomically(path: str | os.PathLike, data: dict) -> None:
     """Write JSON to `path` via tmp-file + os.replace.
 
@@ -445,16 +582,20 @@ def _cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fetch and parse Dutch school vacation data from "
-            "rijksoverheid.nl. Useful for testing the parser before "
-            "letting the daemon auto-refresh on August 1."
+            "rijksoverheid.nl. By default fetches the current schooljaar "
+            "plus 4 ahead (the typical horizon rijksoverheid publishes). "
+            "Useful for testing the parser before letting the daemon "
+            "auto-refresh."
         ),
     )
     parser.add_argument(
         "schooljaar",
         nargs="?",
         help=(
-            "School year as 'YYYY-YYYY' (e.g. '2025-2026'). "
-            "If omitted, the current schooljaar based on today's date is used."
+            "Single school year as 'YYYY-YYYY' (e.g. '2025-2026'). "
+            "If omitted, fetches the default 5-year window starting "
+            "from today's current schooljaar. Useful when you only "
+            "want to test one year's parser output."
         ),
     )
     parser.add_argument(
@@ -466,23 +607,50 @@ def _cli(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Force stdout output even if --output is set. Useful for diffing.",
     )
+    parser.add_argument(
+        "--years",
+        type=int,
+        default=5,
+        help=(
+            "How many schooljaren to fetch (default 5). Ignored if "
+            "an explicit schooljaar argument is given."
+        ),
+    )
+    parser.add_argument(
+        "--merge-with",
+        help=(
+            "Path to an existing vakanties.json. Successful fetches "
+            "overwrite that year's entry; failed fetches keep the "
+            "previous data for that year (matches daemon behavior)."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    schooljaar = args.schooljaar or target_schooljaar(date.today())
+    if args.schooljaar:
+        targets = [args.schooljaar]
+    else:
+        targets = schooljaren_to_fetch(date.today(), count=args.years)
 
-    try:
-        result = fetch_and_parse(schooljaar)
-    except requests.HTTPError as e:
-        print(f"HTTP error fetching {schooljaar}: {e}", file=sys.stderr)
-        return 2
-    except requests.RequestException as e:
-        print(f"Network error fetching {schooljaar}: {e}", file=sys.stderr)
-        return 2
-    except ValueError as e:
-        print(f"Parse/validation error for {schooljaar}: {e}", file=sys.stderr)
-        return 3
+    successes, failures = fetch_and_parse_multi(targets)
 
-    payload = result.to_json_obj()
+    for sj, err in failures:
+        print(f"[FAIL] {sj}: {err}", file=sys.stderr)
+    for sj in successes:
+        print(f"[ OK ] {sj}", file=sys.stderr)
+
+    if not successes:
+        print(f"No school years fetched successfully", file=sys.stderr)
+        return 2
+
+    previous = None
+    if args.merge_with:
+        try:
+            with open(args.merge_with, "r", encoding="utf-8") as f:
+                previous = migrate_legacy_format(json.load(f))
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"[WARN] --merge-with: {e}", file=sys.stderr)
+
+    payload = combined_payload(successes, previous=previous)
 
     if args.output and not args.dry_run:
         write_atomically(args.output, payload)
@@ -491,7 +659,7 @@ def _cli(argv: list[str] | None = None) -> int:
         json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")
 
-    return 0
+    return 0 if not failures else 4
 
 
 if __name__ == "__main__":

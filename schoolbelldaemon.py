@@ -292,12 +292,19 @@ def _should_refresh_vakanties_today(today: date, state: dict) -> bool:
 
 def _maybe_refresh_vakanties() -> None:
     """If we're due for a vakanties refresh, fetch from rijksoverheid.nl
-    and overwrite vakanties.json.
+    and merge into vakanties.json.
 
     'Due' = 30+ days since last successful refresh, or never refreshed.
-    On any failure, leave the existing vakanties.json untouched and
-    record the error in the state file. Successes record the schooljaar
-    that was fetched, so the UI can later show 'last refresh: YYYY-MM-DD'.
+
+    Fetches the current schooljaar plus 4 ahead (5 years). Per-year
+    failures are independent: if one year 404s, the others still land.
+    Years that previously succeeded but fail this round keep their
+    last-good data via combined_payload(..., previous=...).
+
+    'Successful' for state-tracking purposes = at least one schooljaar
+    fetched and saved. A run where all 5 years fail counts as a
+    failure: state.last_error is set, last_success_at is unchanged,
+    so we'll retry next poll cycle (subject to throttling).
     """
     today = date.today()
     state = _load_vakanties_fetch_state()
@@ -305,45 +312,79 @@ def _maybe_refresh_vakanties() -> None:
         return
 
     # Lazy import keeps beautifulsoup4 out of the daemon's hot path
-    # for users who don't run the August 1 refresh (or whose Pi
-    # reboots more often than once a year).
+    # for users who don't run the refresh (or whose Pi was offline
+    # for more than the refresh interval).
     try:
         import vakanties_fetcher
     except ImportError as e:
         print(f"[WARN] vakanties_fetcher not importable: {e}")
         return
 
-    schooljaar = vakanties_fetcher.target_schooljaar(today)
-    print(f"[INFO] Vakanties refresh due: fetching {schooljaar} from rijksoverheid.nl")
+    targets = vakanties_fetcher.schooljaren_to_fetch(today)
+    print(
+        f"[INFO] Vakanties refresh due: fetching {len(targets)} schooljaren "
+        f"({', '.join(targets)}) from rijksoverheid.nl"
+    )
 
     now_iso = datetime.now(timezone.utc).isoformat()
     state["last_attempt_at"] = now_iso
-    state["last_attempt_schooljaar"] = schooljaar
+    state["last_attempt_schooljaren"] = list(targets)
 
-    try:
-        result = vakanties_fetcher.fetch_and_parse(schooljaar)
-        vakanties_fetcher.write_atomically(VAKANTIES_PATH, result.to_json_obj())
-    except Exception as e:
-        state["last_error"] = str(e)
+    # Read existing file (if any) for partial-failure preservation.
+    previous = None
+    if os.path.exists(VAKANTIES_PATH):
+        try:
+            with open(VAKANTIES_PATH, "r", encoding="utf-8") as f:
+                previous = vakanties_fetcher.migrate_legacy_format(json.load(f))
+        except Exception as e:
+            print(f"[WARN] Could not read existing {VAKANTIES_PATH}: {e}")
+            previous = None
+
+    successes, failures = vakanties_fetcher.fetch_and_parse_multi(targets)
+
+    if not successes:
+        # Total failure: don't touch the file. Record + emit an event
+        # so the UI status panel can show 'last attempt failed' even
+        # though we still have valid data on disk.
+        first_err = failures[0][1] if failures else "unknown"
+        state["last_error"] = first_err
+        state["last_failed_schooljaren"] = [s for s, _ in failures]
         _save_vakanties_fetch_state(state)
-        print(f"[WARN] Vakanties refresh failed: {e}")
+        print(f"[WARN] Vakanties refresh: all {len(targets)} years failed. First: {first_err}")
         log_bell_event({
             "status": "error",
-            "message": f"vakanties refresh failed: {e}",
-            "schooljaar": schooljaar,
+            "message": f"vakanties refresh failed for all {len(targets)} years: {first_err}",
         })
         return
 
+    payload = vakanties_fetcher.combined_payload(successes, previous=previous)
+    vakanties_fetcher.write_atomically(VAKANTIES_PATH, payload)
+
     state["last_success_at"] = now_iso
-    state["last_success_schooljaar"] = schooljaar
-    state["last_error"] = ""
+    state["last_success_schooljaren"] = sorted(successes.keys())
+    state["last_failed_schooljaren"] = [s for s, _ in failures]
+    state["last_error"] = "" if not failures else f"Partial: {len(failures)} of {len(targets)} failed"
     _save_vakanties_fetch_state(state)
-    print(f"[INFO] Vakanties refresh OK for {schooljaar}")
-    log_bell_event({
-        "status": "ok",
-        "message": "vakanties refresh OK",
-        "schooljaar": schooljaar,
-    })
+
+    if failures:
+        print(
+            f"[INFO] Vakanties refresh: {len(successes)}/{len(targets)} OK "
+            f"({', '.join(sorted(successes.keys()))}); "
+            f"failed: {', '.join(s for s, _ in failures)}"
+        )
+        log_bell_event({
+            "status": "warning",
+            "message": (
+                f"vakanties refresh partial: "
+                f"{len(successes)}/{len(targets)} years OK"
+            ),
+        })
+    else:
+        print(f"[INFO] Vakanties refresh OK for all {len(successes)} years")
+        log_bell_event({
+            "status": "ok",
+            "message": f"vakanties refresh OK ({len(successes)} years)",
+        })
 
 # === Poll loop (with dynamic interval + SIGHUP reload) ===
 def schedule_poller_loop():

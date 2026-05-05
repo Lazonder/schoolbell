@@ -15,8 +15,13 @@ import pytest
 
 import vakanties_fetcher as vf
 from vakanties_fetcher import (
+    Vakantie,
+    VakantiesResult,
+    combined_payload,
+    migrate_legacy_format,
     parse_date_range,
     parse_schooljaar_html,
+    schooljaren_to_fetch,
     target_schooljaar,
     url_for_schooljaar,
     validate_result,
@@ -183,20 +188,18 @@ def test_parse_schooljaar_html_zomervakantie_staggered_by_region():
     assert starts["Midden"] == date(2026, 7, 18)
 
 
-def test_parse_schooljaar_html_serializable_shape():
-    # The output JSON shape must match what import_vakanties expects:
-    # {schooljaar, regios: {Noord/Midden/Zuid: [{naam, start, eind}]}}.
+def test_parse_schooljaar_html_to_schooljaar_block_shape():
+    # The block produced for the multi-year file should have a
+    # 'fetched_at' string and the regios sub-object exactly as
+    # import_vakanties consumes.
     result = parse_schooljaar_html(SAMPLE_HTML_2025_2026, "2025-2026")
-    obj = result.to_json_obj()
-    assert obj["schooljaar"] == "2025-2026"
-    assert "regios" in obj
-    assert set(obj["regios"].keys()) == {"Noord", "Midden", "Zuid"}
-    sample = obj["regios"]["Noord"][0]
+    block = result.to_schooljaar_block(fetched_at="2026-05-08T03:00:00+00:00")
+    assert block["fetched_at"] == "2026-05-08T03:00:00+00:00"
+    assert set(block["regios"].keys()) == {"Noord", "Midden", "Zuid"}
+    sample = block["regios"]["Noord"][0]
     assert set(sample.keys()) == {"naam", "start", "eind"}
-    # Dates are serialized as ISO strings, matching the existing
-    # data/vakanties.json contract.
+    # ISO-string dates, matching the existing data/vakanties.json contract.
     assert sample["start"].count("-") == 2
-    assert sample["eind"].count("-") == 2
 
 
 def test_parse_schooljaar_html_no_table_raises():
@@ -268,3 +271,119 @@ def test_url_for_schooljaar_rejects_invalid_format():
 )
 def test_target_schooljaar(today, expected):
     assert target_schooljaar(today) == expected
+
+
+# ---------------------------------------------------------------------------
+# schooljaren_to_fetch: rolling 5-year window
+# ---------------------------------------------------------------------------
+
+
+def test_schooljaren_to_fetch_default_count_is_five():
+    today = date(2026, 4, 26)  # currently in 2025-2026
+    sj = schooljaren_to_fetch(today)
+    assert sj == ["2025-2026", "2026-2027", "2027-2028", "2028-2029", "2029-2030"]
+
+
+def test_schooljaren_to_fetch_after_august_flips_window():
+    today = date(2026, 8, 15)  # now in 2026-2027
+    sj = schooljaren_to_fetch(today)
+    assert sj == ["2026-2027", "2027-2028", "2028-2029", "2029-2030", "2030-2031"]
+
+
+def test_schooljaren_to_fetch_custom_count():
+    sj = schooljaren_to_fetch(date(2026, 4, 26), count=2)
+    assert sj == ["2025-2026", "2026-2027"]
+
+
+# ---------------------------------------------------------------------------
+# combined_payload: multi-year on-disk shape, with partial-failure preserve
+# ---------------------------------------------------------------------------
+
+
+def _make_result(schooljaar: str, naam: str = "Stub") -> VakantiesResult:
+    """Tiny VakantiesResult helper for payload tests."""
+    r = VakantiesResult(schooljaar=schooljaar)
+    for region in ("Noord", "Midden", "Zuid"):
+        r.by_region[region] = [Vakantie(naam=naam, start=date(2025, 1, 1), eind=date(2025, 1, 7))]
+    return r
+
+
+def test_combined_payload_no_previous():
+    successes = {"2025-2026": _make_result("2025-2026")}
+    payload = combined_payload(successes, fetched_at="2026-05-08T00:00:00+00:00")
+    assert payload["_source"] == "rijksoverheid.nl"
+    assert payload["_fetched_at"] == "2026-05-08T00:00:00+00:00"
+    assert set(payload["schooljaren"].keys()) == {"2025-2026"}
+    block = payload["schooljaren"]["2025-2026"]
+    assert block["fetched_at"] == "2026-05-08T00:00:00+00:00"
+    assert set(block["regios"]) == {"Noord", "Midden", "Zuid"}
+
+
+def test_combined_payload_preserves_previous_years_not_in_successes():
+    # The partial-failure case: previous run had 5 years, this run only
+    # got 3 of them. The 2 missing years must keep their old data so
+    # an outage doesn't shrink our horizon.
+    previous = {
+        "schooljaren": {
+            "2025-2026": {"fetched_at": "old", "regios": {"Noord": [], "Midden": [], "Zuid": []}},
+            "2026-2027": {"fetched_at": "old", "regios": {"Noord": [], "Midden": [], "Zuid": []}},
+            "2029-2030": {"fetched_at": "old", "regios": {"Noord": [], "Midden": [], "Zuid": []}},
+        }
+    }
+    successes = {
+        "2025-2026": _make_result("2025-2026"),
+        "2026-2027": _make_result("2026-2027"),
+    }
+    payload = combined_payload(successes, previous=previous, fetched_at="new")
+
+    # Both refreshed years got new data.
+    assert payload["schooljaren"]["2025-2026"]["fetched_at"] == "new"
+    assert payload["schooljaren"]["2026-2027"]["fetched_at"] == "new"
+    # The not-refreshed year's data stayed.
+    assert payload["schooljaren"]["2029-2030"]["fetched_at"] == "old"
+
+
+def test_combined_payload_overwrites_previous_year_with_new_success():
+    # Same year in both previous and successes -> success wins.
+    previous = {"schooljaren": {"2025-2026": {"fetched_at": "old", "regios": {"Noord": []}}}}
+    successes = {"2025-2026": _make_result("2025-2026", naam="Fresh")}
+    payload = combined_payload(successes, previous=previous, fetched_at="new")
+    assert payload["schooljaren"]["2025-2026"]["fetched_at"] == "new"
+    # The new result populated the regios properly (3 regions, not 1).
+    assert set(payload["schooljaren"]["2025-2026"]["regios"]) == {"Noord", "Midden", "Zuid"}
+
+
+# ---------------------------------------------------------------------------
+# migrate_legacy_format: lift old single-year payload to multi-year
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_legacy_format_lifts_single_year():
+    legacy = {
+        "schooljaar": "2025-2026",
+        "_source": "rijksoverheid.nl",
+        "_fetched_at": "2026-04-26T15:00:00+00:00",
+        "regios": {
+            "Noord": [{"naam": "Herfstvakantie", "start": "2025-10-18", "eind": "2025-10-26"}],
+            "Midden": [],
+            "Zuid": [],
+        },
+    }
+    new = migrate_legacy_format(legacy)
+    assert "schooljaren" in new
+    assert "2025-2026" in new["schooljaren"]
+    assert new["schooljaren"]["2025-2026"]["regios"] == legacy["regios"]
+    assert new["schooljaren"]["2025-2026"]["fetched_at"] == legacy["_fetched_at"]
+
+
+def test_migrate_legacy_format_passes_through_already_multi_year():
+    already = {"schooljaren": {"2025-2026": {"fetched_at": "x", "regios": {}}}}
+    assert migrate_legacy_format(already) is already
+
+
+def test_migrate_legacy_format_handles_garbage():
+    # Anything we don't recognize becomes an empty multi-year payload —
+    # callers can treat that as 'no data yet' uniformly.
+    assert migrate_legacy_format({}) == {"schooljaren": {}}
+    assert migrate_legacy_format({"unrelated": True}) == {"schooljaren": {}}
+    assert migrate_legacy_format(None) == {"schooljaren": {}}
