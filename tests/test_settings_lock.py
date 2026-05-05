@@ -72,6 +72,42 @@ def test_settings_load_handles_missing_vakantieregio_key():
     assert s.volume_percent == 80      # other fields preserved
 
 
+def test_default_vakanties_scrape_enabled_is_true():
+    # Default-on so a fresh NL install gets the scrape feature without
+    # extra setup. Schools outside the Netherlands toggle it off in
+    # Voorkeuren.
+    s = settings_store.Settings()
+    assert s.vakanties_scrape_enabled is True
+
+
+def test_vakanties_scrape_enabled_persists_across_save_load():
+    with settings_store.locked() as s:
+        s.vakanties_scrape_enabled = False
+
+    s2 = settings_store.Settings.load()
+    assert s2.vakanties_scrape_enabled is False
+
+
+def test_settings_load_handles_missing_vakanties_scrape_enabled_key():
+    # Same forward-compat story as vakantieregio: an older config.json
+    # without this field must still load.
+    import json
+    with open(settings_store.CONFIG_PATH, "w") as f:
+        json.dump({
+            "volume_percent": 80,
+            "max_file_size_mb": 20,
+            "poll_interval_sec": 5,
+            "theme_mode": "dark",
+            "vakantieregio": "Zuid",
+            "allowed_extensions": [".mp3"],
+            # no vakanties_scrape_enabled
+        }, f)
+
+    s = settings_store.Settings.load()
+    assert s.vakanties_scrape_enabled is True  # default
+    assert s.vakantieregio == "Zuid"           # other fields preserved
+
+
 def test_locked_does_not_save_on_exception():
     # First write a baseline.
     with settings_store.locked() as s:

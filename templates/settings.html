@@ -63,6 +63,23 @@
     </div>
 
     <div class="sb-field">
+      <label class="sb-label sb-checkbox-row">
+        <input type="checkbox"
+               name="vakanties_scrape_enabled"
+               id="vakanties_scrape_enabled">
+        <span>Schoolvakanties van rijksoverheid.nl ophalen</span>
+      </label>
+      <p class="sb-help">
+        Aan: de daemon haalt elke ~maand de officiële Nederlandse
+        schoolvakanties op (huidig schooljaar + 4 vooruit) en de
+        knoppen op de Agenda zijn beschikbaar.
+        Uit: data/vakanties.json wordt niet aangepast en de
+        Vakanties-kaart op de Agenda is verborgen — handig voor
+        installs buiten Nederland.
+      </p>
+    </div>
+
+    <div class="sb-field">
       <label class="sb-label" for="vakantieregio">Vakantieregio</label>
       <select name="vakantieregio" id="vakantieregio" class="sb-select">
         <option value="Noord">Noord</option>
@@ -85,6 +102,50 @@
   </form>
 </div>
 
+<div class="sb-card sb-card--section">
+  <h2 class="sb-card__title">Status vakantie-scrape</h2>
+  {% if vakanties_status.saved_schooljaren %}
+    <p class="sb-help">Opgeslagen schooljaren in
+      <code class="sb-code-mono">data/vakanties.json</code>:</p>
+    <ul class="sb-list">
+      {% for sj in vakanties_status.saved_schooljaren %}
+        <li>
+          <strong>{{ sj.schooljaar }}</strong>
+          {% if sj.fetched_at %}
+            <span class="sb-help">— opgehaald {{ sj.fetched_at[:10] }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="sb-help"><em>Nog geen vakantiegegevens opgeslagen.</em></p>
+  {% endif %}
+
+  <p class="sb-help" style="margin-top:12px;">
+    {% if vakanties_status.last_success_at %}
+      Laatste geslaagde fetch:
+      <strong>{{ vakanties_status.last_success_at[:19].replace('T',' ') }} UTC</strong>.
+    {% else %}
+      Nog geen geslaagde fetch geregistreerd.
+    {% endif %}
+    {% if vakanties_status.last_error %}
+      <br>
+      <span style="color: var(--sb-color-danger);">
+        Laatste fout: {{ vakanties_status.last_error }}
+      </span>
+      {% if vakanties_status.last_failed_schooljaren %}
+        (mislukt: {{ vakanties_status.last_failed_schooljaren|join(', ') }})
+      {% endif %}
+    {% endif %}
+    {% if vakanties_status.last_attempt_at and vakanties_status.last_attempt_at != vakanties_status.last_success_at %}
+      <br>
+      <span class="sb-help">
+        Laatste poging: {{ vakanties_status.last_attempt_at[:19].replace('T',' ') }} UTC.
+      </span>
+    {% endif %}
+  </p>
+</div>
+
 <script>
 // Keep the slider's numeric display in sync with its value while
 // the user drags. 'input' fires continuously during a drag, 'change'
@@ -104,7 +165,13 @@ async function loadSettings() {
   const data = await r.json();
   for (const [k, v] of Object.entries(data)) {
     const el = document.querySelector(`[name="${k}"]`);
-    if (el) {
+    if (!el) continue;
+    if (el.type === "checkbox") {
+      // Checkboxes use .checked, not .value. Without this branch a
+      // boolean from the API would end up as 'true'/'false' string in
+      // the .value attribute and the visible state would never update.
+      el.checked = !!v;
+    } else {
       el.value = v;
       // Setting .value programmatically does NOT fire 'input', so the
       // slider's display would stay at its placeholder ('—'). Dispatch
@@ -124,6 +191,13 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
     if (payload[k] !== undefined && payload[k] !== "") {
       payload[k] = Number(payload[k]);
     }
+  }
+
+  // Checkboxes: FormData skips unchecked boxes entirely, and renders
+  // checked ones as 'on'. Translate to a real boolean so the server
+  // sees an explicit true/false in both states.
+  for (const cb of form.querySelectorAll('input[type="checkbox"]')) {
+    payload[cb.name] = cb.checked;
   }
 
   // CSRF token from <meta name="csrf-token">

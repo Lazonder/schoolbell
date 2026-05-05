@@ -27,6 +27,16 @@ class Settings:
     # vacation dates per region; this picks which list to read.
     # Allowed values: "Noord" | "Midden" | "Zuid".
     vakantieregio: str = "Noord"
+    # Master switch for the vakantie-scrape feature. When False:
+    #   - the daemon skips its periodic rijksoverheid.nl refresh,
+    #   - the Agenda's Vakanties card and Voorkeuren's status panel
+    #     are hidden,
+    #   - data/vakanties.json is left alone.
+    # Useful for installs outside the Netherlands (where Dutch school
+    # vacations don't apply) or admins who maintain vakanties.json
+    # by hand. Default True so a fresh NL install gets the feature
+    # without any extra setup.
+    vakanties_scrape_enabled: bool = True
     # field(default_factory=...) is the proper way to specify a mutable
     # default for a dataclass field. Previously this was a tuple, which
     # didn't match the List[str] annotation.

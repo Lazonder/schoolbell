@@ -269,6 +269,22 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
             abort(400, f"vakantieregio must be one of: {', '.join(VAKANTIE_REGIOS)}")
         s.vakantieregio = vr
 
+    if "vakanties_scrape_enabled" in payload:
+        # Accept proper booleans plus the common JSON/HTML form
+        # representations ('true'/'false', '1'/'0', 'on'/'off',
+        # checkbox-style 'on'/missing). The settings page uses a
+        # checkbox which sends 'on' when checked and nothing when
+        # unchecked; the JSON POST in settings.html maps that to a
+        # real bool, but be defensive in case a future form posts
+        # raw form data.
+        v = payload["vakanties_scrape_enabled"]
+        if isinstance(v, bool):
+            s.vakanties_scrape_enabled = v
+        elif isinstance(v, str):
+            s.vakanties_scrape_enabled = v.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            s.vakanties_scrape_enabled = bool(v)
+
 # -- Settings API (no blueprint; simple app routes) --
 @app.route("/api/settings", methods=["GET"])
 @require_admin
@@ -659,7 +675,60 @@ def logs_page():
 @app.get("/settings")
 @ui_login_required
 def settings_page():
-    return render_template("settings.html", tab="settings", csrf_token=get_csrf_token())
+    return render_template(
+        "settings.html",
+        tab="settings",
+        csrf_token=get_csrf_token(),
+        vakanties_status=_build_vakanties_status(),
+    )
+
+
+def _build_vakanties_status() -> dict:
+    """Gather everything the Voorkeuren status panel needs to render.
+
+    Pulls together:
+      - which schooljaren are saved in data/vakanties.json
+      - when each was fetched
+      - last attempt / success / error from data/vakanties_fetch_state.json
+
+    Returns a plain dict that the template can iterate over directly.
+    Best-effort: any read error falls back to a sensible empty value
+    rather than raising, so a corrupt state file doesn't break the
+    settings page.
+    """
+    status = {
+        "saved_schooljaren": [],   # list of {schooljaar, fetched_at}
+        "last_attempt_at": "",
+        "last_success_at": "",
+        "last_error": "",
+        "last_failed_schooljaren": [],
+    }
+
+    data, _err = _load_vakanties_file()
+    if data and isinstance(data.get("schooljaren"), dict):
+        for sj_key in sorted(data["schooljaren"].keys()):
+            block = data["schooljaren"][sj_key]
+            status["saved_schooljaren"].append({
+                "schooljaar": sj_key,
+                "fetched_at": (block.get("fetched_at", "") if isinstance(block, dict) else ""),
+            })
+
+    # Daemon writes state at data/vakanties_fetch_state.json. Read it
+    # directly here rather than importing daemon code (which pulls in
+    # pygame and would slow down the settings render).
+    state_path = os.path.join(DATA_DIR, "vakanties_fetch_state.json")
+    try:
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        state = {}
+
+    status["last_attempt_at"] = state.get("last_attempt_at", "")
+    status["last_success_at"] = state.get("last_success_at", "")
+    status["last_error"] = state.get("last_error", "")
+    status["last_failed_schooljaren"] = state.get("last_failed_schooljaren", []) or []
+
+    return status
 
 @app.route("/audio/<path:filename>")
 @ui_login_required
@@ -1001,6 +1070,7 @@ def agenda():
             ]
         })
 
+    s = Settings.load()
     return render_template(
         "agenda.html",
         tab="agenda",
@@ -1008,7 +1078,8 @@ def agenda():
         weeks=weeks,
         opties=opties,
         vakanties_path_exists=os.path.exists(VAKANTIES_PATH),
-        vakantieregio=Settings.load().vakantieregio,
+        vakantieregio=s.vakantieregio,
+        vakanties_scrape_enabled=s.vakanties_scrape_enabled,
     )
 
 def _load_vakanties_file() -> tuple[Optional[dict], Optional[str]]:
@@ -1052,6 +1123,10 @@ def import_vakanties():
     only ADDS to the 'off' set; it never unmarks a week. Idempotent
     and safe to mix with manual 'Bel uit' checkboxes.
     """
+    # Master-switch enforcement (see refresh_vakanties for rationale).
+    if not Settings.load().vakanties_scrape_enabled:
+        flash("Vakantie-scraping is uitgeschakeld in Voorkeuren.")
+        return redirect(url_for("agenda"))
     ensure_dirs()
 
     data, err = _load_vakanties_file()
@@ -1173,6 +1248,12 @@ def refresh_vakanties():
     land. Years that previously succeeded but failed now keep their
     last-good data — see vakanties_fetcher.combined_payload.
     """
+    # Server-side honour of the master switch. The UI hides the
+    # button when scraping is disabled, but a stale page or a curl
+    # bypass shouldn't be able to trigger a refresh either.
+    if not Settings.load().vakanties_scrape_enabled:
+        flash("Vakantie-scraping is uitgeschakeld in Voorkeuren.")
+        return redirect(url_for("agenda"))
     # Lazy import: vakanties_fetcher pulls in beautifulsoup4 and makes
     # a network call. The agenda render path doesn't need either, so
     # keeping the import inside the handler keeps cold-start cheaper

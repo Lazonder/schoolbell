@@ -3,6 +3,7 @@
 
 {% block content %}
 
+{% if vakanties_scrape_enabled %}
 <div class="sb-card sb-card--section">
   <h2 class="sb-card__title">Vakanties</h2>
   <p class="sb-help">
@@ -36,10 +37,12 @@
     </form>
   </div>
   <p class="sb-help" style="margin-top:8px; font-size:0.85em;">
-    De daemon ververst dit automatisch elke 1 augustus. Met de knop
-    hierboven kun je tussentijds verversen of de eerste keer ophalen.
+    De daemon ververst dit automatisch ongeveer elke maand. Met de
+    knop hierboven kun je tussentijds verversen of de eerste keer
+    ophalen. Status zichtbaar in <a href="{{ url_for('settings_page') }}">Voorkeuren</a>.
   </p>
 </div>
+{% endif %}
 
 <div class="card sb-card sb-card--section">
   <form method="post" action="{{ url_for('agenda') }}">

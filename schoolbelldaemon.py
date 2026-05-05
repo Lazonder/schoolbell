@@ -306,6 +306,12 @@ def _maybe_refresh_vakanties() -> None:
     failure: state.last_error is set, last_success_at is unchanged,
     so we'll retry next poll cycle (subject to throttling).
     """
+    if not settings.vakanties_scrape_enabled:
+        # Master switch is off. Skip silently; the Voorkeuren status
+        # panel surfaces this state to the admin without us needing
+        # to flood the log on every poll.
+        return
+
     today = date.today()
     state = _load_vakanties_fetch_state()
     if not _should_refresh_vakanties_today(today, state):
