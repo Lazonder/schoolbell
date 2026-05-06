@@ -3,6 +3,7 @@ import os, json, re, secrets, fcntl
 from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
 from dataclasses import asdict
+from typing import Optional
 from flask import Flask, request, redirect, url_for, flash, send_from_directory, session, jsonify, abort, render_template
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
@@ -267,6 +268,22 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
         if vr not in VAKANTIE_REGIOS:
             abort(400, f"vakantieregio must be one of: {', '.join(VAKANTIE_REGIOS)}")
         s.vakantieregio = vr
+
+    if "vakanties_scrape_enabled" in payload:
+        # Accept proper booleans plus the common JSON/HTML form
+        # representations ('true'/'false', '1'/'0', 'on'/'off',
+        # checkbox-style 'on'/missing). The settings page uses a
+        # checkbox which sends 'on' when checked and nothing when
+        # unchecked; the JSON POST in settings.html maps that to a
+        # real bool, but be defensive in case a future form posts
+        # raw form data.
+        v = payload["vakanties_scrape_enabled"]
+        if isinstance(v, bool):
+            s.vakanties_scrape_enabled = v
+        elif isinstance(v, str):
+            s.vakanties_scrape_enabled = v.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            s.vakanties_scrape_enabled = bool(v)
 
 # -- Settings API (no blueprint; simple app routes) --
 @app.route("/api/settings", methods=["GET"])
@@ -658,7 +675,60 @@ def logs_page():
 @app.get("/settings")
 @ui_login_required
 def settings_page():
-    return render_template("settings.html", tab="settings", csrf_token=get_csrf_token())
+    return render_template(
+        "settings.html",
+        tab="settings",
+        csrf_token=get_csrf_token(),
+        vakanties_status=_build_vakanties_status(),
+    )
+
+
+def _build_vakanties_status() -> dict:
+    """Gather everything the Voorkeuren status panel needs to render.
+
+    Pulls together:
+      - which schooljaren are saved in data/vakanties.json
+      - when each was fetched
+      - last attempt / success / error from data/vakanties_fetch_state.json
+
+    Returns a plain dict that the template can iterate over directly.
+    Best-effort: any read error falls back to a sensible empty value
+    rather than raising, so a corrupt state file doesn't break the
+    settings page.
+    """
+    status = {
+        "saved_schooljaren": [],   # list of {schooljaar, fetched_at}
+        "last_attempt_at": "",
+        "last_success_at": "",
+        "last_error": "",
+        "last_failed_schooljaren": [],
+    }
+
+    data, _err = _load_vakanties_file()
+    if data and isinstance(data.get("schooljaren"), dict):
+        for sj_key in sorted(data["schooljaren"].keys()):
+            block = data["schooljaren"][sj_key]
+            status["saved_schooljaren"].append({
+                "schooljaar": sj_key,
+                "fetched_at": (block.get("fetched_at", "") if isinstance(block, dict) else ""),
+            })
+
+    # Daemon writes state at data/vakanties_fetch_state.json. Read it
+    # directly here rather than importing daemon code (which pulls in
+    # pygame and would slow down the settings render).
+    state_path = os.path.join(DATA_DIR, "vakanties_fetch_state.json")
+    try:
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        state = {}
+
+    status["last_attempt_at"] = state.get("last_attempt_at", "")
+    status["last_success_at"] = state.get("last_success_at", "")
+    status["last_error"] = state.get("last_error", "")
+    status["last_failed_schooljaren"] = state.get("last_failed_schooljaren", []) or []
+
+    return status
 
 @app.route("/audio/<path:filename>")
 @ui_login_required
@@ -1000,6 +1070,7 @@ def agenda():
             ]
         })
 
+    s = Settings.load()
     return render_template(
         "agenda.html",
         tab="agenda",
@@ -1007,86 +1078,126 @@ def agenda():
         weeks=weeks,
         opties=opties,
         vakanties_path_exists=os.path.exists(VAKANTIES_PATH),
-        vakantieregio=Settings.load().vakantieregio,
+        vakantieregio=s.vakantieregio,
+        vakanties_scrape_enabled=s.vakanties_scrape_enabled,
     )
+
+def _load_vakanties_file() -> tuple[Optional[dict], Optional[str]]:
+    """Read and migrate data/vakanties.json. Returns (data, error_msg).
+
+    On a missing file, returns (None, None) — the caller decides whether
+    that's an error in their context (import: yes; status display: no).
+    On parse failure, returns (None, error message). On success,
+    returns the migrated multi-year dict and None.
+    """
+    if not os.path.exists(VAKANTIES_PATH):
+        return None, None
+    try:
+        with open(VAKANTIES_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except json.JSONDecodeError as e:
+        return None, f"vakantiebestand is geen geldige JSON: {e}"
+    except Exception as e:
+        return None, f"vakantiebestand kon niet worden gelezen: {e}"
+
+    # Lazy import to keep webinterface free of beautifulsoup4 unless
+    # somebody actually touches the vakanties path.
+    import vakanties_fetcher
+    return vakanties_fetcher.migrate_legacy_format(raw), None
+
 
 @app.route("/agenda/import-vakanties", methods=["POST"])
 @ui_login_required
 def import_vakanties():
-    """Import school holidays from data/vakanties.json into weken_uit.
+    """Import all stored school holidays from data/vakanties.json into
+    weken_uit.
 
-    The vakanties file is admin-maintained: see vakanties.example.json
-    for the format. The file lists vacation periods per region — this
-    handler reads only the region currently configured in Voorkeuren
-    (Settings.vakantieregio). Each {start, eind} period is expanded to
-    its overlapping ISO weeks, and those weeks get state[wk] = True in
-    weken_uit.json.
+    The vakanties file is maintained by the daemon (or the manual
+    refresh button) and contains 1..5 schooljaren of vacation data,
+    each with three regions. This handler iterates ALL stored
+    schooljaren, picks the region currently configured in Voorkeuren
+    (Settings.vakantieregio), expands every {start, eind} period to
+    the overlapping ISO weeks, and marks them as 'off'.
 
     Merge semantics: existing weken_uit entries are kept. The button
-    only ADDS to the 'off' set; it never unmarks a week. So an admin
-    can hit 'Import' multiple times safely, and any manual 'Bel uit'
-    checkboxes the user has set elsewhere stay set.
+    only ADDS to the 'off' set; it never unmarks a week. Idempotent
+    and safe to mix with manual 'Bel uit' checkboxes.
     """
+    # Master-switch enforcement (see refresh_vakanties for rationale).
+    if not Settings.load().vakanties_scrape_enabled:
+        flash("Vakantie-scraping is uitgeschakeld in Voorkeuren.")
+        return redirect(url_for("agenda"))
     ensure_dirs()
-    if not os.path.exists(VAKANTIES_PATH):
+
+    data, err = _load_vakanties_file()
+    if err is not None:
+        flash(f"Importeren mislukt: {err}")
+        return redirect(url_for("agenda"))
+    if data is None:
         flash(
             f"Geen vakantiebestand gevonden ({VAKANTIES_PATH}). "
-            f"Kopieer vakanties.example.json en pas de datums aan."
+            f"Klik 'Verversen van rijksoverheid.nl' om het op te halen."
         )
         return redirect(url_for("agenda"))
 
-    try:
-        with open(VAKANTIES_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        flash(f"Vakantiebestand is geen geldige JSON: {e}")
-        return redirect(url_for("agenda"))
-    except Exception as e:
-        flash(f"Vakantiebestand kon niet worden gelezen: {e}")
-        return redirect(url_for("agenda"))
-
-    regios = data.get("regios", {})
-    if not isinstance(regios, dict):
-        flash("Vakantiebestand: 'regios' moet een object zijn met regio-namen als sleutel.")
+    schooljaren = data.get("schooljaren", {})
+    if not isinstance(schooljaren, dict) or not schooljaren:
+        flash(
+            "Vakantiebestand bevat geen 'schooljaren'. Klik "
+            "'Verversen van rijksoverheid.nl' om opnieuw op te halen."
+        )
         return redirect(url_for("agenda"))
 
     settings = Settings.load()
     regio = settings.vakantieregio
-    if regio not in regios:
-        beschikbaar = ", ".join(sorted(regios.keys())) or "(geen)"
-        flash(
-            f"Regio '{regio}' (Voorkeuren) staat niet in het vakantiebestand. "
-            f"Beschikbare regio's: {beschikbaar}."
-        )
-        return redirect(url_for("agenda"))
-
-    vakanties_lijst = regios[regio]
-    if not isinstance(vakanties_lijst, list):
-        flash(f"Vakantiebestand: 'regios.{regio}' moet een lijst zijn.")
-        return redirect(url_for("agenda"))
 
     new_weeks: set[str] = set()
     skipped: list[str] = []
-    for v in vakanties_lijst:
-        if not isinstance(v, dict):
-            skipped.append("ongeldige entry (geen object)")
+    schooljaren_processed: list[str] = []
+    schooljaren_zonder_regio: list[str] = []
+
+    for sj_key, sj_block in sorted(schooljaren.items()):
+        if not isinstance(sj_block, dict):
+            skipped.append(f"{sj_key}: schooljaar-blok is geen object")
             continue
-        try:
-            start = date.fromisoformat(v["start"])
-            eind = date.fromisoformat(v["eind"])
-        except (KeyError, TypeError, ValueError) as e:
-            skipped.append(f"{v.get('naam', '?')}: {e}")
+        regios_block = sj_block.get("regios", {})
+        if not isinstance(regios_block, dict) or regio not in regios_block:
+            schooljaren_zonder_regio.append(sj_key)
             continue
-        if eind < start:
-            skipped.append(f"{v.get('naam', '?')}: eind < start")
+        vakanties_lijst = regios_block[regio]
+        if not isinstance(vakanties_lijst, list):
+            skipped.append(f"{sj_key}/{regio}: regios-entry is geen lijst")
             continue
-        new_weeks |= iso_weeks_in_range(start, eind)
+
+        schooljaren_processed.append(sj_key)
+        for v in vakanties_lijst:
+            if not isinstance(v, dict):
+                skipped.append(f"{sj_key}: ongeldige entry (geen object)")
+                continue
+            try:
+                start = date.fromisoformat(v["start"])
+                eind = date.fromisoformat(v["eind"])
+            except (KeyError, TypeError, ValueError) as e:
+                skipped.append(f"{sj_key}/{v.get('naam', '?')}: {e}")
+                continue
+            if eind < start:
+                skipped.append(f"{sj_key}/{v.get('naam', '?')}: eind < start")
+                continue
+            new_weeks |= iso_weeks_in_range(start, eind)
 
     if not new_weeks:
-        flash(
-            f"Geen weken om te markeren voor regio {regio}. "
-            f"Controleer je vakantiebestand ({len(skipped)} ongeldige entries)."
-        )
+        # Be specific about why we found nothing: missing region in all
+        # years vs garbage entries vs empty file.
+        if schooljaren_zonder_regio and not schooljaren_processed:
+            flash(
+                f"Geen schooljaren in het bestand bevatten regio '{regio}'. "
+                f"Aanwezige schooljaren: {', '.join(sorted(schooljaren.keys()))}."
+            )
+        else:
+            flash(
+                f"Geen weken om te markeren voor regio {regio}. "
+                f"Controleer het vakantiebestand ({len(skipped)} ongeldige entries)."
+            )
         return redirect(url_for("agenda"))
 
     # Merge into existing weken_uit under the file lock so a concurrent
@@ -1098,18 +1209,108 @@ def import_vakanties():
 
     log_event("ui", {
         "action": "import_vakanties",
-        "schooljaar": data.get("schooljaar", ""),
         "regio": regio,
+        "schooljaren": schooljaren_processed,
         "weken_count": len(new_weeks),
-        "vakanties_count": len(vakanties_lijst) - len(skipped),
         "skipped_count": len(skipped),
     })
 
-    msg = f"{len(new_weeks)} week(weken) gemarkeerd als 'Bel uit' (regio {regio})."
+    msg = (
+        f"{len(new_weeks)} week(weken) gemarkeerd als 'Bel uit' (regio {regio}, "
+        f"uit {len(schooljaren_processed)} schooljaar/jaren: "
+        f"{', '.join(schooljaren_processed)})."
+    )
     if skipped:
         voorb = "; ".join(skipped[:3])
         meer = "" if len(skipped) <= 3 else f" en {len(skipped) - 3} meer"
         msg += f" Overgeslagen: {voorb}{meer}."
+    flash(msg)
+    return redirect(url_for("agenda"))
+
+@app.route("/agenda/refresh-vakanties", methods=["POST"])
+@ui_login_required
+def refresh_vakanties():
+    """Fetch the latest vakanties from rijksoverheid.nl and overwrite
+    data/vakanties.json.
+
+    Manual trigger for the same logic the daemon will run on August 1.
+    Useful (a) to seed the file the first time, (b) to verify the
+    scraper still works against the live page when something seems
+    off, (c) to pick up corrections rijksoverheid publishes mid-year.
+
+    The fetcher itself does the parse+validate; if either step fails,
+    we leave the existing vakanties.json untouched. The user gets a
+    clear flash and the events log records what went wrong.
+
+    The fetcher pulls the current schooljaar plus 4 ahead (~5 years).
+    Failures per-year are independent: if one year is unavailable
+    (e.g. rijksoverheid hasn't published it yet), the others still
+    land. Years that previously succeeded but failed now keep their
+    last-good data — see vakanties_fetcher.combined_payload.
+    """
+    # Server-side honour of the master switch. The UI hides the
+    # button when scraping is disabled, but a stale page or a curl
+    # bypass shouldn't be able to trigger a refresh either.
+    if not Settings.load().vakanties_scrape_enabled:
+        flash("Vakantie-scraping is uitgeschakeld in Voorkeuren.")
+        return redirect(url_for("agenda"))
+    # Lazy import: vakanties_fetcher pulls in beautifulsoup4 and makes
+    # a network call. The agenda render path doesn't need either, so
+    # keeping the import inside the handler keeps cold-start cheaper
+    # for the 99% of requests that don't refresh.
+    import vakanties_fetcher
+
+    today = date.today()
+    targets = vakanties_fetcher.schooljaren_to_fetch(today)
+
+    # Read the existing file (if any) so we can preserve last-good
+    # data for any year that fails this round.
+    previous, prev_err = _load_vakanties_file()
+    if prev_err:
+        # Treat parse-error of existing file as 'no prior data' rather
+        # than aborting — the refresh's whole point is to write a
+        # clean file. But surface it so the admin knows the old file
+        # was bad.
+        flash(f"Bestaand vakantiebestand kon niet gelezen worden ({prev_err}); wordt overschreven.")
+        previous = None
+
+    successes, failures = vakanties_fetcher.fetch_and_parse_multi(targets)
+
+    if not successes:
+        # Total failure: don't touch the existing file. Tell the admin
+        # what happened so they can debug (network? parser? page?).
+        first_err = failures[0][1] if failures else "unknown"
+        log_event("ui", {
+            "action": "refresh_vakanties_error",
+            "targets": targets,
+            "failures": [{"schooljaar": s, "error": e} for s, e in failures],
+        })
+        flash(
+            f"Verversen mislukt voor alle {len(targets)} schooljaren. "
+            f"Eerste fout: {first_err}"
+        )
+        return redirect(url_for("agenda"))
+
+    payload = vakanties_fetcher.combined_payload(successes, previous=previous)
+    vakanties_fetcher.write_atomically(VAKANTIES_PATH, payload)
+
+    log_event("ui", {
+        "action": "refresh_vakanties_ok",
+        "schooljaren_ok": list(successes.keys()),
+        "schooljaren_failed": [{"schooljaar": s, "error": e} for s, e in failures],
+    })
+
+    msg = (
+        f"{len(successes)} schooljaar/jaren opgehaald van rijksoverheid.nl: "
+        f"{', '.join(sorted(successes.keys()))}. "
+        f"Klik 'Vakanties importeren' om ze toe te passen."
+    )
+    if failures:
+        # Mention failures but don't bury the success.
+        msg += (
+            f" {len(failures)} mislukt: "
+            f"{', '.join(s for s, _ in failures)}."
+        )
     flash(msg)
     return redirect(url_for("agenda"))
 

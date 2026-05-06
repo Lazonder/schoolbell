@@ -1,31 +1,36 @@
 {
-  "_comment_1": "Voorbeeld-template voor de 'Vakanties importeren'-knop op de Agenda-pagina.",
-  "_comment_2": "Kopieer dit bestand naar data/vakanties.json. De school kiest in Voorkeuren welke regio (Noord/Midden/Zuid) actief is.",
+  "_comment_1": "Voorbeeld van het multi-year vakantiebestand zoals de scraper het bouwt.",
+  "_comment_2": "Je hoeft dit zelden handmatig te bewerken: de daemon ververst data/vakanties.json maandelijks vanaf rijksoverheid.nl. Gebruik de knop 'Verversen van rijksoverheid.nl' op de Agenda om handmatig op te halen.",
   "_comment_3": "Bron: https://www.rijksoverheid.nl/onderwerpen/schoolvakanties/overzicht-schoolvakanties-per-schooljaar",
-  "_comment_4": "VERIFIEER deze datums: dit voorbeeld is voor schooljaar 2025-2026 en moet jaarlijks bijgewerkt worden.",
 
-  "schooljaar": "2025-2026",
-  "regios": {
-    "Noord": [
-      {"naam": "Herfstvakantie",     "start": "2025-10-11", "eind": "2025-10-19"},
-      {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
-      {"naam": "Voorjaarsvakantie",  "start": "2026-02-21", "eind": "2026-03-01"},
-      {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
-      {"naam": "Zomervakantie",      "start": "2026-07-04", "eind": "2026-08-16"}
-    ],
-    "Midden": [
-      {"naam": "Herfstvakantie",     "start": "2025-10-18", "eind": "2025-10-26"},
-      {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
-      {"naam": "Voorjaarsvakantie",  "start": "2026-02-14", "eind": "2026-02-22"},
-      {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
-      {"naam": "Zomervakantie",      "start": "2026-07-11", "eind": "2026-08-23"}
-    ],
-    "Zuid": [
-      {"naam": "Herfstvakantie",     "start": "2025-10-25", "eind": "2025-11-02"},
-      {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
-      {"naam": "Voorjaarsvakantie",  "start": "2026-02-14", "eind": "2026-02-22"},
-      {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
-      {"naam": "Zomervakantie",      "start": "2026-07-18", "eind": "2026-08-30"}
-    ]
+  "_source": "rijksoverheid.nl",
+  "_fetched_at": "2026-05-08T03:00:00+00:00",
+  "schooljaren": {
+    "2025-2026": {
+      "fetched_at": "2026-05-08T03:00:00+00:00",
+      "regios": {
+        "Noord": [
+          {"naam": "Herfstvakantie",     "start": "2025-10-18", "eind": "2025-10-26"},
+          {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
+          {"naam": "Voorjaarsvakantie",  "start": "2026-02-21", "eind": "2026-03-01"},
+          {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
+          {"naam": "Zomervakantie",      "start": "2026-07-04", "eind": "2026-08-16"}
+        ],
+        "Midden": [
+          {"naam": "Herfstvakantie",     "start": "2025-10-18", "eind": "2025-10-26"},
+          {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
+          {"naam": "Voorjaarsvakantie",  "start": "2026-02-14", "eind": "2026-02-22"},
+          {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
+          {"naam": "Zomervakantie",      "start": "2026-07-11", "eind": "2026-08-23"}
+        ],
+        "Zuid": [
+          {"naam": "Herfstvakantie",     "start": "2025-10-11", "eind": "2025-10-19"},
+          {"naam": "Kerstvakantie",      "start": "2025-12-20", "eind": "2026-01-04"},
+          {"naam": "Voorjaarsvakantie",  "start": "2026-02-14", "eind": "2026-02-22"},
+          {"naam": "Meivakantie",        "start": "2026-04-25", "eind": "2026-05-03"},
+          {"naam": "Zomervakantie",      "start": "2026-07-18", "eind": "2026-08-30"}
+        ]
+      }
+    }
   }
 }
