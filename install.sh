@@ -219,6 +219,15 @@ server {
 
     # Later: add HTTPS (self-signed or Let's Encrypt) and 80->443 redirect.
 
+    # Upload size limit. Nginx default is 1 MB, which would block any
+    # bell-sized MP3 with a bare '413 Request Entity Too Large' page
+    # before Flask even sees the request — meaning the per-install
+    # Settings.max_file_size_mb cap and the friendly upload-rejected
+    # flash never get a chance to run. Match webinterface.py's
+    # MAX_CONTENT_LENGTH (100 MiB) so nginx is the outer hard cap and
+    # Flask handles everything below it with a clear error.
+    client_max_body_size 100M;
+
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
