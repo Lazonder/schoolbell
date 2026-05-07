@@ -32,7 +32,7 @@ from webinterface import (
     effective_rooster_for_date,
     effectieve_rooster_naam_for_date,
     iso_week_key,
-    iso_weeks_in_range,
+    iso_weeks_with_weekday_in_range,
     normalize_and_sort_moments,
     normalize_time,
     prune_past_dates,
@@ -310,60 +310,85 @@ def test_iso_week_key_rond_jaarwissel():
 
 
 # ---------------------------------------------------------------------------
-# iso_weeks_in_range: expand a date range to the ISO weeks it covers
+# iso_weeks_with_weekday_in_range: expand a date range to the ISO weeks
+# that contain at least one school day (Mon-Fri) within the range.
 # Used by the school-holiday import to know which weeks to mark 'off'.
 # ---------------------------------------------------------------------------
 
 
-def test_iso_weeks_in_range_single_full_week():
+def test_iso_weeks_with_weekday_single_full_week():
     # Mon 2026-04-20 .. Sun 2026-04-26 is exactly ISO week 17 of 2026.
-    weeks = iso_weeks_in_range(date(2026, 4, 20), date(2026, 4, 26))
+    # All five weekdays (Mon-Fri) are in range -> week 17.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 4, 20), date(2026, 4, 26))
     assert weeks == {"2026-W17"}
 
 
-def test_iso_weeks_in_range_spans_week_boundary():
-    # Sat 2026-04-25 .. Mon 2026-04-27 spans the Sun/Mon boundary,
-    # so weeks 17 and 18 are both covered. This is the typical
-    # vacation case (e.g. meivakantie crossing weekends).
-    weeks = iso_weeks_in_range(date(2026, 4, 25), date(2026, 4, 27))
+def test_iso_weeks_with_weekday_skips_weekend_overshoot():
+    # The bug we are fixing: a vacation that starts on a Saturday and
+    # ends on a Sunday a week later (Sat 2026-10-10 .. Sun 2026-10-18)
+    # only impacts ONE school week, not two.
+    # Old behavior counted week 41 too (because Sat Oct 10 lives there)
+    # — but the school days of week 41 (Mon-Fri Oct 5-9) are NOT in the
+    # vacation. The school days that ARE in the vacation (Mon-Fri Oct
+    # 12-16) all sit in week 42. So week 42 is the only result.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 10, 10), date(2026, 10, 18))
+    assert weeks == {"2026-W42"}
+
+
+def test_iso_weeks_with_weekday_weekend_only_range_is_empty():
+    # If the vacation falls entirely on a weekend (a single Saturday,
+    # or Sat-Sun together), no school days are affected and no weeks
+    # need to be marked.
+    assert iso_weeks_with_weekday_in_range(date(2026, 10, 10), date(2026, 10, 11)) == set()
+    assert iso_weeks_with_weekday_in_range(date(2026, 10, 10), date(2026, 10, 10)) == set()
+
+
+def test_iso_weeks_with_weekday_two_full_weeks():
+    # Mon..Sun, then Mon..Sun: a clean two-week vacation. Both weeks
+    # contain weekdays in the vacation -> {17, 18}.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 4, 20), date(2026, 5, 3))
     assert weeks == {"2026-W17", "2026-W18"}
 
 
-def test_iso_weeks_in_range_two_full_weeks():
-    # Mon..Sun, then Mon..Sun: a clean two-week vacation.
-    weeks = iso_weeks_in_range(date(2026, 4, 20), date(2026, 5, 3))
-    assert weeks == {"2026-W17", "2026-W18"}
-
-
-def test_iso_weeks_in_range_single_day():
-    weeks = iso_weeks_in_range(date(2026, 4, 22), date(2026, 4, 22))
+def test_iso_weeks_with_weekday_single_weekday():
+    # Wed 2026-04-22 is a single weekday -> its week.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 4, 22), date(2026, 4, 22))
     assert weeks == {"2026-W17"}
 
 
-def test_iso_weeks_in_range_end_before_start_returns_empty():
+def test_iso_weeks_with_weekday_end_before_start_returns_empty():
     # Defensive: if the user mistakenly enters eind < start, we
     # return nothing rather than wrap around or silently swap.
-    assert iso_weeks_in_range(date(2026, 4, 26), date(2026, 4, 20)) == set()
+    assert iso_weeks_with_weekday_in_range(date(2026, 4, 26), date(2026, 4, 20)) == set()
 
 
-def test_iso_weeks_in_range_crosses_iso_year_boundary():
+def test_iso_weeks_with_weekday_crosses_iso_year_boundary():
     # 2025-12-29 is already ISO week 1 of 2026 (>=4 days in new year).
-    # A vacation Dec 22 .. Jan 4 crosses the year and needs two
-    # different ISO years in the result.
-    weeks = iso_weeks_in_range(date(2025, 12, 22), date(2026, 1, 4))
+    # A vacation Mon Dec 22 .. Sun Jan 4 covers weekdays in both
+    # ISO years and needs two different ISO years in the result.
+    weeks = iso_weeks_with_weekday_in_range(date(2025, 12, 22), date(2026, 1, 4))
     assert weeks == {"2025-W52", "2026-W01"}
 
 
-def test_iso_weeks_in_range_long_vacation():
-    # ~6 weeks of summer vacation should yield 6 (or 7, depending on
-    # weekday) ISO weeks. Use the Noord example from
-    # vakanties.example.json.
-    weeks = iso_weeks_in_range(date(2026, 7, 4), date(2026, 8, 16))
-    # 2026-07-04 (Sat) is in week 27, 2026-08-16 (Sun) is in week 33.
-    # Inclusive: 27, 28, 29, 30, 31, 32, 33 -> 7 weeks.
-    assert len(weeks) == 7
-    assert "2026-W27" in weeks
+def test_iso_weeks_with_weekday_long_vacation_skips_first_week_when_starts_on_saturday():
+    # Realistic: Sat 2026-07-04 .. Sun 2026-08-16 (zomer Noord).
+    # Sat Jul 4 is in week 27, but no weekdays of week 27 are in the
+    # vacation (week 27 ends Sun Jul 5). The first weekday in vacation
+    # is Mon Jul 6 -> week 28. The last weekday is Fri Aug 14 -> week 33.
+    # Inclusive: weeks 28, 29, 30, 31, 32, 33 -> 6 weeks total.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 7, 4), date(2026, 8, 16))
+    assert "2026-W27" not in weeks  # the bug we fixed
+    assert "2026-W28" in weeks
     assert "2026-W33" in weeks
+    assert len(weeks) == 6
+
+
+def test_iso_weeks_with_weekday_friday_to_monday_covers_two_weeks():
+    # Fri 2026-04-24 to Mon 2026-04-27: weekdays in two different ISO
+    # weeks (Fri in 17, Mon in 18). Saturday/Sunday between them are
+    # ignored, but each weekday end pulls in its own week.
+    weeks = iso_weeks_with_weekday_in_range(date(2026, 4, 24), date(2026, 4, 27))
+    assert weeks == {"2026-W17", "2026-W18"}
 
 
 # ---------------------------------------------------------------------------
