@@ -502,24 +502,39 @@ def iso_week_key(d: date) -> str:
     y, w, _ = d.isocalendar()
     return f"{y}-W{w:02d}"
 
-def iso_weeks_in_range(start: date, end: date) -> set[str]:
-    """All ISO week keys (YYYY-Www) that contain any day in start..end.
+def iso_weeks_with_weekday_in_range(start: date, end: date) -> set[str]:
+    """All ISO week keys (YYYY-Www) that contain at least one weekday
+    (Mon-Fri) inside the inclusive range start..end.
 
-    Inclusive on both ends. Returns an empty set if end < start.
+    Returns an empty set if end < start. Weekend-only ranges return
+    an empty set.
+
+    Why weekday-only and not 'any day in range': vacations like
+    'Sat 2026-10-10 t/m Sun 2026-10-18' overlap two ISO weeks (41
+    and 42), but the school days within the vacation only fall in
+    week 42 (Mon-Fri Oct 12-16). Marking week 41 as 'Bel uit' would
+    silence Mon-Fri Oct 5-9, which are normal school days outside
+    the vacation. So we only count weeks that contain a school
+    day belonging to the vacation.
+
+    Assumes the bell rings Mon-Fri. Schools that configure a
+    Saturday rooster would get a slight under-mark — out of scope
+    for now; a per-rooster weekday set is much more code than
+    this saves.
+
     Iterates day-by-day rather than week-by-week so partial-week
-    edge cases (vacation Mon-Wed, vacation Sat-Sun across a week
-    boundary, ISO years where week 1 of YYYY contains Dec 31 of
-    YYYY-1, etc.) all fall out correctly without special-casing.
-
-    A vacation period of 1-2 weeks results in at most ~14 days of
-    iteration — cheap.
+    edge cases (vacation Mon-Wed, vacation crossing the ISO year
+    boundary where Dec 31 is in week 1 of the next year, etc.)
+    all fall out correctly without special-casing. A 1-2 week
+    vacation = at most ~14 iterations — cheap.
     """
     weeks: set[str] = set()
     if end < start:
         return weeks
     d = start
     while d <= end:
-        weeks.add(iso_week_key(d))
+        if d.weekday() < 5:  # 0=Monday, 4=Friday; 5=Sat, 6=Sun
+            weeks.add(iso_week_key(d))
         d += timedelta(days=1)
     return weeks
 
@@ -1183,7 +1198,7 @@ def import_vakanties():
             if eind < start:
                 skipped.append(f"{sj_key}/{v.get('naam', '?')}: eind < start")
                 continue
-            new_weeks |= iso_weeks_in_range(start, eind)
+            new_weeks |= iso_weeks_with_weekday_in_range(start, eind)
 
     if not new_weeks:
         # Be specific about why we found nothing: missing region in all
