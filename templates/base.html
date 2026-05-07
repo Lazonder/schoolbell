@@ -62,6 +62,24 @@
         <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings_page') }}">Voorkeuren</a>
       </nav>
 
+      <!-- Daemon heartbeat indicator -->
+      {% if daemon_heartbeat %}
+        {% set _hb_class = 'ok' if daemon_heartbeat.alive else 'down' %}
+        {% set _hb_age = daemon_heartbeat.age_seconds %}
+        {% if daemon_heartbeat.alive %}
+          {% set _hb_label = 'Daemon actief' %}
+        {% elif _hb_age is none %}
+          {% set _hb_label = 'Daemon: geen heartbeat' %}
+        {% else %}
+          {% set _hb_label = 'Daemon: ' ~ _hb_age ~ 's stil' %}
+        {% endif %}
+        <span class="sb-daemon-status sb-daemon-status--{{ _hb_class }}"
+              title="{{ _hb_label }}{% if daemon_heartbeat.last_poll_at %} (laatste poll: {{ daemon_heartbeat.last_poll_at[:19].replace('T',' ') }} UTC){% endif %}">
+          <span class="sb-daemon-dot" aria-hidden="true"></span>
+          <span class="sb-daemon-label">Daemon</span>
+        </span>
+      {% endif %}
+
       <!-- Logout -->
       <form method="post" action="{{ url_for('logout') }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">

@@ -18,6 +18,12 @@ VAKANTIES_PATH = os.path.join(DATA_DIR, "vakanties.json")
 # so we (a) don't refresh more than once per calendar year, and (b)
 # can still see in the UI/log when the last successful refresh was.
 VAKANTIES_FETCH_STATE_PATH = os.path.join(DATA_DIR, "vakanties_fetch_state.json")
+# Tiny "I'm alive" file the daemon updates every poll iteration. The
+# webinterface reads it to show a green/red dot in the header so the
+# admin can see at a glance whether the daemon is still running. The
+# file is intentionally lightweight (one ISO timestamp) so the write
+# cost is negligible even when poll_interval_sec is set low.
+DAEMON_HEARTBEAT_PATH = os.path.join(DATA_DIR, "daemon_heartbeat.json")
 
 # === Settings (can be reloaded) ===
 settings = Settings.load()
@@ -90,6 +96,26 @@ def _on_sigterm(signum, frame):
 
 signal.signal(signal.SIGTERM, _on_sigterm)
 signal.signal(signal.SIGINT, _on_sigterm)
+
+# --- Heartbeat ----------------------------------------------------------------
+def _write_heartbeat() -> None:
+    """Write the current UTC timestamp to the heartbeat file.
+
+    Called once per poller iteration. Intentionally simple (no
+    tmp-file dance) — the reader tolerates missing/corrupt files
+    by treating them as 'no recent heartbeat', and a partially
+    written file gets overwritten on the next iteration.
+    """
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        payload = {
+            "last_poll_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(DAEMON_HEARTBEAT_PATH, "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+    except Exception as e:
+        # Non-fatal: a heartbeat write failure shouldn't kill the bell loop.
+        print(f"[WARN] heartbeat write failed: {e}")
 
 # --- Logging of bell events (UI reads this in Logs) ---
 def log_bell_event(data: dict):
@@ -399,6 +425,12 @@ def schedule_poller_loop():
 
     while not stop_event.is_set():
         now = datetime.now()
+
+        # 0) Heartbeat: signal to the webinterface (and any external
+        # monitor) that we're alive. Done at the top of every iteration
+        # so the timestamp reflects the start of the work, not the end
+        # — gives the reader a tighter 'how stale is this?' read.
+        _write_heartbeat()
 
         # 1) Reload settings if SIGHUP received
         if _reload_settings:
