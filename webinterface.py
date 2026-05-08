@@ -53,6 +53,10 @@ EVENTS_LOG_PATH = os.path.join(DATA_DIR, "events.jsonl")  # shared log (UI + dae
 # vakanties.example.json in the repo root. Missing file is fine — the
 # button just flashes a hint when it doesn't exist.
 VAKANTIES_PATH = os.path.join(DATA_DIR, "vakanties.json")
+# Daemon heartbeat: a tiny file the daemon rewrites on every poll
+# iteration. The header reads it to render a green/red dot. See
+# schoolbelldaemon._write_heartbeat for the writer side.
+DAEMON_HEARTBEAT_PATH = os.path.join(DATA_DIR, "daemon_heartbeat.json")
 
 # === Flask ===
 app = Flask(__name__)
@@ -91,6 +95,56 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
+def get_daemon_heartbeat() -> dict:
+    """Read the daemon's heartbeat file and decide if it's still alive.
+
+    Returns a dict the templates and /healthz can use directly:
+        alive:          bool — heartbeat file exists and is fresh
+        last_poll_at:   ISO string from the file, or "" if missing
+        age_seconds:    int seconds since the heartbeat (None on error)
+        threshold_seconds: int — the freshness window we used
+
+    The freshness threshold scales with poll_interval_sec so we don't
+    cry wolf on installs with an unusually long polling interval. We
+    also enforce a 10-second minimum because at the default 2s poll
+    interval, 3× = 6s — too tight; a single GC pause or disk hiccup
+    would flip the indicator to 'down' for one render. 10s gives a
+    little slack without making a real outage invisible.
+    """
+    try:
+        with open(DAEMON_HEARTBEAT_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        last_iso = data.get("last_poll_at", "")
+        last_dt = datetime.fromisoformat(last_iso)
+    except (FileNotFoundError, json.JSONDecodeError, ValueError, KeyError, TypeError, OSError):
+        return {
+            "alive": False,
+            "last_poll_at": "",
+            "age_seconds": None,
+            "threshold_seconds": 0,
+        }
+
+    # Normalize to UTC-aware so the subtraction always works regardless
+    # of how the daemon serialized its tz. The daemon currently writes
+    # UTC ISO strings, so this is belt-and-braces.
+    if last_dt.tzinfo is None:
+        last_dt = last_dt.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    age = int((now - last_dt).total_seconds())
+    poll_interval = 2
+    try:
+        poll_interval = int(Settings.load().poll_interval_sec)
+    except Exception:
+        pass
+    threshold = max(10, poll_interval * 3)
+    return {
+        "alive": age <= threshold,
+        "last_poll_at": last_iso,
+        "age_seconds": age,
+        "threshold_seconds": threshold,
+    }
+
 # Make `now()` available in all templates. Used e.g. in base.html for the
 # footer year. Without this processor, `{{ now().year }}` would give an
 # UndefinedError; previously there was a permanent-falsy dummy.
@@ -98,6 +152,9 @@ app.config.update(
 # theme_mode is also injected here so base.html can bake it server-side
 # (avoids flash-of-wrong-theme and works on /login, where /api/settings
 # would return 401 because the user isn't logged in yet).
+#
+# daemon_heartbeat is injected too so the header indicator is available
+# everywhere without each route having to remember to pass it.
 @app.context_processor
 def _inject_template_globals():
     try:
@@ -109,6 +166,7 @@ def _inject_template_globals():
     return {
         "now": datetime.now,
         "theme_mode": mode,
+        "daemon_heartbeat": get_daemon_heartbeat(),
     }
 
 # Time regex: 24-hour clock 00–23, with optional seconds (HH:MM or HH:MM:SS)
@@ -1328,6 +1386,83 @@ def refresh_vakanties():
         )
     flash(msg)
     return redirect(url_for("agenda"))
+
+@app.route("/healthz", methods=["GET"])
+def healthz():
+    """Liveness/readiness probe.
+
+    Returns 200 with a JSON status doc when the basic plumbing is
+    OK, 503 when something is broken. Intentionally unauthenticated:
+    monitoring agents (uptime checks, container probes, nagios-style
+    probes) typically can't carry session cookies. The information
+    leaked is minimal — error messages may include filesystem paths
+    that are already implied by the project layout.
+
+    Checks performed:
+      - DATA_DIR exists and is writable (we briefly create + remove
+        a probe file)
+      - AUDIO_DIR exists and is readable
+      - Settings can be loaded
+      - Daemon heartbeat is fresh (delegates to get_daemon_heartbeat)
+
+    'Degraded' (503) is returned on any failed check. The 'checks'
+    map in the body always lists every check so a monitoring tool
+    can show *which* part is unhealthy, not just that something is.
+    """
+    checks: dict = {}
+    overall_ok = True
+
+    # 1) Data dir writable. Touch + delete a probe file. Done before
+    # ensure_dirs() so a permission-bug surface here rather than being
+    # papered over by os.makedirs(exist_ok=True).
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        probe = os.path.join(DATA_DIR, ".healthz_probe")
+        with open(probe, "w") as f:
+            f.write("ok")
+        os.remove(probe)
+        checks["data_dir_writable"] = True
+    except Exception as e:
+        checks["data_dir_writable"] = False
+        checks["data_dir_error"] = str(e)
+        overall_ok = False
+
+    # 2) Audio dir readable. Bell can't ring without it; the daemon
+    # would log 'File not found' for every moment.
+    try:
+        os.listdir(AUDIO_DIR)
+        checks["audio_dir_readable"] = True
+    except Exception as e:
+        checks["audio_dir_readable"] = False
+        checks["audio_dir_error"] = str(e)
+        overall_ok = False
+
+    # 3) Settings loadable. A corrupt config.json would crash routes
+    # one by one; better to flag it here.
+    try:
+        Settings.load()
+        checks["settings_loadable"] = True
+    except Exception as e:
+        checks["settings_loadable"] = False
+        checks["settings_error"] = str(e)
+        overall_ok = False
+
+    # 4) Daemon heartbeat — the most operationally interesting signal.
+    # If web is up but daemon is dead, no bells ring even though the
+    # site looks healthy. Surface that loudly.
+    hb = get_daemon_heartbeat()
+    checks["daemon_alive"] = hb["alive"]
+    checks["daemon_last_poll_at"] = hb["last_poll_at"]
+    checks["daemon_age_seconds"] = hb["age_seconds"]
+    checks["daemon_threshold_seconds"] = hb["threshold_seconds"]
+    if not hb["alive"]:
+        overall_ok = False
+
+    body = {
+        "status": "ok" if overall_ok else "degraded",
+        "checks": checks,
+    }
+    return jsonify(body), (200 if overall_ok else 503)
 
 @app.route("/api/effectief-rooster", methods=["GET"])
 @auth.login_required

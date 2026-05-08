@@ -71,6 +71,43 @@ body{
 }
 .sb-nav__link:hover{ background: rgba(255,255,255,.12); }
 
+/* Daemon heartbeat indicator in the header. Pill-shaped chip with a
+   colored dot — green = recent poll, red = no poll within ~3× the
+   poll interval. The whole element gets a tooltip via title= showing
+   the exact last-poll timestamp; here we only style the visuals. */
+.sb-daemon-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 500;
+  cursor: help;
+}
+.sb-daemon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sb-daemon-status--ok .sb-daemon-dot {
+  background: #2ecc71;             /* readable on the header gradient */
+  box-shadow: 0 0 6px rgba(46, 204, 113, .8);
+}
+.sb-daemon-status--down .sb-daemon-dot {
+  background: #ff5a4a;
+  box-shadow: 0 0 6px rgba(255, 90, 74, .8);
+}
+.sb-daemon-status--down {
+  /* Mild attention-getter — same chip shape as the OK state, just
+     slightly stronger fill so it doesn't blend in when something's
+     wrong. */
+  background: rgba(255, 90, 74, 0.18);
+}
+
 /* 4) Cards & sections */
 .sb-main{ padding-block: 24px 48px; }
 .sb-card{

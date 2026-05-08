@@ -26,6 +26,8 @@ dagplanning.json
 standaardweek.json
 weken_uit.json
 vakanties.json
+vakanties_fetch_state.json
+daemon_heartbeat.json
 
 # Secrets
 .env
