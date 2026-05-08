@@ -26,10 +26,11 @@ schoolbell-daemon (systemd)
 | `webinterface.py`     | Flask-webapp (beheer, agenda, roosters, geluiden, logs) |
 | `schoolbelldaemon.py` | Achtergrondproces dat belmomenten uitvoert              |
 | `settings_store.py`   | Leest en schrijft instellingen (JSON)                   |
+| `vakanties_fetcher.py` | Schraapt vakantiedata van rijksoverheid.nl + parser    |
 | `health_check.py`     | Testscript voor periodieke functionele checks           |
 | `templates/`          | HTML/Jinja2-templates                                   |
 | `static/geluiden/`    | Opslag voor mp3 / wav / ogg                             |
-| `data/`               | JSON-bestanden voor roosters, planning en logs          |
+| `data/`               | JSON-bestanden voor roosters, planning, logs, vakanties, daemon-heartbeat |
 | `certs/`              | TLS-certificaten (indien niet via Nginx geregeld)       |
 
 ---
@@ -39,10 +40,13 @@ schoolbell-daemon (systemd)
 ### Webinterface
 
 * Roosters aanmaken en bewerken
-* Standaardweek en agenda per dag instellen
+* Standaardweek en agenda per dag instellen — agenda is responsive en wordt op smalle schermen (≤700px) gestapeld als kaart-per-week
 * Geluiden uploaden en verwijderen
 * Logboek bekijken
 * Instellingen aanpassen (volume, uploadlimiet, polling-interval)
+* Vakantieweken automatisch importeren van [rijksoverheid.nl](https://www.rijksoverheid.nl/onderwerpen/schoolvakanties), per regio (Noord / Midden / Zuid)
+* In **Voorkeuren** een statuspaneel met de opgeslagen schooljaren, laatste fetch-tijdstip, en een toggle om de scrape-functionaliteit volledig uit te zetten (bv. voor gebruik buiten Nederland)
+* Heartbeat-indicator in de header — een klein groen/rood bolletje dat aangeeft of de daemon recent heeft gepoll'd; klik erop voor de laatste poll-tijd
 
 ### Daemon
 
@@ -50,6 +54,8 @@ schoolbell-daemon (systemd)
 * Speelt belgeluiden af met ingesteld volume
 * Logt elk belmoment in `data/events.jsonl`
 * Herlaadt instellingen direct na `SIGHUP`
+* Schrijft per poll-iteratie een heartbeat-bestand (`data/daemon_heartbeat.json`) — gelezen door de webinterface (header-indicator) en door `/healthz` (zie Monitoring)
+* Ververst maandelijks de vakantiedata van rijksoverheid.nl, mits de scrape-toggle in Voorkeuren aanstaat. De manuele "Verversen"-knop op Agenda blijft altijd beschikbaar.
 
 ---
 
@@ -260,9 +266,31 @@ Logrotate is geconfigureerd voor:
 
 ---
 
-## Health-check
+## Monitoring
 
-Gebruik `health_check.py`:
+### `/healthz` endpoint
+
+Korte JSON-statuscheck zonder authenticatie, bedoeld voor externe uptime-monitoring (bv. Uptime Kuma, een cron met `curl`, of een Pi-statusbord).
+
+```bash
+curl http://<pi-ip>/healthz
+```
+
+Antwoord:
+
+* **200 OK** als alle checks slagen
+* **503 Service Unavailable** als één of meer checks falen
+
+De gecontroleerde keys zijn altijd alle vier aanwezig in de response, zodat een monitoring-tool op een specifieke key kan alerteren:
+
+* `data_dir_writable` — kan de webinterface naar `data/` schrijven
+* `audio_dir_readable` — kan `static/geluiden/` worden gelezen
+* `settings_loadable` — laadt `Settings.load()` zonder error
+* `daemon_alive` — heeft de daemon recent (binnen ~2× poll-interval) een heartbeat geschreven
+
+### `health_check.py`
+
+Uitgebreidere integratiecheck die echt inlogt, een aantal pagina's bezoekt, en optioneel een upload/delete-rondje doet. Dit script vereist credentials.
 
 ```bash
 source venv/bin/activate
