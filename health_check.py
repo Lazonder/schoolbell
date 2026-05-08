@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, re, sys, time
+import os, re, sys
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

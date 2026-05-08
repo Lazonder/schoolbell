@@ -1,0 +1,41 @@
+# Pre-commit hooks for schoolbell.
+# Install once with:  pre-commit install
+# Run manually on all files with:  pre-commit run --all-files
+#
+# The pre-commit framework (https://pre-commit.com) downloads each hook's
+# tools into an isolated cache, so contributors don't need ruff or pytest
+# on their PATH. The exception is `pytest` below: it runs in the project's
+# own Python so it can import the app and its dependencies.
+
+repos:
+  # ruff: linter only (format check is intentionally not enabled yet —
+  # the existing codebase isn't formatted with ruff-format and turning it
+  # on now would block commits on otherwise-untouched files. Add it later
+  # in its own commit:
+  #
+  #   - id: ruff-format
+  #     args: [--check]
+  #
+  # Pinned rev so every contributor runs the same checks. Bump
+  # deliberately with `pre-commit autoupdate`.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--exit-non-zero-on-fix]
+
+  # pytest: runs the full suite. Kept fast (<1s on this codebase) so the
+  # commit hook stays out of the way. If the suite ever grows large enough
+  # to be annoying, switch to `pytest --lf` or move it to pre-push.
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python3 -m pytest tests/ -q
+        language: system
+        # Run once per commit, not once per changed file: pytest already
+        # discovers what to test on its own.
+        pass_filenames: false
+        # Only trigger when Python files change. Editing a template or
+        # static asset doesn't need to re-run the suite.
+        types: [python]

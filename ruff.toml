@@ -1,0 +1,38 @@
+# Ruff configuration for schoolbell.
+# https://docs.astral.sh/ruff/configuration/
+#
+# The defaults are deliberately conservative: enable the standard set of
+# pyflakes + pycodestyle rules, plus a small handful of extras that are
+# uncontroversial and catch real bugs. Anything noisier (annotations,
+# docstrings, complexity caps) is left off so the suite passes on the
+# existing codebase without an opening flood of fixes.
+
+# Match Black/standard practice. The codebase already mostly fits.
+line-length = 100
+
+# Schoolbell runs on a Pi with whatever Python the OS ships. Targeting
+# 3.11 keeps modern syntax (PEP 604 union types, exception groups) on
+# the table without requiring 3.12+ features.
+target-version = "py311"
+
+[lint]
+# Conservative starter set: only catch real bugs, not style.
+#
+# F     = pyflakes  (undefined names, unused imports, broken f-strings, ...)
+# E9    = syntax errors and indent errors. (E1, E7 = style — left off.)
+#
+# This passes cleanly on the current codebase, so turning the hook on
+# doesn't require a sweeping cleanup commit first. Add `I`, `UP`, `B`,
+# or the rest of `E`/`W` later in their own branches as the codebase
+# is brought into compliance.
+select = ["F", "E9"]
+ignore = []
+
+[lint.per-file-ignores]
+# Tests use fixtures that look like unused arguments to ruff. They're
+# not — pytest wires them in by parameter name.
+"tests/*.py" = ["F841"]
+
+[format]
+# Default ruff format style (Black-compatible). No customizations.
+quote-style = "double"
