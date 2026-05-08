@@ -639,7 +639,7 @@ def _cli(argv: list[str] | None = None) -> int:
         print(f"[ OK ] {sj}", file=sys.stderr)
 
     if not successes:
-        print(f"No school years fetched successfully", file=sys.stderr)
+        print("No school years fetched successfully", file=sys.stderr)
         return 2
 
     previous = None

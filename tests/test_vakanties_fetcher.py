@@ -13,7 +13,6 @@ from datetime import date
 
 import pytest
 
-import vakanties_fetcher as vf
 from vakanties_fetcher import (
     Vakantie,
     VakantiesResult,

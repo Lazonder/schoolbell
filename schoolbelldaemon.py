@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, time, json, threading, signal
+import os, sys, json, threading, signal
 from datetime import datetime, timezone, date, time as dtime, timedelta
 import requests         # pip install requests
 import schedule         # pip install schedule
