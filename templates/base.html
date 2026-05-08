@@ -118,6 +118,113 @@
     </div>
   </footer>
 
+  <!--
+    Confirm-modal: één gedeelde dialoog voor alle data-confirm forms.
+    Hidden by default. The script below toggles `hidden` and fills in
+    .sb-modal__msg / button label from data-* attributes on the form
+    that was just submitted. Falls back to a plain confirm() if JS is
+    disabled, so destructive actions still get gated.
+  -->
+  <div id="sb-confirm-modal"
+       class="sb-modal"
+       hidden
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="sb-confirm-modal-msg">
+    <div class="sb-modal__backdrop" data-modal-cancel></div>
+    <div class="sb-modal__panel">
+      <p class="sb-modal__msg" id="sb-confirm-modal-msg"></p>
+      <div class="sb-modal__actions">
+        <button type="button" class="sb-btn sb-btn--ghost" data-modal-cancel>
+          Annuleren
+        </button>
+        <button type="button" class="sb-btn sb-btn--danger" data-modal-confirm>
+          Bevestigen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /*
+   * Confirm-modal wiring.
+   *
+   * Any <form data-confirm="..."> shows the styled modal instead of the
+   * native browser confirm(). Optional data-confirm-button overrides the
+   * default "Bevestigen" label (e.g. "Verwijderen", "Afspelen") so the
+   * button text matches the action.
+   *
+   * The interception uses a capturing 'submit' listener so it runs
+   * before any other handler. After the user confirms, the form sets a
+   * sentinel attribute and re-submits, which lets the second pass
+   * through unimpeded — so any framework-level submit handlers still
+   * fire normally.
+   */
+  (() => {
+    const modal = document.getElementById('sb-confirm-modal');
+    if (!modal) return;
+
+    const msg = modal.querySelector('.sb-modal__msg');
+    const okBtn = modal.querySelector('[data-modal-confirm]');
+    const defaultOkLabel = okBtn.textContent;
+    let pendingForm = null;
+    let triggerEl = null;
+
+    function open(form) {
+      pendingForm = form;
+      triggerEl = document.activeElement;
+      msg.textContent = form.dataset.confirm || 'Weet je het zeker?';
+      okBtn.textContent = form.dataset.confirmButton || defaultOkLabel;
+      modal.hidden = false;
+      // Focus the confirm button so Enter triggers it; Tab stays inside
+      // since there are only two focusable buttons.
+      okBtn.focus();
+      document.addEventListener('keydown', onKey);
+    }
+
+    function close() {
+      modal.hidden = true;
+      document.removeEventListener('keydown', onKey);
+      pendingForm = null;
+      if (triggerEl && typeof triggerEl.focus === 'function') {
+        triggerEl.focus();
+      }
+      triggerEl = null;
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      } else if (e.key === 'Enter' && document.activeElement !== modal.querySelector('[data-modal-cancel]')) {
+        e.preventDefault();
+        okBtn.click();
+      }
+    }
+
+    okBtn.addEventListener('click', () => {
+      const f = pendingForm;
+      close();
+      if (!f) return;
+      // Sentinel so the next submit pass-through bypasses the modal.
+      f.dataset.confirmConfirmed = '1';
+      f.submit();
+    });
+
+    modal.querySelectorAll('[data-modal-cancel]').forEach(el => {
+      el.addEventListener('click', close);
+    });
+
+    document.addEventListener('submit', (e) => {
+      const form = e.target.closest('form[data-confirm]');
+      if (!form) return;
+      if (form.dataset.confirmConfirmed === '1') return; // user already confirmed
+      e.preventDefault();
+      open(form);
+    }, true);
+  })();
+  </script>
+
   <!-- CSRF auto-inject for POST forms -->
   <script>
   (() => {

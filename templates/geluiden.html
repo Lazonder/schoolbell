@@ -25,7 +25,8 @@
             <form method="post"
                   action="{{ url_for('geluiden_play') }}"
                   class="inline"
-                  onsubmit="return confirm('Weet je zeker dat je deze bel door de hele school wil afspelen?');">
+                  data-confirm="&quot;{{ name }}&quot; nu door de hele school afspelen?"
+                  data-confirm-button="Afspelen">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="filename" value="{{ name }}">
               <button type="submit"
@@ -37,7 +38,8 @@
             <form method="post"
                   action="{{ url_for('geluiden_delete') }}"
                   class="inline"
-                  onsubmit="return confirm('Bestand &quot;{{ name }}&quot; verwijderen?');">
+                  data-confirm="Bestand &quot;{{ name }}&quot; verwijderen?"
+                  data-confirm-button="Verwijderen">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="filename" value="{{ name }}">
               <button type="submit"

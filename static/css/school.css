@@ -645,3 +645,174 @@ html[data-theme="dark"] .sb-header {
 html[data-theme="dark"] .sb-brand__logo {
   filter: invert(1) hue-rotate(180deg);
 }
+
+/* =========================================
+   Agenda — mobile (stacked card per week below 700px)
+   ========================================= */
+
+/* The day-name label (Ma/Di/...) is hidden on desktop because the
+   thead row already labels the columns. On mobile the thead is
+   hidden and the inline label takes over. */
+.agenda-day-label {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* The horizontal-scroll wrapper isn't needed once we go vertical;
+     letting it scroll would add a phantom scrollbar at the bottom. */
+  .agenda-scroll {
+    overflow-x: visible;
+  }
+
+  /* Strip table chrome — the row itself becomes the card. */
+  .agenda-table {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .agenda-table thead {
+    /* Column headers are baked into each cell as agenda-day-label. */
+    display: none;
+  }
+  .agenda-table,
+  .agenda-table tbody,
+  .agenda-table tr,
+  .agenda-table td {
+    display: block;
+  }
+
+  /* Each row is a stand-alone card. */
+  .agenda-table tr {
+    background: var(--sb-color-bg);
+    border: 1px solid var(--sb-color-border);
+    border-radius: var(--sb-radius);
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: var(--sb-shadow);
+  }
+  .agenda-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Faint inactive look for a 'Bel uit'-week so the card
+     visually communicates 'this week is off' without needing
+     to read each disabled select. */
+  .agenda-table tr.week-off {
+    opacity: 0.75;
+    border-style: dashed;
+  }
+
+  /* Card header: weeknumber + date range, separated from
+     the day rows by a hairline. */
+  .agenda-table td.weeknum {
+    font-weight: 700;
+    font-size: 1.05rem;
+    border-bottom: 1px solid var(--sb-color-border);
+    padding: 0 0 0.5rem 0;
+    margin-bottom: 0.5rem;
+  }
+  .agenda-table td.weeknum .small {
+    font-weight: 400;
+    font-size: 0.85em;
+    color: var(--sb-color-muted);
+    margin-top: 2px;
+  }
+
+  /* Each day row: label on the left (fixed width), select takes
+     the remaining width. */
+  .agenda-table td.cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+  }
+  .agenda-day-label {
+    display: inline-block;
+    flex: 0 0 2.5rem;
+    font-weight: 600;
+    color: var(--sb-color-muted);
+  }
+  .agenda-table td.cell .agenda-select {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  /* 'Bel uit' lives at the bottom of the card with a thin separator,
+     so the user sees 'these are the day choices, and this is the
+     toggle that overrides them'. */
+  .agenda-table td.bel-uit-cell {
+    border-top: 1px solid var(--sb-color-border);
+    padding: 0.6rem 0 0 0;
+    margin-top: 0.5rem;
+  }
+  .agenda-table td.bel-uit-cell .week-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+}
+
+/* =========================================
+   Confirm-modal (gestyled vervanging voor confirm())
+   ========================================= */
+
+/* The wrapper covers the whole viewport. Hidden by default; the JS
+   flips the [hidden] attribute on/off. */
+.sb-modal[hidden] { display: none; }
+.sb-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Dim/blur the page behind the panel; clicking it cancels (handled
+   by JS via [data-modal-cancel]). */
+.sb-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+/* The dialog itself. Uses the same surface tokens as cards so it
+   theme-flips automatically. */
+.sb-modal__panel {
+  position: relative;
+  background: var(--sb-color-surface);
+  color: var(--sb-color-text);
+  border: 1px solid var(--sb-color-border);
+  border-radius: var(--sb-radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  padding: 1.25rem 1.5rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.sb-modal__msg {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.sb-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* On narrow screens, stack the buttons full-width so they're easier
+   to tap. Confirm at the top (visually lower in column-reverse) so
+   Cancel is at the natural thumb position. */
+@media (max-width: 480px) {
+  .sb-modal__actions {
+    flex-direction: column-reverse;
+  }
+  .sb-modal__actions .sb-btn {
+    width: 100%;
+  }
+}

@@ -20,18 +20,20 @@
     {% endif %}
   </p>
   <div class="sb-form-row">
-    <form method="post" action="{{ url_for('import_vakanties') }}" class="inline">
+    <form method="post" action="{{ url_for('import_vakanties') }}" class="inline"
+          data-confirm="Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan)."
+          data-confirm-button="Importeren">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button type="submit" class="sb-btn sb-btn--ghost"
-              onclick="return confirm('Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan).');"
               {{ 'disabled' if not vakanties_path_exists else '' }}>
         Vakanties importeren
       </button>
     </form>
-    <form method="post" action="{{ url_for('refresh_vakanties') }}" class="inline">
+    <form method="post" action="{{ url_for('refresh_vakanties') }}" class="inline"
+          data-confirm="Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan verloren."
+          data-confirm-button="Verversen">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      <button type="submit" class="sb-btn sb-btn--ghost"
-              onclick="return confirm('Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan verloren.');">
+      <button type="submit" class="sb-btn sb-btn--ghost">
         Verversen van rijksoverheid.nl
       </button>
     </form>
@@ -63,6 +65,13 @@
       </div>
     </header>
 
+    {#
+      The same <table> renders on every viewport. Below 700px CSS
+      converts it into stacked week-cards (see school.css). The day
+      label (Ma/Di/...) is then exposed inside each cell so the
+      stacked layout still tells you which day a select belongs to.
+    #}
+    {% set dagnamen = ["Ma", "Di", "Wo", "Do", "Vr"] %}
     <div class="agenda-scroll">
       <table class="sb-table agenda-table">
         <thead>
@@ -86,6 +95,7 @@
 
               {% for d in wk.days %}
                 <td class="cell">
+                  <span class="agenda-day-label">{{ dagnamen[loop.index0] }}</span>
                   <select name="day[{{ d.iso }}]"
                           class="sb-select agenda-select"
                           {{ 'disabled' if wk.off else '' }}>
@@ -98,7 +108,7 @@
                 </td>
               {% endfor %}
 
-              <td>
+              <td class="bel-uit-cell">
                 <label class="week-toggle">
                   <input type="checkbox"
                          name="week_off[{{ wk.key }}]"
