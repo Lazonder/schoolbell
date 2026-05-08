@@ -1,5 +1,13 @@
 # Dev/test dependencies. NOT installed by install.sh.
 # Install locally with:  pip install -r requirements-dev.txt
+# Then enable the git hook with:  pre-commit install
 -r requirements.txt
 
 pytest>=8.0,<9.0
+
+# Pre-commit framework + linter/formatter. Versions kept loose; the
+# exact ruff revision is pinned in .pre-commit-config.yaml to make
+# every contributor run the same checks regardless of what's in their
+# local pip cache.
+pre-commit>=3.6
+ruff>=0.6

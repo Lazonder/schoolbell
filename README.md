@@ -295,3 +295,38 @@ De check controleert:
 * **Geluidstest**: upload kort mp3’tje en gebruik ▶ in de interface
 * **Debuggen**: check `journalctl` en `events.jsonl`
 
+---
+
+## Ontwikkelen
+
+### Tests draaien
+
+```bash
+pip install -r requirements-dev.txt
+SCHOOLBELL_WEB_USER=admin SCHOOLBELL_WEB_PASS=test \
+  SCHOOLBELL_WEB_PWHASH='pbkdf2:sha256:600000$x$0' \
+  SCHOOLBELL_SECRET=test \
+  python3 -m pytest tests/
+```
+
+### Pre-commit hook
+
+Eénmalig per checkout activeren:
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+Vanaf dan draait bij elke `git commit` automatisch:
+
+* **ruff** — lint (zie `ruff.toml`; format-check staat uit, kan later aan)
+* **pytest** — alle tests in `tests/`
+
+Zonder commit-actie handmatig op alle bestanden:
+
+```bash
+pre-commit run --all-files
+```
+
+
