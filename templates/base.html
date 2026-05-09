@@ -60,7 +60,7 @@
     <div class="sb-container sb-header__inner">
 
       <!-- Branding -->
-      <a class="sb-brand" href="{{ url_for('roosters') }}">
+      <a class="sb-brand" href="{{ url_for('roosters.roosters') }}">
         <img src="{{ url_for('static', filename='img/logo.svg') }}"
              alt="IVKO"
              class="sb-brand__logo">
@@ -69,12 +69,12 @@
 
       <!-- Navigation -->
       <nav class="sb-nav">
-        <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda') }}">Agenda</a>        
-        <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters') }}">Roosters</a>
-        <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('standaardweek') }}">Standaardweek</a>
+        <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda.agenda') }}">Agenda</a>        
+        <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters.roosters') }}">Roosters</a>
+        <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('roosters.standaardweek') }}">Standaardweek</a>
         <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden.geluiden') }}">Geluiden</a>
         <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('monitoring.logs_page') }}">Logboek</a>
-        <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings_page') }}">Voorkeuren</a>
+        <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>
       </nav>
 
       <!-- Daemon heartbeat indicator -->
