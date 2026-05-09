@@ -96,7 +96,7 @@
       {% endif %}
 
       <!-- Logout -->
-      <form method="post" action="{{ url_for('logout') }}">
+      <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="sb-btn">Uitloggen</button>
       </form>
