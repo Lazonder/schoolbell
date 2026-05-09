@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
 from dataclasses import asdict
 from typing import Optional
-from flask import Flask, request, redirect, url_for, flash, send_from_directory, session, jsonify, abort, render_template
+from flask import Flask, request, redirect, url_for, flash, session, jsonify, abort, render_template
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
 from functools import wraps
@@ -297,7 +297,7 @@ def csrf_protect():
 @app.errorhandler(413)
 def too_large(_e):
     flash("Upload te groot (controleer de ingestelde limiet bij Voorkeuren).")
-    return redirect(url_for("geluiden"))
+    return redirect(url_for("geluiden.geluiden"))
 
 @auth.verify_password
 def verify_password(username, password):
@@ -764,11 +764,7 @@ def _build_vakanties_status() -> dict:
 
     return status
 
-@app.route("/audio/<path:filename>")
-@ui_login_required
-def serve_audio(filename):
-    ensure_dirs()
-    return send_from_directory(AUDIO_DIR, filename)
+# /audio/<file> moved to blueprints/geluiden.py
 
 # -- Roosters --
 @app.route("/roosters", methods=["GET"])
@@ -1553,190 +1549,20 @@ def api_effectief_rooster():
         "next_check_suggested": next_check_str,
     }, 200, headers)
 
-# -- Geluiden --
-@app.route("/geluiden", methods=["GET"])
-@ui_login_required
-def geluiden():
-    ensure_dirs()
-    files = list_audio()
 
-    # Read settings for accept/hint
-    s = Settings.load()
-    allowed_exts = [e.lower() for e in s.allowed_extensions]
-    accept_attr = ",".join(allowed_exts)
-
-    return render_template(
-        "geluiden.html",
-        tab="geluiden",
-        csrf_token=get_csrf_token(),
-        files=files,
-        allowed_exts=allowed_exts,
-        accept_attr=accept_attr,
-        max_mb=s.max_file_size_mb,
-    )
-
-@app.route("/geluiden/upload", methods=["POST"])
-@ui_login_required
-def geluiden_upload():
-    ensure_dirs()
-
-    s = Settings.load()
-    max_bytes = int(s.max_file_size_mb) * 1024 * 1024
-    allowed_exts = tuple(e.lower() for e in s.allowed_extensions)
-
-    base = (request.form.get("naam") or "").strip()
-    if "file" not in request.files:
-        flash("Geen bestand ontvangen.")
-        return redirect(url_for("geluiden"))
-
-    f = request.files["file"]
-    if not f or f.filename == "":
-        flash("Geen bestand geselecteerd.")
-        return redirect(url_for("geluiden"))
-
-    # Extension + validation
-    ext = os.path.splitext(f.filename)[1].lower()
-    if ext not in allowed_exts:
-        flash(f"Alleen bestanden met deze extensies zijn toegestaan: {', '.join(allowed_exts)}.")
-        return redirect(url_for("geluiden"))
-
-    filename = safe_audio_filename(base, ext)
-    if not filename:
-        flash("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -.")
-        return redirect(url_for("geluiden"))
-
-    dest = os.path.join(AUDIO_DIR, filename)
-    if os.path.exists(dest):
-        flash("Er bestaat al een audiobestand met deze naam. Kies een andere naam.")
-        return redirect(url_for("geluiden"))
-
-    # Quick pre-check
-    if request.content_length and request.content_length > max_bytes + 64 * 1024:
-        flash(f"Bestand is groter dan de ingestelde limiet van {s.max_file_size_mb} MB.")
-        return redirect(url_for("geluiden"))
-
-    # Precise check
-    try:
-        f.stream.seek(0, os.SEEK_END)
-        size = f.stream.tell()
-        f.stream.seek(0)
-    except Exception:
-        data = f.read()
-        size = len(data)
-        f.stream.seek(0)
-
-    if size > max_bytes:
-        flash(f"Bestand is groter dan de ingestelde limiet van {s.max_file_size_mb} MB.")
-        return redirect(url_for("geluiden"))
-
-    try:
-        f.save(dest)
-    except Exception as e:
-        flash(f"Kon bestand niet opslaan: {e}")
-        return redirect(url_for("geluiden"))
-
-    # Pre-flight: try to actually load the file via pygame, the same
-    # library the daemon uses to play it. If pygame can't decode it
-    # (corrupt MP3, wrong-format renamed-to-mp3, 0-byte file with the
-    # right extension), we delete the bad upload and tell the user
-    # immediately — instead of letting it sit in the audio dir until
-    # the bell tries to ring at 8:30 and the daemon logs 'File not
-    # found' or a decoder error to events.jsonl.
-    ok, msg = _validate_audio_file(dest)
-    if not ok:
-        try:
-            os.remove(dest)
-        except OSError:
-            pass  # if cleanup fails, the user can delete via the UI
-        log_event("ui", {
-            "action": "upload_audio_rejected",
-            "filename": filename,
-            "size": size,
-            "reason": msg,
-        })
-        flash(f"Bestand afgewezen: {msg}")
-        return redirect(url_for("geluiden"))
-
-    log_event("ui", {
-        "action": "upload_audio",
-        "filename": filename,
-        "size": size,
-        "limit_mb": s.max_file_size_mb
-    })
-    flash(f"Upload geslaagd: {filename}")
-    return redirect(url_for("geluiden"))
-
-# _validate_audio_file and _play_via_pygame — see core/audio_files.py
+# /geluiden, /geluiden/upload, /geluiden/play, /geluiden/delete
+# moved to blueprints/geluiden.py — see app.register_blueprint() below.
 
 
-@app.route("/geluiden/play", methods=["POST"])
-@ui_login_required
-def geluiden_play():
-    """Trigger immediate playback through the school's speakers.
+# ---------- Blueprints ----------
+# Registering at the bottom of the file means webinterface is fully
+# defined (all module-level constants and helpers exist) before the
+# blueprint module imports it back. That avoids partial-import
+# surprises like 'AttributeError: module has no attribute AUDIO_DIR'.
+from blueprints.geluiden import geluiden_bp  # noqa: E402
 
-    Logs the action so there's an audit trail — if someone abuses
-    the button you can see who and when in the Logboek.
-    """
-    ensure_dirs()
-    name = (request.form.get("filename") or "").strip()
-    name = os.path.basename(name)
-    path = os.path.join(AUDIO_DIR, name)
-    if not os.path.isfile(path):
-        flash("Bestand niet gevonden.")
-        return redirect(url_for("geluiden"))
+app.register_blueprint(geluiden_bp)
 
-    try:
-        v = max(0, min(100, int(Settings.load().volume_percent))) / 100.0
-        _play_via_pygame(path, v)
-        log_event("ui", {"action": "test_bell", "filename": name})
-        flash(f"Test gestart: {name}")
-    except Exception as e:
-        # Common failure modes here: ALSA can't open the device
-        # (audio config wrong), or the file isn't a format pygame
-        # can decode. Surface the error so the admin can debug.
-        log_event("ui", {"action": "test_bell_error", "filename": name, "error": str(e)})
-        flash(f"Afspelen mislukt: {e}")
-    return redirect(url_for("geluiden"))
-
-@app.route("/geluiden/delete", methods=["POST"])
-@ui_login_required
-def geluiden_delete():
-    ensure_dirs()
-    name = (request.form.get("filename") or "").strip()
-    name = os.path.basename(name)
-    path = os.path.join(AUDIO_DIR, name)
-    if not os.path.isfile(path):
-        flash("Bestand niet gevonden.")
-        return redirect(url_for("geluiden"))
-
-    # Block-and-warn if the file is still used by any rooster moment.
-    # Without this check, deletion would succeed silently and the
-    # daemon would later log 'File not found' when that bell tried
-    # to ring — the bell wouldn't go off and the user wouldn't know
-    # why. Mirrors the same pattern as delete_rooster.
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    used_by = []
-    for rooster_naam, momenten in roosters.items():
-        for m in momenten:
-            if (m.get("bestand") or "") == name:
-                used_by.append(f"{rooster_naam}: {m.get('tijd','??:??')} {m.get('naam','')}".rstrip())
-                break  # one mention per rooster is enough
-    if used_by:
-        voorb = "; ".join(used_by[:3])
-        meer = "" if len(used_by) <= 3 else f" en {len(used_by) - 3} meer"
-        flash(
-            f"Geluid '{name}' wordt nog gebruikt door: {voorb}{meer}. "
-            f"Verwijder of vervang deze momenten eerst voordat je het bestand verwijdert."
-        )
-        return redirect(url_for("geluiden"))
-
-    try:
-        os.remove(path)
-        log_event("ui", {"action": "delete_audio", "filename": name})
-        flash(f"Verwijderd: {name}")
-    except Exception as e:
-        flash(f"Kon niet verwijderen: {e}")
-    return redirect(url_for("geluiden"))
 
 # ---------- Dev server ----------
 # The previous version of this block also pre-created roosters.json,
