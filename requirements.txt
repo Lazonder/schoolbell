@@ -5,6 +5,11 @@ Flask-HTTPAuth>=4.8
 itsdangerous>=2.1
 Jinja2>=3.1
 
+# Internationalization (NL/EN/DE/FR). Pulls in Babel as a dependency,
+# which also gives us locale-aware date/number formatting via
+# babel.dates.format_date(...).
+Flask-Babel>=4.0
+
 # Server
 gunicorn>=21.2
 

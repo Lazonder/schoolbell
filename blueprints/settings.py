@@ -27,6 +27,7 @@ from flask import Blueprint, abort, jsonify, render_template, request
 
 import settings_store
 import webinterface as wi
+from core.i18n import SUPPORTED_LOCALES
 from settings_store import Settings
 
 
@@ -65,6 +66,17 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
 
     # Note: a "timezone" key in the payload is silently ignored. The
     # field was removed; the OS timezone is the source of truth.
+
+    if "taal" in payload:
+        # Allowed: each language we ship a translation for, plus the
+        # special string "auto" (follow browser). Anything else is a
+        # client mistake — abort 400 so the user gets a clear error
+        # instead of a silently-ignored selection.
+        t = str(payload["taal"]).strip().lower()
+        allowed_taal = set(SUPPORTED_LOCALES) | {"auto"}
+        if t not in allowed_taal:
+            abort(400, f"taal must be one of: {', '.join(sorted(allowed_taal))}")
+        s.taal = t
 
     if "theme_mode" in payload:
         tm = str(payload["theme_mode"]).strip().lower()
@@ -134,7 +146,13 @@ def _build_vakanties_status() -> dict:
         "last_failed_schooljaren": [],
     }
 
-    data, _err = wi._load_vakanties_file()
+    # Late import to avoid a top-level dependency between two
+    # blueprints. blueprints.agenda is loaded by webinterface.py
+    # at the same place as this module, so by the time this
+    # function actually runs (per-request), the import is cheap
+    # and circular-safe.
+    from blueprints.agenda import _load_vakanties_file
+    data, _err = _load_vakanties_file()
     if data and isinstance(data.get("schooljaren"), dict):
         for sj_key in sorted(data["schooljaren"].keys()):
             block = data["schooljaren"][sj_key]

@@ -111,6 +111,26 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
+# === Flask-Babel: language plumbing ===
+# Babel itself does the per-request lookup of translated strings.
+# select_locale() (in core/i18n.py) decides which language to use:
+# Settings.taal first, then the browser's Accept-Language header
+# when the user picked "auto". Phase 1 of issue #29 only wires this
+# up — no strings are marked for translation yet, so every page
+# still renders in Dutch regardless of the chosen locale.
+from flask_babel import Babel  # noqa: E402
+
+from core.i18n import DEFAULT_LOCALE, SUPPORTED_LOCALES, select_locale  # noqa: E402, F401
+
+app.config["BABEL_DEFAULT_LOCALE"] = DEFAULT_LOCALE
+# Dutch installs use Europe/Amsterdam; localized date formatting
+# falls back to system time when this is unset, which is fine on
+# the Pi but inconsistent across machines.
+app.config["BABEL_DEFAULT_TIMEZONE"] = "Europe/Amsterdam"
+
+babel = Babel(app, locale_selector=select_locale)
+
+
 def get_daemon_heartbeat() -> dict:
     """Read the daemon's heartbeat file and decide if it's still alive.
 
