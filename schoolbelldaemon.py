@@ -191,23 +191,66 @@ def plan_job_at(hhmm: str, audio_file: str, label: str = ""):
     lbl = f" ({label})" if label else ""
     print(f"[PLAN] {hhmm} → {audio_file}{lbl}")
 
+def _subtract_minutes(hhmm: str, minutes: int) -> str | None:
+    """Return hhmm minus N minutes as 'HH:MM', or None if it would
+    cross midnight (i.e. land on the previous day).
+
+    Returning None on midnight cross is intentional: 'schedule' fires
+    every day at the given time, so a pre-midnight warning would ring
+    on the wrong day. A bell at 00:30 with a 60-min warning is the
+    edge case here — we just skip the warning rather than try to
+    span days.
+    """
+    try:
+        h, m = hhmm.split(":")
+        total = int(h) * 60 + int(m) - int(minutes)
+    except (ValueError, AttributeError):
+        return None
+    if total < 0:
+        return None
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 def apply_day_schedule(momenten: list[dict]):
     """
     momenten: list of dicts with keys:
       - tijd: "HH:MM"
       - naam: display name (optional)
       - bestand: audio filename
+      - warn_min: int (optional) — N minutes before to ring a warning
+      - warn_bestand: str (optional) — audio file for the warning
     """
     cancel_all_jobs()
     count = 0
+    warn_count = 0
     for m in sorted(momenten, key=lambda x: x.get("tijd", "")):
         t = (m.get("tijd") or "").strip()
         f = (m.get("bestand") or "").strip()
         nm = (m.get("naam") or "").strip()
-        if t and f:
-            plan_job_at(t, f, label=nm)
-            count += 1
-    print(f"[INFO] {count} moments scheduled for today.")
+        if not (t and f):
+            continue
+        plan_job_at(t, f, label=nm)
+        count += 1
+
+        # Optional warning bell: rings warn_min minutes earlier with
+        # warn_bestand. The web side already validates 1..60 and
+        # filters out half-configured states (only one of the two
+        # set), so we just check both are present here.
+        warn_min = m.get("warn_min")
+        warn_f = (m.get("warn_bestand") or "").strip()
+        if warn_min and warn_f:
+            warn_t = _subtract_minutes(t, int(warn_min))
+            if warn_t is None:
+                print(
+                    f"[WARN] Skipping warning for {nm or t}: "
+                    f"{warn_min} min before {t} crosses midnight."
+                )
+                continue
+            plan_job_at(warn_t, warn_f, label=f"{nm} (waarschuwing)")
+            warn_count += 1
+
+    suffix = f", {warn_count} warnings" if warn_count else ""
+    print(f"[INFO] {count} moments scheduled for today{suffix}.")
 
 # === Helper functions for poller ===
 def _local_next_midnight(now: datetime) -> datetime:

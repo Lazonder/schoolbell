@@ -533,7 +533,27 @@ def normalize_and_sort_moments(moments):
             continue
         if not bestand:
             continue
-        cleaned.append({"tijd": tijd_norm, "naam": naam, "bestand": bestand})
+        out = {"tijd": tijd_norm, "naam": naam, "bestand": bestand}
+
+        # Optional warning bell: rings warn_min minutes before the
+        # main moment with warn_bestand. Both fields must be valid
+        # and non-empty for a warning to actually fire — anything
+        # else is treated as "no warning". Keeps roosters.json
+        # forward- and backward-compatible: legacy moments without
+        # the keys load fine and simply don't get a warning.
+        warn_min = m.get("warn_min")
+        warn_bestand = (m.get("warn_bestand") or "").strip()
+        try:
+            warn_min_int = int(warn_min) if warn_min is not None else 0
+        except (TypeError, ValueError):
+            warn_min_int = 0
+        if 1 <= warn_min_int <= 60 and warn_bestand:
+            out["warn_min"] = warn_min_int
+            out["warn_bestand"] = warn_bestand
+        # If only one of the two is set, the warning is silently
+        # dropped — no half-configured state survives normalization.
+
+        cleaned.append(out)
     cleaned.sort(key=lambda x: x["tijd"])
     return cleaned
 
@@ -1048,12 +1068,37 @@ def add_moment(rooster):
         flash("Kies een geluidsbestand.")
         return redirect(url_for("roosters"))
 
+    # Optional warning fields. Empty/0 → no warning. The form sends
+    # both, the user just leaves them at defaults if they don't want
+    # a warning. We validate ranges here so the user gets a flash
+    # message; normalize_and_sort_moments() also defends downstream.
+    warn_min_raw = (request.form.get("warn_min") or "").strip()
+    warn_bestand = (request.form.get("warn_bestand") or "").strip()
+    warn_min: int = 0
+    if warn_min_raw:
+        try:
+            warn_min = int(warn_min_raw)
+        except ValueError:
+            flash("Waarschuwing: minuten moeten een getal zijn.")
+            return redirect(url_for("roosters"))
+        if not (0 <= warn_min <= 60):
+            flash("Waarschuwing: minuten moeten tussen 0 en 60 liggen.")
+            return redirect(url_for("roosters"))
+    if warn_min > 0 and not warn_bestand:
+        flash("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0.")
+        return redirect(url_for("roosters"))
+
+    new_moment = {"tijd": tijd, "naam": naam, "bestand": bestand}
+    if warn_min > 0 and warn_bestand:
+        new_moment["warn_min"] = warn_min
+        new_moment["warn_bestand"] = warn_bestand
+
     with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
             flash("Onbekend rooster.")
             return redirect(url_for("roosters"))
 
-        roosters[rooster].append({"tijd": tijd, "naam": naam, "bestand": bestand})
+        roosters[rooster].append(new_moment)
         roosters[rooster] = normalize_and_sort_moments(roosters[rooster])
         save(roosters)
 
@@ -1065,6 +1110,8 @@ def add_moment(rooster):
             "tijd": tijd,
             "naam": naam,
             "bestand": bestand,
+            "warn_min": warn_min if warn_min > 0 else None,
+            "warn_bestand": warn_bestand if warn_min > 0 else None,
         },
     )
     flash(f"Moment toegevoegd aan '{rooster}'.")

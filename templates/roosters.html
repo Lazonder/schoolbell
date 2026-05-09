@@ -20,6 +20,7 @@
               <th class="col-tijd">Tijd</th>
               <th>Naam</th>
               <th>Bestand</th>
+              <th>Waarschuwing</th>
               <th class="col-acties"></th>
             </tr>
           </thead>
@@ -34,6 +35,15 @@
                   </td>
                   <td>{{ m.naam }}</td>
                   <td>{{ m.bestand }}</td>
+                  <td>
+                    {% if m.warn_min and m.warn_bestand %}
+                      <span class="sb-help">
+                        {{ m.warn_min }} min eerder · {{ m.warn_bestand }}
+                      </span>
+                    {% else %}
+                      <span class="sb-help"><em>—</em></span>
+                    {% endif %}
+                  </td>
                   <td class="col-acties">
                     <form class="inline" method="post"
                           action="{{ url_for('delete_moment', rooster=naam, index=loop.index0) }}"
@@ -51,7 +61,7 @@
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="4">
+                <td colspan="5">
                   <em class="sb-help">Geen momenten</em>
                 </td>
               </tr>
@@ -81,6 +91,29 @@
                     class="sb-select"
                     required>
               <option value="">— Kies geluid —</option>
+              {% for g in geluiden %}
+                <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {# Optional warning bell. Both fields default to empty/0; the
+             handler treats either of those as 'no warning'. The select
+             is intentionally not required so the common case (no
+             warning) requires zero clicks. #}
+          <div class="line3 sb-warn-row">
+            <span class="sb-help">Waarschuwing:</span>
+            <input name="warn_min"
+                   class="sb-input sb-warn-min"
+                   type="number"
+                   min="0"
+                   max="60"
+                   step="1"
+                   placeholder="0"
+                   title="Minuten vóór de bel een waarschuwing afspelen (0 = uit)">
+            <span class="sb-help">min. eerder met</span>
+            <select name="warn_bestand" class="sb-select sb-warn-bestand">
+              <option value="">— geen waarschuwing —</option>
               {% for g in geluiden %}
                 <option value="{{ g }}">{{ g }}</option>
               {% endfor %}
