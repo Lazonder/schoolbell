@@ -1,0 +1,192 @@
+{# Public, unauthed page. Designed for a TV / fullscreen tab in the staff
+   room: just the next bell + a countdown, big enough to read across the
+   room. Deliberately does NOT extend base.html — no nav, no admin
+   controls leak onto a shared screen.
+
+   The page is minimal HTML; CSS is inline so the page works even if
+   school.css fails to load. Auto-updates: pure JS counts down each
+   second so there's no flicker, and a fetch() against /api/now every
+   minute brings in any planning changes the admin made. #}
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Schoolbel · Volgende bel</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
+  <style>
+    /* Use the same color tokens as the rest of the app where it
+       makes sense, but keep a darker palette suited to a screen
+       seen from across a room. */
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #0f1115;
+      color: #f2f3f5;
+      overflow: hidden;
+    }
+    main {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; padding: 4vw; box-sizing: border-box;
+      text-align: center;
+    }
+    .label {
+      text-transform: uppercase; letter-spacing: .15em;
+      color: #a0a4b0; font-size: clamp(16px, 2.4vw, 28px);
+      margin-bottom: 1vh;
+    }
+    .bell-name {
+      font-weight: 700;
+      font-size: clamp(36px, 9vw, 130px);
+      line-height: 1.05;
+      margin: 0 0 6vh;
+    }
+    .countdown {
+      font-feature-settings: "tnum" 1;   /* tabular figures so digits don't jump */
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      font-size: clamp(80px, 22vw, 360px);
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+    .countdown.imminent { color: #ff6b3d; }    /* < 60s — orange */
+    .countdown.now      { color: #2ecc71; }    /* == 0  — green flash for the bell */
+    .clock {
+      margin-top: 6vh;
+      color: #a0a4b0;
+      font-size: clamp(20px, 3vw, 40px);
+      font-variant-numeric: tabular-nums;
+    }
+    .empty {
+      font-size: clamp(28px, 5vw, 70px);
+      color: #a0a4b0;
+    }
+    /* Tiny diagnostic: when the last fetch failed, fade in a small
+       red dot in the corner so a passer-by notices the screen is
+       stale even though the digits keep ticking. */
+    .stale-dot {
+      position: fixed; top: 16px; right: 16px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #db3a34;
+      opacity: 0; transition: opacity .4s;
+    }
+    .stale-dot.show { opacity: .9; }
+  </style>
+</head>
+<body>
+  <main id="root">
+    <!-- All content rendered by JS below; an empty shell keeps
+         first-paint instant and avoids server-side flashing of a
+         stale countdown that's already 30s old by the time it
+         reaches the screen. -->
+  </main>
+  <div id="stale" class="stale-dot" title="Laatste data-fetch faalde"></div>
+
+  <script>
+    // State updated by /api/now and the per-second tick.
+    let bell = null;       // {naam, tijd, seconds_until, ...} or null
+    let lastFetchOk = true;
+    let fetchedAt = null;  // local Date when bell was loaded; used to
+                           // age seconds_until between fetches.
+
+    const root = document.getElementById("root");
+    const stale = document.getElementById("stale");
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function fmtCountdown(secs) {
+      // "MM:SS" up to one hour; "H:MM:SS" beyond.
+      if (secs >= 3600) {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = secs % 60;
+        return `${h}:${pad(m)}:${pad(s)}`;
+      }
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}:${pad(s)}`;
+    }
+
+    function fmtClock(d) {
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function render() {
+      if (!bell) {
+        root.innerHTML = `
+          <div class="label">Schoolbel</div>
+          <div class="empty">Geen bel meer vandaag.</div>
+          <div class="clock" id="clock"></div>`;
+        document.getElementById("clock").textContent = fmtClock(new Date());
+        return;
+      }
+      // Compute seconds_until based on local elapsed time since the
+      // last fetch. Without this the countdown would freeze between
+      // fetches.
+      const elapsedMs = fetchedAt ? (Date.now() - fetchedAt.getTime()) : 0;
+      const secs = Math.max(0, bell.seconds_until - Math.floor(elapsedMs / 1000));
+
+      const cls = secs === 0 ? "now" : (secs < 60 ? "imminent" : "");
+      root.innerHTML = `
+        <div class="label">Volgende bel</div>
+        <h1 class="bell-name">${escapeHtml(bell.naam)}</h1>
+        <div class="countdown ${cls}">${fmtCountdown(secs)}</div>
+        <div class="clock" id="clock"></div>`;
+      document.getElementById("clock").textContent =
+        `${fmtClock(new Date())} · om ${bell.tijd}`;
+    }
+
+    // Belt-and-braces — bell.naam is admin-controlled so XSS isn't
+    // a realistic threat, but rendering via innerHTML without escape
+    // is sloppy. NAME_RE on the server already restricts to safe chars,
+    // but defense in depth is cheap.
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;",
+        '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    async function fetchNow() {
+      try {
+        const r = await fetch("/api/now", { credentials: "omit" });
+        if (!r.ok) throw new Error("status " + r.status);
+        const data = await r.json();
+        bell = data.bell;       // null when no upcoming bell today
+        fetchedAt = new Date();
+        lastFetchOk = true;
+        stale.classList.remove("show");
+      } catch (e) {
+        console.warn("fetch /api/now failed:", e);
+        lastFetchOk = false;
+        // Show the stale dot only if the failure persists past a
+        // single hiccup — if the next fetch succeeds we hide it again.
+        stale.classList.add("show");
+      }
+      render();
+    }
+
+    // Per-second tick: re-render so the countdown decrements smoothly.
+    // Don't refetch from the server every second — that would beat up
+    // the Pi for no reason. The JS countdown is good for a minute.
+    setInterval(render, 1000);
+
+    // Pull fresh data once a minute. Aligning to the wall clock
+    // (next round minute) means the new "next bell" lands shortly
+    // after a bell rings, instead of being up to 60s stale.
+    function scheduleAlignedRefresh() {
+      const now = new Date();
+      const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+      setTimeout(() => {
+        fetchNow();
+        setInterval(fetchNow, 60_000);
+      }, msToNextMinute);
+    }
+
+    // Kick everything off.
+    fetchNow();
+    scheduleAlignedRefresh();
+  </script>
+</body>
+</html>
