@@ -63,6 +63,47 @@
     </div>
 
     <div class="sb-field">
+      <label class="sb-label" for="huisstijl">Huisstijl</label>
+      <select name="huisstijl" id="huisstijl" class="sb-select">
+        <option value="standaard">Standaard</option>
+        <option value="aangepast">Aangepast</option>
+      </select>
+      <p class="sb-help">
+        <strong>Standaard</strong> volgt het thema hierboven (Licht of Donker).
+        <strong>Aangepast</strong> gebruikt de drie kleuren hieronder voor
+        achtergrond, tabelvulling en navigatiebalk — staat los van Licht/Donker.
+      </p>
+    </div>
+
+    {# Three color pickers — only relevant when huisstijl=aangepast.
+       The fieldset is shown/hidden by JS depending on the select above.
+       The inputs always submit (so re-selecting Aangepast later
+       restores them), they just visually disappear. #}
+    <fieldset class="sb-field" id="huisstijl_custom_fields"
+              style="display:none; border:0; padding:0; margin:0;">
+      <legend class="sb-label" style="padding:0;">Aangepaste kleuren</legend>
+
+      <div style="display:flex; flex-wrap:wrap; gap:18px; margin-top:8px;">
+        <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
+          <input type="color" name="theme_custom_bg" id="theme_custom_bg">
+          <span>Achtergrond</span>
+        </label>
+        <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
+          <input type="color" name="theme_custom_table" id="theme_custom_table">
+          <span>Tabelvulling</span>
+        </label>
+        <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
+          <input type="color" name="theme_custom_nav" id="theme_custom_nav">
+          <span>Navigatiebalk</span>
+        </label>
+      </div>
+      <p class="sb-help">
+        Klik op een kleurvak om een andere kleur te kiezen. Wijzigingen
+        worden direct toegepast bij Opslaan; geen pagina-refresh nodig.
+      </p>
+    </fieldset>
+
+    <div class="sb-field">
       <label class="sb-label sb-checkbox-row">
         <input type="checkbox"
                name="vakanties_scrape_enabled"
@@ -156,6 +197,18 @@ volumeSlider.addEventListener("input", () => {
   volumeDisplay.textContent = volumeSlider.value;
 });
 
+// Show or hide the three custom-color pickers depending on the
+// huisstijl select. They submit either way (so re-selecting Aangepast
+// later restores the previous values), but they only appear when
+// they actually do something.
+const huisstijlSelect = document.getElementById("huisstijl");
+const huisstijlCustom = document.getElementById("huisstijl_custom_fields");
+function syncHuisstijlVisibility() {
+  huisstijlCustom.style.display =
+    huisstijlSelect.value === "aangepast" ? "" : "none";
+}
+huisstijlSelect.addEventListener("change", syncHuisstijlVisibility);
+
 async function loadSettings() {
   const r = await fetch("/api/settings", { credentials: "same-origin" });
   if (!r.ok) {
@@ -179,6 +232,9 @@ async function loadSettings() {
       el.dispatchEvent(new Event("input"));
     }
   }
+  // The huisstijl select just got its value set; reflect that in
+  // the visibility of the custom-color fieldset.
+  syncHuisstijlVisibility();
 }
 
 document.getElementById("settingsForm").addEventListener("submit", async (e) => {
@@ -221,15 +277,33 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
 
     if (r.ok) {
       status.textContent = "Opgeslagen ✔";
+      const root = document.documentElement;
       // Apply theme change immediately, no refresh. If mode=auto:
       // check system preference. Otherwise: use the chosen value.
       if (payload.theme_mode) {
-        const root = document.documentElement;
         root.setAttribute("data-theme-mode", payload.theme_mode);
         const effective = payload.theme_mode === "auto"
           ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
           : payload.theme_mode;
         root.setAttribute("data-theme", effective);
+      }
+      // Apply huisstijl changes the same way: flip data-huisstijl
+      // and either set or clear the inline CSS-variable overrides.
+      // Without clearing, switching back from Aangepast to Standaard
+      // would leave the old custom colors stuck.
+      if (payload.huisstijl) {
+        root.setAttribute("data-huisstijl", payload.huisstijl);
+        if (payload.huisstijl === "aangepast") {
+          root.style.setProperty("--sb-color-bg", payload.theme_custom_bg);
+          root.style.setProperty("--sb-color-surface", payload.theme_custom_table);
+          root.style.setProperty("--sb-color-row-alt", payload.theme_custom_table);
+          root.style.setProperty("--sb-color-huisstijl-nav", payload.theme_custom_nav);
+        } else {
+          root.style.removeProperty("--sb-color-bg");
+          root.style.removeProperty("--sb-color-surface");
+          root.style.removeProperty("--sb-color-row-alt");
+          root.style.removeProperty("--sb-color-huisstijl-nav");
+        }
       }
     } else {
       console.error("Fout bij opslaan:", r.status, await r.text());

@@ -3,6 +3,10 @@
   data-theme-mode = stored user preference ("light" | "dark" | "auto").
   data-theme      = the effectively applied theme ("light" or "dark"),
                     which the CSS filters on (html[data-theme="dark"] ...).
+  data-huisstijl  = "standaard" or "aangepast". When "aangepast" the
+                    inline style= sets the three custom-color CSS
+                    variables, which override both :root and
+                    html[data-theme="dark"] in the cascade.
 
   For "light"/"dark" we bake it in server-side so the CSS is correct
   on first render (prevents flash-of-wrong-theme). For "auto" we start
@@ -11,7 +15,18 @@
 #}
 <html lang="nl"
       data-theme-mode="{{ theme_mode|default('light') }}"
-      data-theme="{{ 'dark' if theme_mode == 'dark' else 'light' }}">
+      data-theme="{{ 'dark' if theme_mode == 'dark' else 'light' }}"
+      data-huisstijl="{{ huisstijl|default('standaard') }}"
+      {%- if huisstijl == 'aangepast' %}
+      {# Inline CSS custom-property overrides — highest specificity short
+         of !important. Setting --sb-color-bg also colors table headers
+         (which use that variable) and the :root tokens; --sb-color-surface
+         + --sb-color-row-alt give cards and table rows the same fill. #}
+      style="--sb-color-bg: {{ theme_custom_bg }};
+             --sb-color-surface: {{ theme_custom_table }};
+             --sb-color-row-alt: {{ theme_custom_table }};
+             --sb-color-huisstijl-nav: {{ theme_custom_nav }};"
+      {%- endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">

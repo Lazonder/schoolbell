@@ -108,6 +108,61 @@ def test_settings_load_handles_missing_vakanties_scrape_enabled_key():
     assert s.vakantieregio == "Zuid"           # other fields preserved
 
 
+def test_default_huisstijl_is_standaard():
+    # "standaard" means: don't override anything, follow theme_mode.
+    # A fresh install should look exactly like before this feature
+    # was added.
+    s = settings_store.Settings()
+    assert s.huisstijl == "standaard"
+
+
+def test_default_custom_colors_match_light_theme():
+    # The custom-color defaults track the light :root values in
+    # static/css/school.css. Picking 'Aangepast' without changing
+    # anything should look identical to 'Standaard + Licht'.
+    s = settings_store.Settings()
+    assert s.theme_custom_bg == "#ffffff"
+    assert s.theme_custom_table == "#f7f7f9"
+    # Primary blue from :root in school.css.
+    assert s.theme_custom_nav == "#5b62ff"
+
+
+def test_huisstijl_and_custom_colors_persist_across_save_load():
+    with settings_store.locked() as s:
+        s.huisstijl = "aangepast"
+        s.theme_custom_bg = "#fafafa"
+        s.theme_custom_table = "#e8eef5"
+        s.theme_custom_nav = "#0066cc"
+
+    s2 = settings_store.Settings.load()
+    assert s2.huisstijl == "aangepast"
+    assert s2.theme_custom_bg == "#fafafa"
+    assert s2.theme_custom_table == "#e8eef5"
+    assert s2.theme_custom_nav == "#0066cc"
+
+
+def test_settings_load_handles_missing_huisstijl_key():
+    # Forward-compat: a config.json that predates the huisstijl field
+    # must still load, defaulting all four new fields.
+    import json
+    with open(settings_store.CONFIG_PATH, "w") as f:
+        json.dump({
+            "volume_percent": 80,
+            "max_file_size_mb": 20,
+            "poll_interval_sec": 5,
+            "theme_mode": "dark",
+            "vakantieregio": "Zuid",
+            "vakanties_scrape_enabled": True,
+            "allowed_extensions": [".mp3"],
+            # no huisstijl, no theme_custom_*
+        }, f)
+
+    s = settings_store.Settings.load()
+    assert s.huisstijl == "standaard"      # default
+    assert s.theme_custom_bg == "#ffffff"  # default
+    assert s.vakantieregio == "Zuid"       # other fields preserved
+
+
 def test_locked_does_not_save_on_exception():
     # First write a baseline.
     with settings_store.locked() as s:
