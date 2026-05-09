@@ -664,6 +664,85 @@ def prune_past_dates(dagplanning: dict, today: date) -> dict:
 def _next_local_midnight(now: datetime) -> datetime:
     tomorrow = now.date() + timedelta(days=1)
     return datetime.combine(tomorrow, time(0, 0, 0))
+
+
+def next_bell_for_now(now: datetime) -> dict | None:
+    """Return the next-upcoming bell after ``now``, or None if there is none today.
+
+    Used by the public /now page and its companion /api/now endpoint
+    so a screen in the staff room can display "Volgende bel: ... over
+    3:42" without anyone having to log in. Today-only on purpose:
+    showing "next bell at 8:30 tomorrow" on a Friday afternoon would
+    create confusing weekend states. The page handles None as
+    "geen bel meer vandaag".
+
+    The result dict matches the shape /api/now returns:
+      {
+        "naam":            str   — bell name from the rooster
+        "tijd":            str   — HH:MM or HH:MM:SS, as stored
+        "bestand":         str   — audio filename (so /now could
+                                   prefetch / preview if desired)
+        "seconds_until":   int   — non-negative; 0 means it just hit
+        "datum":           str   — YYYY-MM-DD, useful for sanity in
+                                   tests across midnight rolls
+      }
+
+    Reads the same JSON files /api/effectief-rooster does (no caching
+    between callers) so a planning change in the UI shows up on /now
+    on the next refetch.
+    """
+    d = now.date()
+
+    # Week-off override: if the whole ISO week is marked as "uit"
+    # (vacation week or any week the user toggled off), no bells
+    # ring regardless of the rooster.
+    weken_uit = load_json(WEEKDISABLE_PATH, default_weken_uit_obj())
+    if weken_uit.get(iso_week_key(d)):
+        return None
+
+    dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
+    standaardweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
+    rooster_naam, _bron = effective_rooster_for_date(d, dagplanning, standaardweek)
+    if not rooster_naam:
+        return None
+
+    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
+    momenten = roosters.get(rooster_naam) or []
+    if not momenten:
+        return None
+
+    # Compare HH:MM:SS strings. tijd is "HH:MM" or "HH:MM:SS"; pad
+    # to 8 chars so a moment at "08:30" sorts before "08:30:01".
+    now_tijd = now.strftime("%H:%M:%S")
+
+    def _pad(t: str) -> str:
+        return t if len(t) == 8 else t + ":00"
+
+    upcoming = [m for m in momenten if _pad(m["tijd"]) > now_tijd]
+    if not upcoming:
+        return None
+
+    # momenten is already sorted by tijd, but be defensive — a future
+    # change to normalize_and_sort_moments could regress that.
+    upcoming.sort(key=lambda m: _pad(m["tijd"]))
+    nxt = upcoming[0]
+
+    # Compute seconds_until from a real datetime to avoid hand-rolling
+    # arithmetic across the HH:MM/HH:MM:SS variants.
+    h, mn, *rest = _pad(nxt["tijd"]).split(":")
+    sec = int(rest[0]) if rest else 0
+    bell_dt = datetime.combine(d, time(int(h), int(mn), sec))
+    secs = max(0, int((bell_dt - now).total_seconds()))
+
+    return {
+        "naam": nxt["naam"],
+        "tijd": nxt["tijd"],
+        "bestand": nxt["bestand"],
+        "seconds_until": secs,
+        "datum": d.isoformat(),
+    }
+
+
 def _ts_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
@@ -1503,6 +1582,34 @@ def healthz():
         "checks": checks,
     }
     return jsonify(body), (200 if overall_ok else 503)
+
+
+# --- /now: public read-only "next bell" page ---------------------------------
+#
+# Designed to live full-screen on a TV in the staff room. Deliberately
+# unauthed so anyone in the building can glance at it; only static info
+# is exposed (the next bell name + countdown), never the full schedule
+# or any state-changing controls. The companion /api/now returns the
+# same data as JSON so the page can refresh without a reload.
+
+@app.route("/now", methods=["GET"])
+def now_page():
+    return render_template("now.html")
+
+
+@app.route("/api/now", methods=["GET"])
+def api_now():
+    """JSON shape: see next_bell_for_now(). 'bell' is null when no
+    upcoming bell today; the page treats that as 'geen bel meer
+    vandaag'. Always 200 so the JS doesn't have to special-case
+    network errors vs no-bell.
+    """
+    bell = next_bell_for_now(datetime.now())
+    return jsonify({
+        "now": datetime.now().isoformat(timespec="seconds"),
+        "bell": bell,
+    }), 200
+
 
 @app.route("/api/effectief-rooster", methods=["GET"])
 @auth.login_required
