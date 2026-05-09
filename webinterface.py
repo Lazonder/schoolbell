@@ -12,6 +12,40 @@ import settings_store
 from settings_store import Settings
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# Pure helpers live in the core/ package so this file stays smaller
+# and they can be tested without importing Flask. The names below are
+# re-exported (the import binds them as module-level attributes), so
+# existing test code that does ``from webinterface import iso_week_key``
+# keeps working. Splitting up the rest of webinterface.py into Flask
+# Blueprints is the next step (issue #28).
+from core.util import _env_bool  # noqa: F401  (re-export for tests)
+from core.dates import (  # noqa: F401  (re-exports)
+    WEEKDAYS,
+    _next_local_midnight,
+    effective_rooster_for_date,
+    effectieve_rooster_naam_for_date,
+    iso_week_key,
+    iso_weeks_with_weekday_in_range,
+    prune_past_dates,
+    weekday_key,
+)
+from core.rooster import (  # noqa: F401  (re-exports)
+    DAGPLANNING_SILENT_FORM_VALUE,
+    NAME_RE,
+    TIME_RE,
+    default_dagplanning_obj,
+    default_roosters_obj,
+    default_standaardweek_obj,
+    default_weken_uit_obj,
+    normalize_and_sort_moments,
+    normalize_time,
+)
+from core.audio_files import (  # noqa: F401  (re-exports)
+    _play_via_pygame,
+    _validate_audio_file,
+    safe_audio_filename,
+)
+
 auth = HTTPBasicAuth()
 
 # Fetch credentials from environment
@@ -20,20 +54,13 @@ ADMIN_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
 ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # e.g. pbkdf2:sha256:...
 FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
 
-# Name validation: 1–35 chars, letters/digits/space/_/- only
-NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
-
 # CSS hex color: #rgb / #rrggbb (case-insensitive). Used to validate
 # the huisstijl custom-color payload before it's stored and rendered
 # unescaped into <html style="--sb-color-...">. A stricter check than
 # eyeballing — anything that doesn't match isn't safe to inject.
 _CSS_HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})")
 
-# Form-level sentinel sent by the agenda dropdown when the user picks
-# '— geen bel —' for a date. Stored as JSON null in dagplanning to mean
-# 'explicit silence override on this date'. The '!' prefix is outside
-# NAME_RE so it can never collide with a real rooster name.
-DAGPLANNING_SILENT_FORM_VALUE = "!off"
+# NAME_RE, TIME_RE, DAGPLANNING_SILENT_FORM_VALUE — see core/rooster.py
 
 # Dutch school vacation regions. The country is split into three by
 # the Ministry of Education for staggered school holidays. Used as
@@ -82,15 +109,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MiB
 app.permanent_session_lifetime = timedelta(minutes=30)  # 30 minutes
 
-def _env_bool(name: str, default: bool) -> bool:
-    """Read an env variable as a boolean.
-    Not set -> default. '0', 'false', 'no', 'off' (case-insensitive) or empty -> False.
-    Everything else -> True. Prevents the classic bug that bool("0") is True.
-    """
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return v.strip().lower() not in ("0", "false", "no", "off", "")
+# _env_bool — see core/util.py
 
 # SESSION_COOKIE_SECURE must be True for HTTPS (browser only sends cookie back
 # over TLS). For HTTP deployment (default install.sh setup, Nginx on port 80)
@@ -191,17 +210,8 @@ def _inject_template_globals():
         "daemon_heartbeat": get_daemon_heartbeat(),
     }
 
-# Time regex: 24-hour clock 00–23, with optional seconds (HH:MM or HH:MM:SS)
-TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
-WEEKDAYS = [
-    ("Mon", "Maandag"),
-    ("Tue", "Dinsdag"),
-    ("Wed", "Woensdag"),
-    ("Thu", "Donderdag"),
-    ("Fri", "Vrijdag"),
-    ("Sat", "Zaterdag"),
-    ("Sun", "Zondag"),
-]
+# TIME_RE — see core/rooster.py
+# WEEKDAYS — see core/dates.py
 
 # ---- UI login (sessie) ----
 def _check_password(plain: str) -> bool:
@@ -490,200 +500,12 @@ def list_audio():
             files.append(name)
     return files
 
-def safe_audio_filename(base_no_ext: str, ext: str) -> str:
-    """Validate name and append the chosen extension (ext contains dot, e.g. '.mp3')."""
-    base_no_ext = base_no_ext.strip()
-    if not NAME_RE.match(base_no_ext):
-        return ""
-    if not (1 <= len(base_no_ext) <= 35):
-        return ""
-    return f"{base_no_ext}{ext}"
-
-def normalize_time(t: str) -> str:
-    """
-    Accepts '8:05', '08:05', '11:30:00', etc.
-    Always returns 'HH:MM', or '' if the time is invalid.
-    """
-    t = (t or "").strip()
-    if not TIME_RE.match(t):
-        return ""
-    parts = t.split(":")
-    if len(parts) < 2:
-        return ""
-    hh, mm = parts[0], parts[1]
-    # prevent odd things like '007:03'
-    try:
-        hh_int = int(hh)
-        mm_int = int(mm)
-    except ValueError:
-        return ""
-    if not (0 <= hh_int <= 23 and 0 <= mm_int <= 59):
-        return ""
-    return f"{hh_int:02d}:{mm_int:02d}"
-
-def normalize_and_sort_moments(moments):
-    cleaned = []
-    for m in moments:
-        tijd_norm = normalize_time(m.get("tijd") or "")
-        naam = (m.get("naam") or "").strip()
-        bestand = (m.get("bestand") or "").strip()
-        if not tijd_norm:
-            continue
-        if not naam:
-            continue
-        if not bestand:
-            continue
-        out = {"tijd": tijd_norm, "naam": naam, "bestand": bestand}
-
-        # Optional warning bell: rings warn_min minutes before the
-        # main moment with warn_bestand. Both fields must be valid
-        # and non-empty for a warning to actually fire — anything
-        # else is treated as "no warning". Keeps roosters.json
-        # forward- and backward-compatible: legacy moments without
-        # the keys load fine and simply don't get a warning.
-        warn_min = m.get("warn_min")
-        warn_bestand = (m.get("warn_bestand") or "").strip()
-        try:
-            warn_min_int = int(warn_min) if warn_min is not None else 0
-        except (TypeError, ValueError):
-            warn_min_int = 0
-        if 1 <= warn_min_int <= 60 and warn_bestand:
-            out["warn_min"] = warn_min_int
-            out["warn_bestand"] = warn_bestand
-        # If only one of the two is set, the warning is silently
-        # dropped — no half-configured state survives normalization.
-
-        cleaned.append(out)
-    cleaned.sort(key=lambda x: x["tijd"])
-    return cleaned
-
-def default_roosters_obj():
-    return {}
-
-def default_dagplanning_obj():
-    return {}
-
-def default_standaardweek_obj():
-    # Default: no rooster filled in
-    return {k: "" for k, _ in WEEKDAYS}
-
-def weekday_key(d: date) -> str:
-    return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d.weekday()]
-
-def effective_rooster_for_date(d: date, dagplanning: dict, standaardweek: dict) -> tuple[str, str]:
-    """Resolve which rooster applies on date d, plus where the answer came from.
-
-    Returns (rooster_name, bron):
-      - rooster_name: "" means no schedule (silence override OR no
-        standaardweek entry for this weekday).
-      - bron: "dagplanning" if there was an override on this date
-        (whether to a rooster or to silence), else "standaardweek".
-
-    Three cases for dagplanning entries:
-      - non-empty string -> override to that rooster
-      - None (JSON null) -> explicit silence override (no bell)
-      - "" or key missing -> no override, fall back to standaardweek
-
-    The empty-string case is kept as 'no override' for backwards
-    compatibility: older dagplanning.json files (or manual edits) may
-    contain "" — treating that as silence would change behavior on
-    upgrade. Explicit silence is signalled by None / null only.
-
-    This is the single source of truth for 'which schedule applies on
-    a given date' — every callsite (agenda render, agenda save, the
-    /api/effectief-rooster endpoint, compute_upcoming) must go through
-    this function so they can't drift apart on edge cases.
-    """
-    d_iso = d.isoformat()
-    if d_iso in dagplanning:
-        v = dagplanning[d_iso]
-        if v is None:
-            return ("", "dagplanning")  # explicit silence override
-        if v:
-            return (v, "dagplanning")
-        # empty string falls through to standaardweek (legacy)
-    name = (standaardweek or {}).get(weekday_key(d), "") or ""
-    return (name, "standaardweek")
-
-def effectieve_rooster_naam_for_date(d: date, dagplanning: dict, standaardweek: dict) -> str:
-    """Backwards-compat wrapper that returns only the rooster name.
-
-    Kept because tests already reference this name; new code should
-    prefer effective_rooster_for_date when the bron is also useful.
-    """
-    return effective_rooster_for_date(d, dagplanning, standaardweek)[0]
-
-def default_weken_uit_obj():
-    return {}  # bijv. {"2025-W34": true}
-
-def iso_week_key(d: date) -> str:
-    y, w, _ = d.isocalendar()
-    return f"{y}-W{w:02d}"
-
-def iso_weeks_with_weekday_in_range(start: date, end: date) -> set[str]:
-    """All ISO week keys (YYYY-Www) that contain at least one weekday
-    (Mon-Fri) inside the inclusive range start..end.
-
-    Returns an empty set if end < start. Weekend-only ranges return
-    an empty set.
-
-    Why weekday-only and not 'any day in range': vacations like
-    'Sat 2026-10-10 t/m Sun 2026-10-18' overlap two ISO weeks (41
-    and 42), but the school days within the vacation only fall in
-    week 42 (Mon-Fri Oct 12-16). Marking week 41 as 'Bel uit' would
-    silence Mon-Fri Oct 5-9, which are normal school days outside
-    the vacation. So we only count weeks that contain a school
-    day belonging to the vacation.
-
-    Assumes the bell rings Mon-Fri. Schools that configure a
-    Saturday rooster would get a slight under-mark — out of scope
-    for now; a per-rooster weekday set is much more code than
-    this saves.
-
-    Iterates day-by-day rather than week-by-week so partial-week
-    edge cases (vacation Mon-Wed, vacation crossing the ISO year
-    boundary where Dec 31 is in week 1 of the next year, etc.)
-    all fall out correctly without special-casing. A 1-2 week
-    vacation = at most ~14 iterations — cheap.
-    """
-    weeks: set[str] = set()
-    if end < start:
-        return weeks
-    d = start
-    while d <= end:
-        if d.weekday() < 5:  # 0=Monday, 4=Friday; 5=Sat, 6=Sun
-            weeks.add(iso_week_key(d))
-        d += timedelta(days=1)
-    return weeks
-
-def prune_past_dates(dagplanning: dict, today: date) -> dict:
-    """Return a copy of dagplanning without entries whose date is before today.
-
-    The agenda accumulates per-date overrides. Once a date has passed,
-    its entry is dead weight: the bell already rang (or didn't), and
-    events.jsonl is the historical record we actually want to keep.
-    Without this prune, dagplanning.json grows unbounded — every
-    holiday, every snow day, forever.
-
-    Today is kept (the bell may still ring later today). Entries with
-    a date string that doesn't parse as ISO YYYY-MM-DD are also kept,
-    so we don't silently drop unexpected data; if there's garbage in
-    the file it's better to surface it than to delete it.
-    """
-    keep = {}
-    for k, v in dagplanning.items():
-        try:
-            entry_date = date.fromisoformat(k)
-        except (TypeError, ValueError):
-            keep[k] = v
-            continue
-        if entry_date >= today:
-            keep[k] = v
-    return keep
-
-def _next_local_midnight(now: datetime) -> datetime:
-    tomorrow = now.date() + timedelta(days=1)
-    return datetime.combine(tomorrow, time(0, 0, 0))
+# Pure helpers extracted to core/ — see imports at the top of this file:
+#   safe_audio_filename, normalize_time, normalize_and_sort_moments,
+#   default_roosters_obj, default_dagplanning_obj, default_standaardweek_obj,
+#   default_weken_uit_obj, weekday_key, iso_week_key,
+#   iso_weeks_with_weekday_in_range, effective_rooster_for_date,
+#   effectieve_rooster_naam_for_date, prune_past_dates, _next_local_midnight
 
 
 def next_bell_for_now(now: datetime) -> dict | None:
@@ -1844,60 +1666,8 @@ def geluiden_upload():
     flash(f"Upload geslaagd: {filename}")
     return redirect(url_for("geluiden"))
 
-def _validate_audio_file(path: str) -> tuple[bool, str]:
-    """Verify pygame can actually decode this file.
+# _validate_audio_file and _play_via_pygame — see core/audio_files.py
 
-    Returns (is_valid, message). Message is shown to the user when
-    invalid; ignored when valid.
-
-    We use pygame.mixer.music.load (same as the daemon) so 'pygame
-    accepts it' = 'the daemon will accept it'. No length check —
-    a 30-minute file is unusual for a school bell but technically
-    valid; the user can decide. We only block the case where pygame
-    refuses outright (corrupt, wrong format despite extension, etc.).
-
-    pygame is imported lazily (same reason as in _play_via_pygame:
-    keeps it out of the test suite).
-    """
-    try:
-        import pygame
-        if not pygame.mixer.get_init():
-            pygame.mixer.init()
-        # load() raises pygame.error if the file is unparseable.
-        # It does NOT actually play; load is just metadata + decoder
-        # priming, which is exactly the validation we want.
-        pygame.mixer.music.load(path)
-        # Be polite: clear the loaded ref so we don't hold the file
-        # open for a subsequent rename/delete.
-        pygame.mixer.music.unload()
-        return True, ""
-    except Exception as e:
-        return False, f"Pygame kan dit bestand niet lezen ({e})"
-
-def _play_via_pygame(path: str, volume: float) -> None:
-    """Play an audio file through the web worker's own pygame mixer.
-
-    Used by the 'test bell' button on the geluiden page. The daemon
-    has its own mixer instance for scheduled bells; this is a
-    completely separate one in the Flask worker process. ALSA's
-    default dmix plugin lets multiple processes share the audio
-    device, so daemon + webinterface playing simultaneously is fine
-    (a scheduled bell mid-test is rare but you'd just hear both).
-
-    pygame is imported lazily so the test suite (which imports
-    webinterface) doesn't need pygame on the testbench. On the Pi
-    it's already installed via requirements.txt for the daemon.
-
-    pygame.mixer.get_init() lets us avoid a global 'is_initialized'
-    flag — pygame already tracks state for us. mixer.init() is
-    idempotent in practice but get_init() avoids the work.
-    """
-    import pygame  # local import: only when the button is actually used
-    if not pygame.mixer.get_init():
-        pygame.mixer.init()
-    pygame.mixer.music.set_volume(volume)
-    pygame.mixer.music.load(path)
-    pygame.mixer.music.play()
 
 @app.route("/geluiden/play", methods=["POST"])
 @ui_login_required
