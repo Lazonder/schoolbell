@@ -10,7 +10,7 @@
     Importeer schoolvakanties uit
     <code class="sb-code-mono">data/vakanties.json</code>
     voor regio <strong>{{ vakantieregio }}</strong>
-    (instelbaar via <a href="{{ url_for('settings_page') }}">Voorkeuren</a>).
+    (instelbaar via <a href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>).
     De getroffen weken worden automatisch op <em>Bel uit</em> gezet.
     Bestaande markeringen blijven staan — de import voegt alleen toe.
     {% if not vakanties_path_exists %}
@@ -20,7 +20,7 @@
     {% endif %}
   </p>
   <div class="sb-form-row">
-    <form method="post" action="{{ url_for('import_vakanties') }}" class="inline"
+    <form method="post" action="{{ url_for('agenda.import_vakanties') }}" class="inline"
           data-confirm="Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan)."
           data-confirm-button="Importeren">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -29,7 +29,7 @@
         Vakanties importeren
       </button>
     </form>
-    <form method="post" action="{{ url_for('refresh_vakanties') }}" class="inline"
+    <form method="post" action="{{ url_for('agenda.refresh_vakanties') }}" class="inline"
           data-confirm="Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan verloren."
           data-confirm-button="Verversen">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -41,13 +41,13 @@
   <p class="sb-help" style="margin-top:8px; font-size:0.85em;">
     De daemon ververst dit automatisch ongeveer elke maand. Met de
     knop hierboven kun je tussentijds verversen of de eerste keer
-    ophalen. Status zichtbaar in <a href="{{ url_for('settings_page') }}">Voorkeuren</a>.
+    ophalen. Status zichtbaar in <a href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>.
   </p>
 </div>
 {% endif %}
 
 <div class="card sb-card sb-card--section">
-  <form method="post" action="{{ url_for('agenda') }}">
+  <form method="post" action="{{ url_for('agenda.agenda') }}">
     <input type="hidden" name="_action" value="bulk_save">
 
     <header class="sb-page-header">

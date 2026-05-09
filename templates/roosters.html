@@ -46,7 +46,7 @@
                   </td>
                   <td class="col-acties">
                     <form class="inline" method="post"
-                          action="{{ url_for('delete_moment', rooster=naam, index=loop.index0) }}"
+                          action="{{ url_for('roosters.delete_moment', rooster=naam, index=loop.index0) }}"
                           data-confirm="Moment {{ m.tijd }} ({{ m.naam }}) verwijderen?"
                           data-confirm-button="Verwijderen">
                       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -70,7 +70,7 @@
         </table>
 
         <form method="post"
-              action="{{ url_for('add_moment', rooster=naam) }}"
+              action="{{ url_for('roosters.add_moment', rooster=naam) }}"
               class="add-form">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
@@ -126,7 +126,7 @@
 
         <form class="inline"
               method="post"
-              action="{{ url_for('delete_rooster', rooster=naam) }}"
+              action="{{ url_for('roosters.delete_rooster', rooster=naam) }}"
               data-confirm="Rooster &quot;{{ naam }}&quot; verwijderen? Dit verwijdert ook alle momenten in dit rooster."
               data-confirm-button="Verwijderen">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -147,7 +147,7 @@
 
 <div class="card sb-card sb-card--section">
   <h2 class="sb-card__title">Nieuw rooster</h2>
-  <form method="post" action="{{ url_for('add_rooster') }}">
+  <form method="post" action="{{ url_for('roosters.add_rooster') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
     <div class="sb-new-rooster-row">

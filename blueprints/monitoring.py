@@ -52,7 +52,7 @@ def home():
     # Hitting the bare site goes to the agenda. The agenda lives
     # in webinterface.py for now (still on the main app, not a
     # blueprint), so we use its plain endpoint name.
-    return redirect(url_for("agenda"))
+    return redirect(url_for("agenda.agenda"))
 
 
 @monitoring_bp.route("/logs", methods=["GET"])
