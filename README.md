@@ -39,19 +39,29 @@ schoolbell-daemon (systemd)
 
 ### Webinterface
 
-* Roosters aanmaken en bewerken
+* Roosters aanmaken en bewerken — per moment optioneel een **waarschuwingsbel** N minuten eerder met een eigen geluid (bv. zachte ping vóór de hoofdbel)
 * Standaardweek en agenda per dag instellen — agenda is responsive en wordt op smalle schermen (≤700px) gestapeld als kaart-per-week
 * Geluiden uploaden en verwijderen
 * Logboek bekijken
 * Instellingen aanpassen (volume, uploadlimiet, polling-interval)
+* In **Voorkeuren** een keuze voor **Huisstijl** — _Standaard_ volgt het Licht/Donker-thema, _Aangepast_ laat je drie kleuren handmatig kiezen (achtergrond, tabelvulling, navigatiebalk) zodat de interface bij de huisstijl van je school past
 * Vakantieweken automatisch importeren van [rijksoverheid.nl](https://www.rijksoverheid.nl/onderwerpen/schoolvakanties), per regio (Noord / Midden / Zuid)
 * In **Voorkeuren** een statuspaneel met de opgeslagen schooljaren, laatste fetch-tijdstip, en een toggle om de scrape-functionaliteit volledig uit te zetten (bv. voor gebruik buiten Nederland)
 * Heartbeat-indicator in de header — een klein groen/rood bolletje dat aangeeft of de daemon recent heeft gepoll'd; klik erop voor de laatste poll-tijd
+
+### Publieke pagina `/now`
+
+Een unauthed read-only pagina met een grote aftelling tot de volgende bel — geschikt voor een TV in de docentenkamer of een tablet bij de receptie. Toont alleen "Volgende bel: <naam>" + countdown + huidige tijd; nooit het volledige rooster of admin-controles. JS telt zelf elke seconde af (geen flikker) en haalt elke ronde minuut nieuwe data op via `/api/now`. Bij een mislukte fetch verschijnt rechtsboven een rood stipje zodat een passant ziet dat het scherm verouderd is.
+
+```
+http://<pi-ip>/now
+```
 
 ### Daemon
 
 * Haalt periodiek het effectieve rooster op via de API
 * Speelt belgeluiden af met ingesteld volume
+* Plant per moment ook eventuele waarschuwingsbellen op `tijd − warn_min` met een eigen geluid; waarschuwingen die voor middernacht zouden vallen worden overgeslagen
 * Logt elk belmoment in `data/events.jsonl`
 * Herlaadt instellingen direct na `SIGHUP`
 * Schrijft per poll-iteratie een heartbeat-bestand (`data/daemon_heartbeat.json`) — gelezen door de webinterface (header-indicator) en door `/healthz` (zie Monitoring)
