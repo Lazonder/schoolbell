@@ -647,6 +647,22 @@ html[data-theme="dark"] .sb-brand__logo {
 }
 
 /* =========================================
+   HUISSTIJL — aangepast
+
+   When the user picks "Aangepast" in Voorkeuren, base.html sets
+   data-huisstijl="aangepast" on <html> plus inline CSS variables for
+   bg / surface / nav. The bg + surface overrides flow through the
+   normal cascade because everything else already references them via
+   var(). The header is special: in light mode it's a gradient of the
+   primary color, which would ignore --sb-color-huisstijl-nav. So we
+   override .sb-header here with a flat solid using the custom nav
+   color, similar to dark mode.
+   ========================================= */
+html[data-huisstijl="aangepast"] .sb-header {
+  background: var(--sb-color-huisstijl-nav, var(--sb-color-primary));
+}
+
+/* =========================================
    Agenda — mobile (stacked card per week below 700px)
    ========================================= */
 

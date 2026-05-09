@@ -23,6 +23,12 @@ FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
 # Name validation: 1–35 chars, letters/digits/space/_/- only
 NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 
+# CSS hex color: #rgb / #rrggbb (case-insensitive). Used to validate
+# the huisstijl custom-color payload before it's stored and rendered
+# unescaped into <html style="--sb-color-...">. A stricter check than
+# eyeballing — anything that doesn't match isn't safe to inject.
+_CSS_HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})")
+
 # Form-level sentinel sent by the agenda dropdown when the user picks
 # '— geen bel —' for a date. Stored as JSON null in dagplanning to mean
 # 'explicit silence override on this date'. The '!' prefix is outside
@@ -158,14 +164,30 @@ def get_daemon_heartbeat() -> dict:
 @app.context_processor
 def _inject_template_globals():
     try:
-        mode = Settings.load().theme_mode
+        s = Settings.load()
+        mode = s.theme_mode
+        huisstijl = s.huisstijl
+        custom_bg = s.theme_custom_bg
+        custom_table = s.theme_custom_table
+        custom_nav = s.theme_custom_nav
     except Exception:
+        # Be tolerant on /login where the settings file might be
+        # missing or unreadable: fall back to "light + standaard"
+        # so the page still renders.
         mode = "light"
+        huisstijl = "standaard"
+        custom_bg = custom_table = custom_nav = ""
     if mode not in ("light", "dark", "auto"):
         mode = "light"
+    if huisstijl not in ("standaard", "aangepast"):
+        huisstijl = "standaard"
     return {
         "now": datetime.now,
         "theme_mode": mode,
+        "huisstijl": huisstijl,
+        "theme_custom_bg": custom_bg,
+        "theme_custom_table": custom_table,
+        "theme_custom_nav": custom_nav,
         "daemon_heartbeat": get_daemon_heartbeat(),
     }
 
@@ -320,6 +342,24 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
         if tm not in ("light", "dark", "auto"):
             abort(400, "theme_mode must be one of: light, dark, auto")
         s.theme_mode = tm
+
+    if "huisstijl" in payload:
+        hs = str(payload["huisstijl"]).strip().lower()
+        if hs not in ("standaard", "aangepast"):
+            abort(400, "huisstijl must be one of: standaard, aangepast")
+        s.huisstijl = hs
+
+    # Validate the three custom-color fields independently so the user
+    # can save partial updates from the Voorkeuren UI (e.g. only
+    # tweaking the nav color). Each must look like a CSS hex code.
+    # We don't try to enforce contrast or other accessibility checks —
+    # the user picked these intentionally and may know what they want.
+    for key in ("theme_custom_bg", "theme_custom_table", "theme_custom_nav"):
+        if key in payload:
+            v = str(payload[key]).strip()
+            if not _CSS_HEX_COLOR_RE.fullmatch(v):
+                abort(400, f"{key} must be a CSS hex color like #rrggbb")
+            setattr(s, key, v.lower())
 
     if "vakantieregio" in payload:
         vr = str(payload["vakantieregio"]).strip()

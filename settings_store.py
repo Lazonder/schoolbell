@@ -22,6 +22,26 @@ class Settings:
     # UI theme. "auto" follows the browser's system preference
     # (prefers-color-scheme). See base.html for the application.
     theme_mode: str = "light"             # "light" | "dark" | "auto"
+    # House-style overrides, independent of theme_mode. "standaard"
+    # means: don't override anything, follow theme_mode as before.
+    # "aangepast" reads the three theme_custom_* fields below and
+    # injects them as inline CSS custom properties on <html>, so they
+    # win over both :root and html[data-theme="dark"].
+    huisstijl: str = "standaard"          # "standaard" | "aangepast"
+    # Custom-style colors. Only consulted when huisstijl == "aangepast".
+    # Stored as CSS hex strings (#rrggbb / #rgb). The three fields map
+    # to the elements the user can recolor:
+    #   - theme_custom_bg    → page background     (--sb-color-bg)
+    #   - theme_custom_table → cards & table fill  (--sb-color-surface
+    #                                               + --sb-color-row-alt)
+    #   - theme_custom_nav   → navigation bar      (.sb-header — flat
+    #                                               solid color, no
+    #                                               gradient in custom)
+    # Defaults match the light theme so an "aangepast" with no further
+    # changes looks identical to "Licht / standaard".
+    theme_custom_bg: str = "#ffffff"
+    theme_custom_table: str = "#f7f7f9"
+    theme_custom_nav: str = "#5b62ff"
     # Dutch school vacation region used by the 'Vakanties importeren'
     # button on the agenda page. The shared vakanties.json file lists
     # vacation dates per region; this picks which list to read.
