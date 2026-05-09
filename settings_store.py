@@ -19,6 +19,13 @@ class Settings:
     volume_percent: int = 70              # 0..100
     max_file_size_mb: int = 15            # 1..1024
     poll_interval_sec: int = 2            # 1..60
+    # UI language. Used by Flask-Babel to pick a translation. The
+    # special value "auto" tells the server to read the browser's
+    # Accept-Language header on every request and pick the best
+    # matching supported locale. Anything else must match an entry in
+    # SUPPORTED_LOCALES (see core/i18n.py); unknown values fall back
+    # to the default ("nl").
+    taal: str = "nl"                      # "nl" | "en" | "de" | "fr" | "auto"
     # UI theme. "auto" follows the browser's system preference
     # (prefers-color-scheme). See base.html for the application.
     theme_mode: str = "light"             # "light" | "dark" | "auto"
