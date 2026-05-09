@@ -73,7 +73,7 @@
         <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters') }}">Roosters</a>
         <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('standaardweek') }}">Standaardweek</a>
         <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden.geluiden') }}">Geluiden</a>
-        <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('logs_page') }}">Logboek</a>
+        <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('monitoring.logs_page') }}">Logboek</a>
         <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings_page') }}">Voorkeuren</a>
       </nav>
 

@@ -683,27 +683,8 @@ def compute_upcoming(limit=20):
 
 
 # ---------- Routes ----------
-@app.route("/")
-@ui_login_required
-def home():
-    return redirect(url_for("agenda"))
+# / and /logs moved to blueprints/monitoring.py
 
-@app.route("/logs", methods=["GET"])
-@ui_login_required
-def logs_page():
-    ensure_dirs()
-    upcoming = compute_upcoming(20)
-    evs = list(reversed(read_events(200)))
-    recent_bell = [e for e in evs if e.get("type") == "bell"][:20]
-    recent_ui   = [e for e in evs if e.get("type") == "ui"][:20]
-    return render_template(
-        "logs.html",
-        tab="logs",
-        csrf_token=get_csrf_token(),
-        upcoming=upcoming,
-        recent_bell=recent_bell,
-        recent_ui=recent_ui,
-    )
 
 # -- Settings (pagina) --
 @app.get("/settings")
@@ -1371,187 +1352,13 @@ def refresh_vakanties():
     flash(msg)
     return redirect(url_for("agenda"))
 
-@app.route("/healthz", methods=["GET"])
-def healthz():
-    """Liveness/readiness probe.
-
-    Returns 200 with a JSON status doc when the basic plumbing is
-    OK, 503 when something is broken. Intentionally unauthenticated:
-    monitoring agents (uptime checks, container probes, nagios-style
-    probes) typically can't carry session cookies. The information
-    leaked is minimal — error messages may include filesystem paths
-    that are already implied by the project layout.
-
-    Checks performed:
-      - DATA_DIR exists and is writable (we briefly create + remove
-        a probe file)
-      - AUDIO_DIR exists and is readable
-      - Settings can be loaded
-      - Daemon heartbeat is fresh (delegates to get_daemon_heartbeat)
-
-    'Degraded' (503) is returned on any failed check. The 'checks'
-    map in the body always lists every check so a monitoring tool
-    can show *which* part is unhealthy, not just that something is.
-    """
-    checks: dict = {}
-    overall_ok = True
-
-    # 1) Data dir writable. Touch + delete a probe file. Done before
-    # ensure_dirs() so a permission-bug surface here rather than being
-    # papered over by os.makedirs(exist_ok=True).
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        probe = os.path.join(DATA_DIR, ".healthz_probe")
-        with open(probe, "w") as f:
-            f.write("ok")
-        os.remove(probe)
-        checks["data_dir_writable"] = True
-    except Exception as e:
-        checks["data_dir_writable"] = False
-        checks["data_dir_error"] = str(e)
-        overall_ok = False
-
-    # 2) Audio dir readable. Bell can't ring without it; the daemon
-    # would log 'File not found' for every moment.
-    try:
-        os.listdir(AUDIO_DIR)
-        checks["audio_dir_readable"] = True
-    except Exception as e:
-        checks["audio_dir_readable"] = False
-        checks["audio_dir_error"] = str(e)
-        overall_ok = False
-
-    # 3) Settings loadable. A corrupt config.json would crash routes
-    # one by one; better to flag it here.
-    try:
-        Settings.load()
-        checks["settings_loadable"] = True
-    except Exception as e:
-        checks["settings_loadable"] = False
-        checks["settings_error"] = str(e)
-        overall_ok = False
-
-    # 4) Daemon heartbeat — the most operationally interesting signal.
-    # If web is up but daemon is dead, no bells ring even though the
-    # site looks healthy. Surface that loudly.
-    hb = get_daemon_heartbeat()
-    checks["daemon_alive"] = hb["alive"]
-    checks["daemon_last_poll_at"] = hb["last_poll_at"]
-    checks["daemon_age_seconds"] = hb["age_seconds"]
-    checks["daemon_threshold_seconds"] = hb["threshold_seconds"]
-    if not hb["alive"]:
-        overall_ok = False
-
-    body = {
-        "status": "ok" if overall_ok else "degraded",
-        "checks": checks,
-    }
-    return jsonify(body), (200 if overall_ok else 503)
-
-
-# --- /now: public read-only "next bell" page ---------------------------------
-#
-# Designed to live full-screen on a TV in the staff room. Deliberately
-# unauthed so anyone in the building can glance at it; only static info
-# is exposed (the next bell name + countdown), never the full schedule
-# or any state-changing controls. The companion /api/now returns the
-# same data as JSON so the page can refresh without a reload.
-
-@app.route("/now", methods=["GET"])
-def now_page():
-    return render_template("now.html")
-
-
-@app.route("/api/now", methods=["GET"])
-def api_now():
-    """JSON shape: see next_bell_for_now(). 'bell' is null when no
-    upcoming bell today; the page treats that as 'geen bel meer
-    vandaag'. Always 200 so the JS doesn't have to special-case
-    network errors vs no-bell.
-    """
-    bell = next_bell_for_now(datetime.now())
-    return jsonify({
-        "now": datetime.now().isoformat(timespec="seconds"),
-        "bell": bell,
-    }), 200
-
-
-@app.route("/api/effectief-rooster", methods=["GET"])
-@auth.login_required
-def api_effectief_rooster():
-    """
-    Return the effective schedule for a given day.
-    Query params:
-      - datum=YYYY-MM-DD (optional, default today)
-      - empty_204=1       -> return 204 for empty schedule/week off
-    """
-    ensure_dirs()
-
-    datum_qs = (request.args.get("datum") or "").strip()
-    empty_204 = (request.args.get("empty_204") == "1")
-
-    if datum_qs:
-        try:
-            d = datetime.strptime(datum_qs, "%Y-%m-%d").date()
-        except ValueError:
-            return {"error": "Invalid date. Use YYYY-MM-DD."}, 400
-    else:
-        d = date.today()
-    d_iso = d.isoformat()
-
-    roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
-    dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
-    standaardweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
-    weken_uit = load_json(WEEKDISABLE_PATH, default_weken_uit_obj())
-
-    next_check_str = _next_local_midnight(datetime.now()).isoformat()
-    headers = {"Cache-Control": "public, max-age=300",
-               "X-Next-Check": next_check_str}
-
-    wk_key = iso_week_key(d)
-    if weken_uit.get(wk_key):
-        if empty_204:
-            return ("", 204, headers)
-        return ({
-            "datum": d_iso,
-            "bron": "week-uit",
-            "rooster_naam": "",
-            "momenten": [],
-            "next_check_suggested": next_check_str,
-        }, 200, headers)
-
-    # Route via the single helper. Without this, the API and the
-    # in-process agenda render disagreed on the legacy "" case in
-    # dagplanning (API silenced, agenda fell through). Going through
-    # the helper makes both paths see the same answer.
-    rooster_naam, bron = effective_rooster_for_date(d, dagplanning, standaardweek)
-
-    momenten = []
-    if rooster_naam and rooster_naam in roosters:
-        momenten = roosters[rooster_naam]
-
-    if not momenten:
-        if empty_204:
-            return ("", 204, headers)
-        return ({
-            "datum": d_iso,
-            "bron": bron,
-            "rooster_naam": rooster_naam,
-            "momenten": [],
-            "next_check_suggested": next_check_str,
-        }, 200, headers)
-
-    return ({
-        "datum": d_iso,
-        "bron": bron,
-        "rooster_naam": rooster_naam,
-        "momenten": momenten,
-        "next_check_suggested": next_check_str,
-    }, 200, headers)
 
 
 # /geluiden, /geluiden/upload, /geluiden/play, /geluiden/delete
 # moved to blueprints/geluiden.py — see app.register_blueprint() below.
+
+# /, /logs, /healthz, /now, /api/now, /api/effectief-rooster
+# moved to blueprints/monitoring.py — same registration below.
 
 
 # ---------- Blueprints ----------
@@ -1560,8 +1367,10 @@ def api_effectief_rooster():
 # blueprint module imports it back. That avoids partial-import
 # surprises like 'AttributeError: module has no attribute AUDIO_DIR'.
 from blueprints.geluiden import geluiden_bp  # noqa: E402
+from blueprints.monitoring import monitoring_bp  # noqa: E402
 
 app.register_blueprint(geluiden_bp)
+app.register_blueprint(monitoring_bp)
 
 
 # ---------- Dev server ----------
