@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-import os, json, re, secrets, fcntl
+import os, json, fcntl
 from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
-from flask import Flask, request, redirect, url_for, flash, session, jsonify, render_template
-from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import check_password_hash
-from functools import wraps
+from flask import Flask, request, redirect, url_for, flash, session
 from settings_store import Settings
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -13,8 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # and they can be tested without importing Flask. The names below are
 # re-exported (the import binds them as module-level attributes), so
 # existing test code that does ``from webinterface import iso_week_key``
-# keeps working. Splitting up the rest of webinterface.py into Flask
-# Blueprints is the next step (issue #28).
+# keeps working.
 from core.util import _env_bool  # noqa: F401  (re-export for tests)
 from core.dates import (  # noqa: F401  (re-exports)
     WEEKDAYS,
@@ -42,20 +38,18 @@ from core.audio_files import (  # noqa: F401  (re-exports)
     _validate_audio_file,
     safe_audio_filename,
 )
-
-auth = HTTPBasicAuth()
-
-# Fetch credentials from environment
-ADMIN_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
-# Set either SCHOOLBELL_WEB_PWHASH (recommended) or temporarily SCHOOLBELL_WEB_PASS
-ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # e.g. pbkdf2:sha256:...
-FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
-
-# CSS hex color: #rgb / #rrggbb (case-insensitive). Used to validate
-# the huisstijl custom-color payload before it's stored and rendered
-# unescaped into <html style="--sb-color-...">. A stricter check than
-# eyeballing — anything that doesn't match isn't safe to inject.
-_CSS_HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})")
+from core.auth import (  # noqa: F401  (re-exports for blueprints + tests)
+    ADMIN_HASH,
+    ADMIN_USER,
+    FALLBACK_PLAIN,
+    _check_password,
+    auth,
+    get_csrf_token,
+    require_admin,
+    ui_logged_in,
+    ui_login_required,
+    verify_password,
+)
 
 # NAME_RE, TIME_RE, DAGPLANNING_SILENT_FORM_VALUE — see core/rooster.py
 
@@ -210,71 +204,18 @@ def _inject_template_globals():
 # TIME_RE — see core/rooster.py
 # WEEKDAYS — see core/dates.py
 
-# ---- UI login (sessie) ----
-def _check_password(plain: str) -> bool:
-    if ADMIN_HASH:
-        return check_password_hash(ADMIN_HASH, plain)
-    if FALLBACK_PLAIN:
-        return plain == FALLBACK_PLAIN
-    return False
+# Auth helpers and the /login + /logout routes moved to:
+#   core/auth.py        — _check_password, ui_logged_in,
+#                         ui_login_required, get_csrf_token,
+#                         require_admin, verify_password,
+#                         the HTTPBasicAuth instance
+#   blueprints/auth.py  — /login, /logout
+#
+# csrf_protect and the 413 errorhandler stay below — they hook into
+# the Flask app object via @app.before_request / @app.errorhandler,
+# which is the kind of registration that has to happen in the same
+# module that creates the app.
 
-def ui_logged_in() -> bool:
-    return session.get("user") == ADMIN_USER
-
-def ui_login_required(view):
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        if ui_logged_in():
-            return view(*args, **kwargs)
-        # remember where we need to return to
-        nxt = request.full_path if request.query_string else request.path
-        return redirect(url_for("login", next=nxt))
-    return wrapper
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if ui_logged_in():
-        return redirect(url_for("agenda.agenda"))
-
-    next_url = request.args.get("next") or request.form.get("next") or url_for("roosters.roosters")
-
-    if request.method == "POST":
-        u = (request.form.get("username") or "").strip()
-        p = request.form.get("password") or ""
-        if u == ADMIN_USER and _check_password(p):
-            # Close session fixation: discard everything that was in the session
-            # before login (including the CSRF token that was already generated
-            # on the login page), so any injected cookie is immediately worthless.
-            # get_csrf_token() then generates a fresh token on the first next render.
-            session.clear()
-            session.permanent = True
-            session["user"] = ADMIN_USER
-            return redirect(next_url)
-        flash("Onjuiste inloggegevens.")
-
-    return render_template(
-        "login.html",
-        next_url=next_url,
-        admin_user=ADMIN_USER,
-        csrf_token=get_csrf_token(),
-        tab=None  # no active tab on the login page
-    )
-
-@app.route("/logout", methods=["POST", "GET"])
-def logout():
-    # session.clear() instead of just pop("user"): this also discards the
-    # CSRF token and session.permanent flag. On the next login, everything
-    # is rebuilt fresh.
-    session.clear()
-    return redirect(url_for("login"))
-
-# --- CSRF helpers ---
-def get_csrf_token() -> str:
-    tok = session.get("csrf")
-    if not tok:
-        tok = secrets.token_urlsafe(32)
-        session["csrf"] = tok
-    return tok
 
 @app.before_request
 def csrf_protect():
@@ -290,33 +231,11 @@ def csrf_protect():
     if not sess_token or not form_token or form_token != sess_token:
         return "CSRF token invalid or missing", 400
 
-# ---------- Helpers ----------
+
 @app.errorhandler(413)
 def too_large(_e):
     flash("Upload te groot (controleer de ingestelde limiet bij Voorkeuren).")
     return redirect(url_for("geluiden.geluiden"))
-
-@auth.verify_password
-def verify_password(username, password):
-    if username != ADMIN_USER:
-        return False
-    if ADMIN_HASH:
-        return check_password_hash(ADMIN_HASH, password)
-    if FALLBACK_PLAIN:
-        return password == FALLBACK_PLAIN  # only for first test
-    return False
-
-def require_admin(f):
-    """Require a logged-in admin session.
-    For API routes we return 401 JSON instead of a redirect, so that
-    fetch() clients get a machine-readable response.
-    """
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if not ui_logged_in():
-            return jsonify(error="auth_required"), 401
-        return f(*args, **kwargs)
-    return wrapper
 
 def ensure_dirs():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -584,12 +503,13 @@ def compute_upcoming(limit=20):
 
 
 # ---------- Blueprints ----------
-# Routes moved out of webinterface.py per issue #28:
+# Every route in the app now lives in a blueprint under blueprints/:
+#   blueprints/auth.py        — /login, /logout
+#   blueprints/agenda.py      — /agenda, /agenda/import-vakanties, /agenda/refresh-vakanties
 #   blueprints/geluiden.py    — /audio/<file>, /geluiden, /geluiden/{upload,play,delete}
 #   blueprints/monitoring.py  — /, /logs, /healthz, /now, /api/now, /api/effectief-rooster
-#   blueprints/settings.py    — /settings, /api/settings (GET + POST)
 #   blueprints/roosters.py    — /roosters/*, /standaardweek
-#   blueprints/agenda.py      — /agenda, /agenda/import-vakanties, /agenda/refresh-vakanties
+#   blueprints/settings.py    — /settings, /api/settings (GET + POST)
 #
 # Registering at the bottom of the file means webinterface is fully
 # defined (all module-level constants and helpers exist) before each
@@ -599,6 +519,7 @@ def compute_upcoming(limit=20):
 # _apply_settings_payload is also re-imported here for backwards
 # compatibility: tests import it as ``webinterface._apply_settings_payload``.
 from blueprints.agenda import agenda_bp  # noqa: E402
+from blueprints.auth import auth_bp  # noqa: E402
 from blueprints.geluiden import geluiden_bp  # noqa: E402
 from blueprints.monitoring import monitoring_bp  # noqa: E402
 from blueprints.roosters import roosters_bp  # noqa: E402
@@ -608,6 +529,7 @@ from blueprints.settings import (  # noqa: E402, F401
 )
 
 app.register_blueprint(agenda_bp)
+app.register_blueprint(auth_bp)
 app.register_blueprint(geluiden_bp)
 app.register_blueprint(monitoring_bp)
 app.register_blueprint(roosters_bp)
