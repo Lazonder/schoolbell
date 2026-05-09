@@ -18,12 +18,12 @@
           <div class="audio-actions">
             <button type="button"
                     class="sb-btn sb-btn--success sb-btn--icon"
-                    onclick="playAudio('{{ url_for('serve_audio', filename=name) }}')"
+                    onclick="playAudio('{{ url_for('geluiden.serve_audio', filename=name) }}')"
                     title="Voorbeeluister in browser">
               ▶
             </button>
             <form method="post"
-                  action="{{ url_for('geluiden_play') }}"
+                  action="{{ url_for('geluiden.geluiden_play') }}"
                   class="inline"
                   data-confirm="&quot;{{ name }}&quot; nu door de hele school afspelen?"
                   data-confirm-button="Afspelen">
@@ -36,7 +36,7 @@
               </button>
             </form>
             <form method="post"
-                  action="{{ url_for('geluiden_delete') }}"
+                  action="{{ url_for('geluiden.geluiden_delete') }}"
                   class="inline"
                   data-confirm="Bestand &quot;{{ name }}&quot; verwijderen?"
                   data-confirm-button="Verwijderen">
@@ -62,7 +62,7 @@
 
   <form class="upload-form"
         method="post"
-        action="{{ url_for('geluiden_upload') }}"
+        action="{{ url_for('geluiden.geluiden_upload') }}"
         enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
