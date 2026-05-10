@@ -22,7 +22,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_babel import gettext as _
+from flask_babel import format_date, gettext as _
 
 import webinterface as wi
 from core.dates import iso_weeks_with_weekday_in_range, prune_past_dates
@@ -124,7 +124,7 @@ def agenda():
 
             new_weken_uit = {}
             for wk_start in weeks_list:
-                y, w, _ = wk_start.isocalendar()
+                y, w, _w = wk_start.isocalendar()
                 wk_key = f"{y}-W{w:02d}"
                 if f"week_off[{wk_key}]" in request.form:
                     new_weken_uit[wk_key] = True
@@ -189,14 +189,19 @@ def agenda():
 
     weeks = []
     for wk_start in weeks_list:
-        y, w, _ = wk_start.isocalendar()
+        y, w, _w = wk_start.isocalendar()
         wk_key = f"{y}-W{w:02d}"
         off = bool(weken_uit.get(wk_key, False))
         days = [wk_start + timedelta(days=i) for i in range(5)]  # Ma..Vr
+        # Locale-aware date format: NL renders '10-05-2026', EN renders
+        # '5/10/26', DE '10.05.2026', FR '10/05/2026' — all from one
+        # call. format='short' picks the locale's compact convention;
+        # the locale itself comes from Flask-Babel's per-request
+        # selector (Settings.taal -> select_locale()).
         weeks.append({
             "key": wk_key,
             "off": off,
-            "range": f"{days[0].strftime('%d-%m-%Y')} .. {days[-1].strftime('%d-%m-%Y')}",
+            "range": f"{format_date(days[0], format='short')} .. {format_date(days[-1], format='short')}",
             "days": [
                 {
                     "iso": d.isoformat(),

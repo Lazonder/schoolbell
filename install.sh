@@ -76,6 +76,20 @@ sudo -u "${APP_USER}" bash -lc "
   ${APP_DIR}/venv/bin/pip install -r ${APP_DIR}/requirements.txt
 "
 
+# Compile translation catalogs. The .po files in translations/ are
+# the human-readable source; Flask-Babel needs the binary .mo
+# version at runtime. We commit the .mo files too, but recompiling
+# here is cheap and guarantees a fresh build whenever .po changes
+# (e.g. after pulling new strings from upstream). Skipped silently
+# if the translations folder doesn't exist — older checkouts that
+# predate i18n keep working.
+if [[ -d "${APP_DIR}/translations" ]]; then
+  echo "== 2b) Compile translation catalogs =="
+  sudo -u "${APP_USER}" bash -lc "
+    ${APP_DIR}/venv/bin/python -m babel.messages.frontend compile -d ${APP_DIR}/translations
+  " || echo "[WARN] pybabel compile failed; UI will fall back to source language."
+fi
+
 echo "== 3) Directories + permissions =="
 mkdir -p "${CONFIG_DIR}" "${LOG_DIR}"
 mkdir -p "${APP_DIR}/data" "${APP_DIR}/static/geluiden"
