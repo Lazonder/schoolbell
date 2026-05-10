@@ -23,7 +23,7 @@ class Settings:
     # special value "auto" tells the server to read the browser's
     # Accept-Language header on every request and pick the best
     # matching supported locale. Anything else must match an entry in
-    # SUPPORTED_LOCALES (see core/i18n.py); unknown values fall back
+    # SUPPORTED_LOCALES (see core/i18n.py). Unknown values fall back
     # to the default ("nl").
     taal: str = "nl"                      # "nl" | "en" | "de" | "fr" | "auto"
     # UI theme. "auto" follows the browser's system preference
@@ -38,12 +38,12 @@ class Settings:
     # Custom-style colors. Only consulted when huisstijl == "aangepast".
     # Stored as CSS hex strings (#rrggbb / #rgb). The three fields map
     # to the elements the user can recolor:
-    #   - theme_custom_bg    → page background     (--sb-color-bg)
-    #   - theme_custom_table → cards & table fill  (--sb-color-surface
-    #                                               + --sb-color-row-alt)
-    #   - theme_custom_nav   → navigation bar      (.sb-header — flat
-    #                                               solid color, no
-    #                                               gradient in custom)
+    #   - theme_custom_bg    -> page background     (--sb-color-bg)
+    #   - theme_custom_table -> cards & table fill  (--sb-color-surface
+    #                                                + --sb-color-row-alt)
+    #   - theme_custom_nav   -> navigation bar      (.sb-header: flat
+    #                                                solid color, no
+    #                                                gradient in custom)
     # Defaults match the light theme so an "aangepast" with no further
     # changes looks identical to "Licht / standaard".
     theme_custom_bg: str = "#ffffff"
@@ -51,7 +51,7 @@ class Settings:
     theme_custom_nav: str = "#5b62ff"
     # Dutch school vacation region used by the 'Vakanties importeren'
     # button on the agenda page. The shared vakanties.json file lists
-    # vacation dates per region; this picks which list to read.
+    # vacation dates per region. This picks which list to read.
     # Allowed values: "Noord" | "Midden" | "Zuid".
     vakantieregio: str = "Noord"
     # Master switch for the vakantie-scrape feature. When False:
@@ -78,7 +78,7 @@ class Settings:
             with open(CONFIG_PATH, "r") as f:
                 data = json.load(f)
         except FileNotFoundError:
-            # No config file yet → defaults
+            # No config file yet -> defaults
             return cls()
         except json.JSONDecodeError as e:
             raise RuntimeError(f"Config file is invalid JSON: {e}")
@@ -97,13 +97,15 @@ class Settings:
         """Save settings atomically to CONFIG_PATH.
 
         Write to a tmp file in the same directory first, then `os.replace()`.
-        The replace is atomic within a single filesystem — on a crash or
+        The replace is atomic within a single filesystem. On a crash or
         power loss there is therefore either the old file or the complete
         new one. Never a half-written JSON.
 
         Note: this is atomic per call, but a load -> mutate -> save
-        sequence by a route handler is not race-free without an
-        additional lock. Use Settings.locked() for that pattern.
+        sequence by a route handler is not safe against a race
+        condition (when two operations happen at almost the same
+        moment and step on each other) without an additional lock.
+        Use Settings.locked() for that pattern.
         """
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         tmp = CONFIG_PATH.with_suffix(CONFIG_PATH.suffix + ".tmp")
@@ -122,7 +124,7 @@ def locked():
     locked via fcntl.flock LOCK_EX for the duration of the with-block.
     Loads inside the lock, yields the Settings instance for the caller
     to mutate, and saves on a clean exit. If the with-body raises, no
-    save happens — useful when validation rejects an incoming payload.
+    save happens. Useful when validation rejects an incoming payload.
 
     Usage:
         with settings_store.locked() as s:
@@ -133,7 +135,7 @@ def locked():
     settings live at /etc/schoolbell/config.json, outside of DATA_DIR,
     and have their own dedicated load/save methods on the Settings
     dataclass. Keeping the lock here means callers don't have to know
-    about CONFIG_PATH — they just say `with locked()`.
+    about CONFIG_PATH. They just say `with locked()`.
     """
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     lock_path = str(CONFIG_PATH) + ".lock"

@@ -51,11 +51,11 @@ def effective_rooster_for_date(d: date, dagplanning: dict, standaardweek: dict) 
 
     The empty-string case is kept as 'no override' for backwards
     compatibility: older dagplanning.json files (or manual edits) may
-    contain "" — treating that as silence would change behavior on
+    contain "". Treating that as silence would change behavior on
     upgrade. Explicit silence is signalled by None / null only.
 
     This is the single source of truth for 'which schedule applies on
-    a given date' — every callsite (agenda render, agenda save, the
+    a given date'. Every callsite (agenda render, agenda save, the
     /api/effectief-rooster endpoint, compute_upcoming) must go through
     this function so they can't drift apart on edge cases.
     """
@@ -85,7 +85,7 @@ def iso_week_key(d: date) -> str:
 
     ISO weeks start on Monday and the first week of a year is the
     one that contains the first Thursday. This means Dec 31 of one
-    year can sit in week 1 of the next year — that is normal, not
+    year can sit in week 1 of the next year. That is normal, not
     a bug. We use this string as the key in ``weken_uit.json``
     (which weeks the bell is turned off).
     """
@@ -109,15 +109,15 @@ def iso_weeks_with_weekday_in_range(start: date, end: date) -> set[str]:
     day belonging to the vacation.
 
     Assumes the bell rings Mon-Fri. Schools that configure a
-    Saturday rooster would get a slight under-mark — out of scope
-    for now; a per-rooster weekday set is much more code than
+    Saturday rooster would get a slight under-mark. Out of scope
+    for now: a per-rooster weekday set is much more code than
     this saves.
 
     Iterates day-by-day rather than week-by-week so partial-week
     edge cases (vacation Mon-Wed, vacation crossing the ISO year
     boundary where Dec 31 is in week 1 of the next year, etc.)
-    all fall out correctly without special-casing. A 1-2 week
-    vacation = at most ~14 iterations — cheap.
+    all work correctly without special-casing. A 1-2 week
+    vacation = at most ~14 iterations, which is cheap.
     """
     weeks: set[str] = set()
     if end < start:
@@ -136,12 +136,12 @@ def prune_past_dates(dagplanning: dict, today: date) -> dict:
     The agenda accumulates per-date overrides. Once a date has passed,
     its entry is dead weight: the bell already rang (or didn't), and
     events.jsonl is the historical record we actually want to keep.
-    Without this prune, dagplanning.json grows unbounded — every
-    holiday, every snow day, forever.
+    Without this prune, dagplanning.json grows unbounded with every
+    holiday and every snow day, forever.
 
     Today is kept (the bell may still ring later today). Entries with
     a date string that doesn't parse as ISO YYYY-MM-DD are also kept,
-    so we don't silently drop unexpected data; if there's garbage in
+    so we don't silently drop unexpected data. If there's garbage in
     the file it's better to surface it than to delete it.
     """
     keep = {}
@@ -160,7 +160,7 @@ def _next_local_midnight(now: datetime) -> datetime:
     """Return midnight at the start of the next day, in local time.
 
     Used to tell the API client when its cached schedule will become
-    stale: the rooster can flip at midnight (different day, different
+    stale. The rooster can flip at midnight (different day, different
     standaardweek slot), so cache until then and check again.
     """
     tomorrow = now.date() + timedelta(days=1)

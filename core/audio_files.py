@@ -34,10 +34,11 @@ def _validate_audio_file(path: str) -> tuple[bool, str]:
     invalid; ignored when valid.
 
     We use pygame.mixer.music.load (same as the daemon) so 'pygame
-    accepts it' = 'the daemon will accept it'. No length check —
-    a 30-minute file is unusual for a school bell but technically
-    valid; the user can decide. We only block the case where pygame
-    refuses outright (corrupt, wrong format despite extension, etc.).
+    accepts it' = 'the daemon will accept it'. No length check.
+    A 30-minute file is unusual for a school bell but technically
+    valid, so the user can decide. We only block the case where
+    pygame refuses outright (corrupt, wrong format despite
+    extension, etc.).
 
     pygame is imported lazily (same reason as in _play_via_pygame:
     keeps it out of the test suite).
@@ -73,8 +74,9 @@ def _play_via_pygame(path: str, volume: float) -> None:
     it's already installed via requirements.txt for the daemon.
 
     pygame.mixer.get_init() lets us avoid a global 'is_initialized'
-    flag — pygame already tracks state for us. mixer.init() is
-    idempotent in practice but get_init() avoids the work.
+    flag. pygame already tracks state for us. mixer.init() is
+    idempotent (safe to run more than once with the same result)
+    in practice but get_init() avoids the work.
     """
     import pygame  # local import: only when the button is actually used
     if not pygame.mixer.get_init():

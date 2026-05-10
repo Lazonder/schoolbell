@@ -141,11 +141,12 @@ def get_daemon_heartbeat() -> dict:
         threshold_seconds: int — the freshness window we used
 
     The freshness threshold scales with poll_interval_sec so we don't
-    cry wolf on installs with an unusually long polling interval. We
-    also enforce a 10-second minimum because at the default 2s poll
-    interval, 3× = 6s — too tight; a single GC pause or disk hiccup
-    would flip the indicator to 'down' for one render. 10s gives a
-    little slack without making a real outage invisible.
+    give a false alarm on installs with an unusually long polling
+    interval. We also enforce a 10-second minimum because at the
+    default 2s poll interval, 3x = 6s is too tight. A single garbage
+    collector pause (when Python pauses to clean up memory) or disk
+    hiccup would flip the indicator to 'down' for one render. 10s
+    gives a little slack without making a real outage invisible.
     """
     try:
         with open(DAEMON_HEARTBEAT_PATH, "r", encoding="utf-8") as f:
@@ -162,7 +163,7 @@ def get_daemon_heartbeat() -> dict:
 
     # Normalize to UTC-aware so the subtraction always works regardless
     # of how the daemon serialized its tz. The daemon currently writes
-    # UTC ISO strings, so this is belt-and-braces.
+    # UTC ISO strings, so this is extra protection just in case.
     if last_dt.tzinfo is None:
         last_dt = last_dt.replace(tzinfo=timezone.utc)
 
@@ -185,7 +186,7 @@ def get_daemon_heartbeat() -> dict:
 # footer year. Without this processor, `{{ now().year }}` would give an
 # UndefinedError; previously there was a permanent-falsy dummy.
 #
-# theme_mode is also injected here so base.html can bake it server-side
+# theme_mode is also injected here so base.html can include it server-side
 # (avoids flash-of-wrong-theme and works on /login, where /api/settings
 # would return 401 because the user isn't logged in yet).
 #
@@ -288,10 +289,12 @@ def locked_json(path, default):
     Why this exists: save_json() writes atomically (tmp + os.replace),
     but the typical request flow is load -> mutate -> save. Two
     concurrent requests can both load the same state, each mutate
-    their own copy, and both save — the second one overwrites the
-    first, silently losing an update. With Gunicorn at 2 workers ×
-    4 threads that race is real: two people clicking 'add moment'
-    at the same time can lose one of the moments.
+    their own copy, and both save. The second one overwrites the
+    first, silently losing an update. With Gunicorn at 2 workers x
+    4 threads that race condition (when two operations happen at
+    almost the same moment and step on each other) is real: two
+    people clicking 'add moment' at the same time can lose one of
+    the moments.
 
     Usage:
         with locked_json(ROOSTERS_PATH, default_roosters_obj()) as (data, save):
