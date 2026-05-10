@@ -8,7 +8,7 @@ request. This file holds:
   - DEFAULT_LOCALE   — what to fall back to when nothing matches
     (Dutch, the original language of the app).
   - select_locale()  — the callback Flask-Babel calls per request.
-    It looks at Settings.taal first; if that says "auto", it asks
+    It looks at Settings.taal first. If that says "auto", it asks
     the browser via the Accept-Language header.
 
 The actual ``Babel`` instance is built in ``webinterface.py`` next
@@ -38,10 +38,10 @@ def select_locale() -> str:
     """Decide which locale Flask-Babel should use for this request.
 
     Priority order:
-      1. Settings.taal is one of the supported locales — use it.
-      2. Settings.taal is "auto" — ask the browser via
+      1. Settings.taal is one of the supported locales: use it.
+      2. Settings.taal is "auto": ask the browser via
          Accept-Language and pick the best supported match.
-      3. Anything else (corrupt config, unknown value) — fall back
+      3. Anything else (corrupt config, unknown value): fall back
          to DEFAULT_LOCALE.
 
     Reading Settings on every request is cheap (load_json hits a

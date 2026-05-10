@@ -39,8 +39,8 @@ DEBUG = os.getenv("SCHOOLBELL_DAEMON_DEBUG", "0").strip().lower() in ("1", "true
 # daemon starts shortly before the first scheduled bell and the very
 # first API call fails (e.g. nginx isn't ready yet), waiting 5 minutes
 # could mean missing that first bell entirely. 1 minute gives us 5
-# tries inside that 5-minute window — enough recovery time without
-# blowing past the next scheduled moment.
+# tries inside that 5-minute window. Enough recovery time without
+# missing the next scheduled moment.
 BACKOFF_ON_ERROR = 60          # seconds
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:5000")
@@ -102,9 +102,10 @@ def _write_heartbeat() -> None:
     """Write the current UTC timestamp to the heartbeat file.
 
     Called once per poller iteration. Intentionally simple (no
-    tmp-file dance) — the reader tolerates missing/corrupt files
-    by treating them as 'no recent heartbeat', and a partially
-    written file gets overwritten on the next iteration.
+    steps where we write to a tmp file then rename). The reader
+    tolerates missing/corrupt files by treating them as 'no recent
+    heartbeat', and a partially written file gets overwritten on
+    the next iteration.
     """
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -300,7 +301,7 @@ def _signature(payload: dict) -> str:
 # Refresh the vakanties data when the last successful refresh was
 # more than this many days ago. Picked at ~30 days for two reasons:
 #   1. Rijksoverheid publishes ~5 schooljaren ahead, so a single
-#      missed refresh is never a real problem — the data we have
+#      missed refresh is never a real problem. The data we have
 #      remains valid for the bulk of the relevant year.
 #   2. Anchoring on a specific date (e.g. August 1) made the trigger
 #      brittle: a network blip or service restart on that one day
@@ -311,7 +312,7 @@ def _signature(payload: dict) -> str:
 VAKANTIES_REFRESH_INTERVAL_DAYS = 30
 
 def _load_vakanties_fetch_state() -> dict:
-    """Read the small JSON state file. Missing/bad file → empty dict."""
+    """Read the small JSON state file. Missing/bad file -> empty dict."""
     try:
         with open(VAKANTIES_FETCH_STATE_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -323,7 +324,7 @@ def _load_vakanties_fetch_state() -> dict:
 
 def _save_vakanties_fetch_state(state: dict) -> None:
     """Atomically persist the fetch-state. Same tmp+os.replace pattern
-    as elsewhere — robust against power loss mid-write."""
+    as elsewhere: robust against power loss mid-write."""
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
         tmp = VAKANTIES_FETCH_STATE_PATH + ".tmp"
@@ -339,7 +340,7 @@ def _should_refresh_vakanties_today(today: date, state: dict) -> bool:
     """Should we attempt a vakanties refresh on this date?
 
     Rule: refresh if the last successful refresh was more than
-    VAKANTIES_REFRESH_INTERVAL_DAYS ago (or never). Corrupt /
+    VAKANTIES_REFRESH_INTERVAL_DAYS ago (or never). Corrupt or
     unparseable state is treated as 'never refreshed'.
 
     No special-cased calendar date. The schooljaar boundary is
@@ -370,13 +371,14 @@ def _maybe_refresh_vakanties() -> None:
     Years that previously succeeded but fail this round keep their
     last-good data via combined_payload(..., previous=...).
 
-    'Successful' for state-tracking purposes = at least one schooljaar
-    fetched and saved. A run where all 5 years fail counts as a
-    failure: state.last_error is set, last_success_at is unchanged,
-    so we'll retry next poll cycle (subject to throttling).
+    'Successful' for state-tracking purposes means at least one
+    schooljaar was fetched and saved. A run where all 5 years fail
+    counts as a failure: state.last_error is set, last_success_at
+    is unchanged, so we'll retry next poll cycle (subject to
+    throttling).
     """
     if not settings.vakanties_scrape_enabled:
-        # Master switch is off. Skip silently; the Voorkeuren status
+        # Master switch is off. Skip silently. The Voorkeuren status
         # panel surfaces this state to the admin without us needing
         # to flood the log on every poll.
         return
@@ -386,7 +388,7 @@ def _maybe_refresh_vakanties() -> None:
     if not _should_refresh_vakanties_today(today, state):
         return
 
-    # Lazy import keeps beautifulsoup4 out of the daemon's hot path
+    # Lazy import keeps beautifulsoup4 out of the daemon's main loop
     # for users who don't run the refresh (or whose Pi was offline
     # for more than the refresh interval).
     try:
@@ -471,8 +473,8 @@ def schedule_poller_loop():
 
         # 0) Heartbeat: signal to the webinterface (and any external
         # monitor) that we're alive. Done at the top of every iteration
-        # so the timestamp reflects the start of the work, not the end
-        # — gives the reader a tighter 'how stale is this?' read.
+        # so the timestamp reflects the start of the work, not the end.
+        # Gives the reader a tighter 'how stale is this?' read.
         _write_heartbeat()
 
         # 1) Reload settings if SIGHUP received
@@ -487,7 +489,7 @@ def schedule_poller_loop():
 
         # 2) Vakanties refresh check (~monthly). Cheap (one disk
         # read of a tiny state file plus a date comparison) so doing
-        # it on every poll is fine; the date math gates the actual
+        # it on every poll is fine. The date math gates the actual
         # network call so it only fires every VAKANTIES_REFRESH_
         # INTERVAL_DAYS.
         try:
@@ -521,7 +523,7 @@ def schedule_poller_loop():
             stop_event.wait(sleep_s)
 
         except Exception:
-            # Error fetching/parsing → backoff, but cleanly stoppable
+            # Error fetching/parsing -> backoff, but cleanly stoppable
             stop_event.wait(BACKOFF_ON_ERROR)
 
 # === Main ===

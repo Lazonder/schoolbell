@@ -37,14 +37,14 @@ settings_bp = Blueprint("settings", __name__)
 # CSS hex color: #rgb / #rrggbb (case-insensitive). Used to validate
 # the huisstijl custom-color payload before it's stored and rendered
 # unescaped into <html style="--sb-color-...">. A stricter check than
-# eyeballing — anything that doesn't match isn't safe to inject.
+# eyeballing: anything that doesn't match isn't safe to inject.
 _CSS_HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})")
 
 
 def _apply_settings_payload(s: Settings, payload: dict) -> None:
     """Mutate `s` in place from `payload`, validating each field.
 
-    Raises Flask abort(400) on invalid input — when called inside
+    Raises Flask abort(400) on invalid input. When called inside
     settings_store.locked(), the abort propagates through the
     context manager, which means save() is NOT called and the file
     is left untouched. That's the right behavior for invalid input.
@@ -70,7 +70,7 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
     if "taal" in payload:
         # Allowed: each language we ship a translation for, plus the
         # special string "auto" (follow browser). Anything else is a
-        # client mistake — abort 400 so the user gets a clear error
+        # client mistake. Abort 400 so the user gets a clear error
         # instead of a silently-ignored selection.
         t = str(payload["taal"]).strip().lower()
         allowed_taal = set(SUPPORTED_LOCALES) | {"auto"}
@@ -93,8 +93,8 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
     # Validate the three custom-color fields independently so the user
     # can save partial updates from the Voorkeuren UI (e.g. only
     # tweaking the nav color). Each must look like a CSS hex code.
-    # We don't try to enforce contrast or other accessibility checks —
-    # the user picked these intentionally and may know what they want.
+    # We don't try to enforce contrast or other accessibility checks.
+    # The user picked these intentionally and may know what they want.
     for key in ("theme_custom_bg", "theme_custom_table", "theme_custom_nav"):
         if key in payload:
             v = str(payload[key]).strip()
@@ -113,7 +113,7 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
         # representations ('true'/'false', '1'/'0', 'on'/'off',
         # checkbox-style 'on'/missing). The settings page uses a
         # checkbox which sends 'on' when checked and nothing when
-        # unchecked; the JSON POST in settings.html maps that to a
+        # unchecked. The JSON POST in settings.html maps that to a
         # real bool, but be defensive in case a future form posts
         # raw form data.
         v = payload["vakanties_scrape_enabled"]
@@ -206,8 +206,8 @@ def api_settings_post():
     payload = request.get_json() or {}
     # Hold the settings file lock for the entire load -> mutate ->
     # save sequence. Without the lock, two concurrent POSTs could
-    # both load v1, each apply their own payload, and both save —
-    # last write wins, the first user's change is silently lost.
+    # both load v1, each apply their own payload, and both save.
+    # Last write wins, and the first user's change is silently lost.
     # If validation fails, _apply_settings_payload aborts, the
     # context manager unwinds without calling save(), and the file
     # is untouched.

@@ -4,7 +4,7 @@ A "rooster" is a list of moments. A moment is a small dict like::
 
     {"tijd": "10:00", "naam": "Pauze", "bestand": "bel.mp3"}
 
-This file does not read or write files — it just cleans up and
+This file does not read or write files. It just cleans up and
 sorts data that someone hands it. Pure functions, easy to test.
 """
 
@@ -24,7 +24,7 @@ NAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}$")
 # strict by anchoring with ^ and $.
 TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$")
 
-# Form-level sentinel sent by the agenda dropdown when the user picks
+# Form-level marker sent by the agenda dropdown when the user picks
 # '— geen bel —' for a date. Stored as JSON null in dagplanning to mean
 # 'explicit silence override on this date'. The '!' prefix is outside
 # NAME_RE so it can never collide with a real rooster name.
@@ -70,7 +70,7 @@ def normalize_and_sort_moments(moments):
 
         # Optional warning bell: rings warn_min minutes before the
         # main moment with warn_bestand. Both fields must be valid
-        # and non-empty for a warning to actually fire — anything
+        # and non-empty for a warning to actually fire. Anything
         # else is treated as "no warning". Keeps roosters.json
         # forward- and backward-compatible: legacy moments without
         # the keys load fine and simply don't get a warning.
@@ -84,7 +84,7 @@ def normalize_and_sort_moments(moments):
             out["warn_min"] = warn_min_int
             out["warn_bestand"] = warn_bestand
         # If only one of the two is set, the warning is silently
-        # dropped — no half-configured state survives normalization.
+        # dropped. No half-configured state survives normalization.
 
         cleaned.append(out)
     cleaned.sort(key=lambda x: x["tijd"])

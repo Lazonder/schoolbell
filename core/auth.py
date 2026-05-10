@@ -11,12 +11,12 @@ Two ways to log in live in this project:
    them through the ``auth`` instance below.
 
 The two ways are intentionally separate. A browser user gets a
-nice redirect to /login when not signed in; the daemon (which
+nice redirect to /login when not signed in. The daemon (which
 can't render an HTML login page) gets a 401 with a
 ``WWW-Authenticate`` header so requests can retry.
 
 This module also exposes ``require_admin`` for API endpoints that
-the browser calls with ``fetch()``: instead of redirecting (which
+the browser calls with ``fetch()``. Instead of redirecting (which
 fetch() would silently follow), it returns ``401 {"error": ...}``
 so the JS can show a useful error.
 """
@@ -32,7 +32,7 @@ from werkzeug.security import check_password_hash
 
 # Admin credentials read from environment at import time. Both are
 # expected to be set by /etc/schoolbell/web.env in production.
-# FALLBACK_PLAIN is for the very first install only — once a
+# FALLBACK_PLAIN is for the very first install only. Once a
 # password hash is generated, SCHOOLBELL_WEB_PASS should be removed.
 ADMIN_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
 ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # e.g. pbkdf2:sha256:...
@@ -40,7 +40,7 @@ FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
 
 
 # Single HTTPBasicAuth instance for the whole app. Routes that need
-# Basic Auth use ``@auth.login_required``; the verifier registered
+# Basic Auth use ``@auth.login_required``. The verifier registered
 # below is what flask_httpauth calls to check the username/password.
 auth = HTTPBasicAuth()
 
@@ -53,7 +53,7 @@ def _check_password(plain: str) -> bool:
 
     Tries the secure hash first. Only falls back to the plaintext
     SCHOOLBELL_WEB_PASS when no hash is set, which is a one-time
-    bootstrap state — install.sh generates a hash on the first
+    bootstrap state. install.sh generates a hash on the first
     run and clears the plaintext.
     """
     if ADMIN_HASH:
@@ -90,7 +90,7 @@ def get_csrf_token() -> str:
     """Return the CSRF token for the current session, creating one if needed.
 
     Each visitor gets a single random token stored in their session
-    cookie. Forms include it as ``_csrf``; fetch() calls send it as
+    cookie. Forms include it as ``_csrf``. fetch() calls send it as
     the ``X-CSRF-Token`` header. ``csrf_protect`` (registered on the
     Flask app in webinterface.py) checks the value on every POST.
     """
@@ -124,7 +124,7 @@ def require_admin(f):
 def verify_password(username, password):
     """Verifier the daemon's HTTP Basic Auth requests are checked against.
 
-    Same admin credentials as the session login — the daemon and
+    Same admin credentials as the session login. The daemon and
     the browser user are conceptually the same admin, just talking
     to the app over different protocols.
     """

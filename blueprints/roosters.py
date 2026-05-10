@@ -14,7 +14,7 @@ or for a single date by the agenda. This file holds:
   POST  /standaardweek                         — save those choices
 
 The standaardweek lives in a separate file but is logically part
-of "rooster management" — the user moves between the two pages
+of "rooster management". The user moves between the two pages
 constantly while setting up a school week. Keeping them in one
 blueprint reflects that workflow.
 """
@@ -64,7 +64,7 @@ def add_rooster():
     # Validate against NAME_RE so the rooster name can be used safely
     # everywhere it ends up (dropdown values, JSON keys, log lines).
     # Without this, a user could create '!off' which collides with
-    # the silence sentinel in the agenda dropdown — the rooster would
+    # the silence marker in the agenda dropdown. The rooster would
     # appear as an option but selecting it would be misinterpreted as
     # an explicit silence override. The regex also blocks weirdness
     # like '../', '<script>', newlines, etc.
@@ -101,15 +101,17 @@ def delete_rooster(rooster):
             return redirect(url_for("roosters.roosters"))
 
         # Before deleting: check if the rooster is still used somewhere.
-        # Without this check, references in standaardweek.json and dagplanning.json
-        # would point to a deleted rooster — in the UI you'd still see the name,
-        # but no bell would ring (silent bug). We deliberately choose block-and-warn
-        # instead of cascading delete: you don't want a click in the Roosters
-        # screen to silently remove days from the agenda. The user must first
-        # manually remove those references in Standaardweek and Agenda, then retry.
-        # These two reads don't need their own lock: save_json is atomic, so a
-        # reader sees either the old or the new file, never partial. The check
-        # is best-effort against very recent writes, not a guarantee.
+        # Without this check, references in standaardweek.json and
+        # dagplanning.json would point to a deleted rooster. In the UI
+        # you'd still see the name, but no bell would ring (silent bug).
+        # We deliberately choose block-and-warn instead of cascading
+        # delete: you don't want a click in the Roosters screen to
+        # silently remove days from the agenda. The user must first
+        # manually remove those references in Standaardweek and Agenda,
+        # then retry. These two reads don't need their own lock:
+        # save_json is atomic, so a reader sees either the old or the
+        # new file, never partial. The check is best-effort against
+        # very recent writes, not a guarantee.
         stdweek = wi.load_json(wi.STANDAARDWEEK_PATH, default_standaardweek_obj())
         dagplanning = wi.load_json(wi.DAGPLANNING_PATH, default_dagplanning_obj())
 
@@ -144,7 +146,7 @@ def delete_rooster(rooster):
 def add_moment(rooster):
     wi.ensure_dirs()
 
-    # Validate form input outside the lock — no need to block other
+    # Validate form input outside the lock. No need to block other
     # writers while we check for empty fields.
     tijd_raw = request.form.get("tijd", "")
     tijd = normalize_time(tijd_raw)
@@ -161,10 +163,10 @@ def add_moment(rooster):
         flash(_("Kies een geluidsbestand."))
         return redirect(url_for("roosters.roosters"))
 
-    # Optional warning fields. Empty/0 → no warning. The form sends
+    # Optional warning fields. Empty/0 -> no warning. The form sends
     # both, the user just leaves them at defaults if they don't want
     # a warning. We validate ranges here so the user gets a flash
-    # message; normalize_and_sort_moments() also defends downstream.
+    # message. normalize_and_sort_moments() also defends downstream.
     warn_min_raw = (request.form.get("warn_min") or "").strip()
     warn_bestand = (request.form.get("warn_bestand") or "").strip()
     warn_min: int = 0
@@ -238,7 +240,7 @@ def standaardweek():
     wi.ensure_dirs()
 
     if request.method == "POST":
-        # Read roosters without a lock — best-effort validation against
+        # Read roosters without a lock: best-effort validation against
         # currently known roosters. The lock on standaardweek is what
         # protects us from concurrent saves of the standard week itself.
         roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())

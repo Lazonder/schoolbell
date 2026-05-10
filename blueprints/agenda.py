@@ -12,7 +12,7 @@ rijksoverheid.nl and apply it.
   POST     /agenda/refresh-vakanties  — scrape rijksoverheid.nl
 
 Important: ``_load_vakanties_file`` and the import/refresh handlers
-are heavy paths — they pull in beautifulsoup4 and may do a network
+are heavy paths. They pull in beautifulsoup4 and may do a network
 call. Imports are lazy (inside the function body) so the agenda
 render itself stays cheap.
 """
@@ -92,9 +92,9 @@ def agenda():
     if request.method == "POST" and request.form.get("_action") == "bulk_save":
         # Two files are written here: dagplanning.json and weken_uit.json.
         # We acquire both locks. The order (dagplanning first, weken_uit
-        # second) is fixed across all writers so there's no risk of
+        # second) is fixed across all writers, so there's no risk of
         # deadlock between concurrent requests. Currently this is the
-        # only multi-file write path; if more are added, keep the same
+        # only multi-file write path. If more are added, keep the same
         # alphabetical-by-path lock order.
         with wi.locked_json(wi.DAGPLANNING_PATH, default_dagplanning_obj()) as (dag_state, save_dag), \
              wi.locked_json(wi.WEEKDISABLE_PATH, default_weken_uit_obj()) as (_wk_state, save_wk):
@@ -131,9 +131,9 @@ def agenda():
 
             # Drop dagplanning entries from the past so the file doesn't
             # grow unbounded. Done at save time (rather than via a cron)
-            # because save is the natural choke-point — the user just
-            # made an explicit edit, so doing housekeeping here is the
-            # least surprising moment to lose stale data.
+            # because save is the natural moment for cleanup. The user
+            # just made an explicit edit, so doing housekeeping here is
+            # the least surprising moment to lose stale data.
             updated_dagplanning = prune_past_dates(updated_dagplanning, today)
 
             save_dag(updated_dagplanning)
@@ -167,7 +167,7 @@ def agenda():
           - rooster override                                 -> rooster name
           - no override -> show the standaardweek default for that weekday
                            (so the user sees what *will* play if they don't
-                            change anything — keeps the UI honest about
+                            change anything; keeps the UI honest about
                             current effective behavior)
 
         Note: this does its own lookup (not via the shared helper)
@@ -194,9 +194,9 @@ def agenda():
         off = bool(weken_uit.get(wk_key, False))
         days = [wk_start + timedelta(days=i) for i in range(5)]  # Ma..Vr
         # Locale-aware date format: NL renders '10-05-2026', EN renders
-        # '5/10/26', DE '10.05.2026', FR '10/05/2026' — all from one
-        # call. format='short' picks the locale's compact convention;
-        # the locale itself comes from Flask-Babel's per-request
+        # '5/10/26', DE '10.05.2026', FR '10/05/2026'. All from one
+        # call. format='short' picks the locale's compact convention.
+        # The locale itself comes from Flask-Babel's per-request
         # selector (Settings.taal -> select_locale()).
         weeks.append({
             "key": wk_key,
@@ -238,7 +238,8 @@ def import_vakanties():
 
     Merge semantics: existing weken_uit entries are kept. The button
     only ADDS to the 'off' set; it never unmarks a week. Idempotent
-    and safe to mix with manual 'Bel uit' checkboxes.
+    (safe to run more than once with the same result) and safe to
+    mix with manual 'Bel uit' checkboxes.
     """
     # Master-switch enforcement (see refresh_vakanties for rationale).
     if not Settings.load().vakanties_scrape_enabled:
@@ -384,7 +385,7 @@ def refresh_vakanties():
         return redirect(url_for("agenda.agenda"))
     # Lazy import: vakanties_fetcher pulls in beautifulsoup4 and makes
     # a network call. The agenda render path doesn't need either, so
-    # keeping the import inside the handler keeps cold-start cheaper
+    # keeping the import inside the handler keeps startup cheaper
     # for the 99% of requests that don't refresh.
     import vakanties_fetcher
 
@@ -396,7 +397,7 @@ def refresh_vakanties():
     previous, prev_err = _load_vakanties_file()
     if prev_err:
         # Treat parse-error of existing file as 'no prior data' rather
-        # than aborting — the refresh's whole point is to write a
+        # than aborting. The refresh's whole point is to write a
         # clean file. But surface it so the admin knows the old file
         # was bad.
         flash(_("Bestaand vakantiebestand kon niet gelezen worden (%(err)s); wordt overschreven.", err=prev_err))

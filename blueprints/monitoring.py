@@ -11,7 +11,7 @@ Six routes that don't change anything in the system:
 
 The four 'public' or machine-readable endpoints (/healthz, /now,
 /api/now, /api/effectief-rooster) belong together because they each
-serve clients that aren't a logged-in admin — a TV, a monitoring
+serve clients that aren't a logged-in admin: a TV, a monitoring
 agent, the daemon itself. Keeping them in one file makes it easy to
 review what is exposed without authentication.
 """
@@ -81,7 +81,7 @@ def healthz():
     OK, 503 when something is broken. Intentionally unauthenticated:
     monitoring agents (uptime checks, container probes, nagios-style
     probes) typically can't carry session cookies. The information
-    leaked is minimal — error messages may include filesystem paths
+    leaked is minimal. Error messages may include filesystem paths
     that are already implied by the project layout.
 
     Checks performed:
@@ -99,8 +99,8 @@ def healthz():
     overall_ok = True
 
     # 1) Data dir writable. Touch + delete a probe file. Done before
-    # ensure_dirs() so a permission-bug surface here rather than being
-    # papered over by os.makedirs(exist_ok=True).
+    # ensure_dirs() so a permission-bug surfaces here rather than being
+    # hidden by os.makedirs(exist_ok=True).
     try:
         os.makedirs(wi.DATA_DIR, exist_ok=True)
         probe = os.path.join(wi.DATA_DIR, ".healthz_probe")
@@ -133,7 +133,7 @@ def healthz():
         checks["settings_error"] = str(e)
         overall_ok = False
 
-    # 4) Daemon heartbeat — the most operationally interesting signal.
+    # 4) Daemon heartbeat: the most operationally interesting signal.
     # If web is up but daemon is dead, no bells ring even though the
     # site looks healthy. Surface that loudly.
     hb = wi.get_daemon_heartbeat()
@@ -168,8 +168,8 @@ def now_page():
 def api_now():
     """JSON shape: see next_bell_for_now(). 'bell' is null when no
     upcoming bell today; the page treats that as 'geen bel meer
-    vandaag'. Always 200 so the JS doesn't have to special-case
-    network errors vs no-bell.
+    vandaag'. Always 200 so the JS doesn't have to handle
+    network errors and no-bell as separate cases.
     """
     bell = wi.next_bell_for_now(datetime.now())
     return jsonify({

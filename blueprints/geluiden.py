@@ -8,7 +8,7 @@ HTML <audio> tag.
 
 The main app (in ``webinterface.py``) imports this file and calls
 ``app.register_blueprint(geluiden_bp)`` to plug it in. After that,
-Flask treats these routes the same as any other — only difference
+Flask treats these routes the same as any other. The only difference
 is that ``url_for`` needs the blueprint name as a prefix:
 
     url_for("geluiden.geluiden")          # the page itself
@@ -50,7 +50,7 @@ def serve_audio(filename):
     """Send the requested audio file from AUDIO_DIR back to the browser.
 
     Used by the <audio> player on the geluiden page. The login
-    check keeps the files inside the school's network — anonymous
+    check keeps the files inside the school's network. Anonymous
     visitors can't download arbitrary mp3s out of the system.
     ``send_from_directory`` blocks any path tricks like '../../etc'
     so the filename can come straight from the URL.
@@ -145,9 +145,9 @@ def geluiden_upload():
     # library the daemon uses to play it. If pygame can't decode it
     # (corrupt MP3, wrong-format renamed-to-mp3, 0-byte file with the
     # right extension), we delete the bad upload and tell the user
-    # immediately — instead of letting it sit in the audio dir until
-    # the bell tries to ring at 8:30 and the daemon logs 'File not
-    # found' or a decoder error to events.jsonl.
+    # immediately. This is better than letting it sit in the audio
+    # dir until the bell tries to ring at 8:30 and the daemon logs
+    # 'File not found' or a decoder error to events.jsonl.
     ok, msg = _validate_audio_file(dest)
     if not ok:
         try:
@@ -178,7 +178,7 @@ def geluiden_upload():
 def geluiden_play():
     """Trigger immediate playback through the school's speakers.
 
-    Logs the action so there's an audit trail — if someone abuses
+    Logs the action so there's an audit trail. If someone abuses
     the button you can see who and when in the Logboek.
     """
     wi.ensure_dirs()
@@ -217,7 +217,7 @@ def geluiden_delete():
     # Block-and-warn if the file is still used by any rooster moment.
     # Without this check, deletion would succeed silently and the
     # daemon would later log 'File not found' when that bell tried
-    # to ring — the bell wouldn't go off and the user wouldn't know
+    # to ring. The bell wouldn't go off and the user wouldn't know
     # why. Mirrors the same pattern as delete_rooster.
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
     used_by = []
