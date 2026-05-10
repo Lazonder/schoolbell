@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Logboek{% endblock %}
+{% block title %}{{ _('Logboek') }}{% endblock %}
 
 {% block content %}
 
 <header class="sb-page-header">
   <div>
-    <h1>Logboek</h1>
+    <h1>{{ _('Logboek') }}</h1>
     <p class="sb-help">
-      Overzicht van komende belmomenten, recente bel-events (daemon) en recente UI-acties.
+      {{ _('Overzicht van komende belmomenten, recente bel-events (daemon) en recente UI-acties.') }}
     </p>
   </div>
 </header>
@@ -15,14 +15,14 @@
 <div class="log-grid">
 
   <div class="sb-card">
-    <h2 class="sb-card__title">Eerstkomende belmomenten</h2>
+    <h2 class="sb-card__title">{{ _('Eerstkomende belmomenten') }}</h2>
     <table class="sb-table">
       <thead>
         <tr>
-          <th class="dt">Datum/Tijd</th>
-          <th>Naam</th>
-          <th>Bestand</th>
-          <th>Rooster</th>
+          <th class="dt">{{ _('Datum/Tijd') }}</th>
+          <th>{{ _('Naam') }}</th>
+          <th>{{ _('Bestand') }}</th>
+          <th>{{ _('Rooster') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -38,7 +38,7 @@
         {% else %}
           <tr>
             <td colspan="4">
-              <em class="sb-help">Geen komende momenten gevonden.</em>
+              <em class="sb-help">{{ _('Geen komende momenten gevonden.') }}</em>
             </td>
           </tr>
         {% endif %}
@@ -47,13 +47,13 @@
   </div>
 
   <div class="sb-card">
-    <h2 class="sb-card__title">Recente UI-acties</h2>
+    <h2 class="sb-card__title">{{ _('Recente UI-acties') }}</h2>
     <table class="sb-table">
       <thead>
         <tr>
-          <th class="dt">Ts</th>
-          <th>Actie</th>
-          <th>Details</th>
+          <th class="dt">{{ _('Ts') }}</th>
+          <th>{{ _('Actie') }}</th>
+          <th>{{ _('Details') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -76,7 +76,7 @@
         {% else %}
           <tr>
             <td colspan="3">
-              <em class="sb-help">Geen UI-acties gelogd.</em>
+              <em class="sb-help">{{ _('Geen UI-acties gelogd.') }}</em>
             </td>
           </tr>
         {% endif %}
@@ -85,16 +85,16 @@
   </div>
 
   <div class="sb-card log-bell-card">
-    <h2 class="sb-card__title">Recente bel-events (daemon)</h2>
+    <h2 class="sb-card__title">{{ _('Recente bel-events (daemon)') }}</h2>
     <table class="sb-table">
       <thead>
         <tr>
-          <th class="dt">Ts</th>
-          <th>Naam</th>
-          <th>Tijd</th>
-          <th>Bestand</th>
-          <th>Status</th>
-          <th>Bericht</th>
+          <th class="dt">{{ _('Ts') }}</th>
+          <th>{{ _('Naam') }}</th>
+          <th>{{ _('Tijd') }}</th>
+          <th>{{ _('Bestand') }}</th>
+          <th>{{ _('Status') }}</th>
+          <th>{{ _('Bericht') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -114,7 +114,7 @@
         {% else %}
           <tr>
             <td colspan="6">
-              <em class="sb-help">Geen bel-logregels (daemon heeft nog niet gelogd).</em>
+              <em class="sb-help">{{ _('Geen bel-logregels (daemon heeft nog niet gelogd).') }}</em>
             </td>
           </tr>
         {% endif %}

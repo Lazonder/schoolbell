@@ -20,6 +20,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_babel import gettext as _
 
 from core.auth import (
     ADMIN_USER,
@@ -55,7 +56,7 @@ def login():
             session.permanent = True
             session["user"] = ADMIN_USER
             return redirect(next_url)
-        flash("Onjuiste inloggegevens.")
+        flash(_("Onjuiste inloggegevens."))
 
     return render_template(
         "login.html",

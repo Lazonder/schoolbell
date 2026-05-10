@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Voorkeuren{% endblock %}
+{% block title %}{{ _('Voorkeuren') }}{% endblock %}
 
 {% block content %}
 
 <header class="sb-page-header">
   <div>
-    <h1>Voorkeuren</h1>
+    <h1>{{ _('Voorkeuren') }}</h1>
     <p class="sb-help">
-      Pas hier algemene instellingen van de schoolbel aan, zoals volume, maximale bestandsgrootte en polling-interval.
+      {{ _('Pas hier algemene instellingen van de schoolbel aan, zoals volume, maximale bestandsgrootte en polling-interval.') }}
     </p>
   </div>
 </header>
@@ -17,7 +17,7 @@
 
     <div class="sb-field">
       <label class="sb-label" for="volume_percent">
-        Belvolume:
+        {{ _('Belvolume:') }}
         <output id="volume_percent_display" for="volume_percent">—</output>%
       </label>
       <input type="range"
@@ -27,66 +27,65 @@
              min="0"
              max="100"
              step="1">
-      <p class="sb-help">Standaard afspeelvolume van de bel.</p>
+      <p class="sb-help">{{ _('Standaard afspeelvolume van de bel.') }}</p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="max_file_size_mb">Max. bestandsgrootte (MB)</label>
+      <label class="sb-label" for="max_file_size_mb">{{ _('Max. bestandsgrootte (MB)') }}</label>
       <input type="number"
              name="max_file_size_mb"
              id="max_file_size_mb"
              class="sb-input"
              min="1"
              max="1024">
-      <p class="sb-help">Maximale grootte van geüploade audiobestanden.</p>
+      <p class="sb-help">{{ _('Maximale grootte van geüploade audiobestanden.') }}</p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="poll_interval_sec">Polling-tijd (seconden)</label>
+      <label class="sb-label" for="poll_interval_sec">{{ _('Polling-tijd (seconden)') }}</label>
       <input type="number"
              name="poll_interval_sec"
              id="poll_interval_sec"
              class="sb-input"
              min="1"
              max="60">
-      <p class="sb-help">Hoe vaak de daemon de planning controleert.</p>
+      <p class="sb-help">{{ _('Hoe vaak de daemon de planning controleert.') }}</p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="taal">Taal</label>
+      <label class="sb-label" for="taal">{{ _('Taal') }}</label>
       <select name="taal" id="taal" class="sb-select">
         <option value="nl">Nederlands</option>
         <option value="en">English</option>
         <option value="de">Deutsch</option>
         <option value="fr">Français</option>
-        <option value="auto">Automatisch (volgt browser)</option>
+        <option value="auto">{{ _('Automatisch (volgt browser)') }}</option>
       </select>
       <p class="sb-help">
-        Taal van de webinterface. Vertalingen worden in een latere
-        update toegevoegd; voor nu blijft alle tekst Nederlands.
+        {{ _('Taal van de webinterface. Vertalingen worden in een latere update toegevoegd; voor nu blijft alle tekst Nederlands.') }}
       </p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="theme_mode">Thema</label>
+      <label class="sb-label" for="theme_mode">{{ _('Thema') }}</label>
       <select name="theme_mode" id="theme_mode" class="sb-select">
-        <option value="light">Licht</option>
-        <option value="dark">Donker</option>
-        <option value="auto">Automatisch (volgt systeem)</option>
+        <option value="light">{{ _('Licht') }}</option>
+        <option value="dark">{{ _('Donker') }}</option>
+        <option value="auto">{{ _('Automatisch (volgt systeem)') }}</option>
         </select>
-      <p class="sb-help">Kies de kleurmodus voor de interface.</p>
+      <p class="sb-help">{{ _('Kies de kleurmodus voor de interface.') }}</p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="huisstijl">Huisstijl</label>
+      <label class="sb-label" for="huisstijl">{{ _('Huisstijl') }}</label>
       <select name="huisstijl" id="huisstijl" class="sb-select">
-        <option value="standaard">Standaard</option>
-        <option value="aangepast">Aangepast</option>
+        <option value="standaard">{{ _('Standaard') }}</option>
+        <option value="aangepast">{{ _('Aangepast') }}</option>
       </select>
       <p class="sb-help">
-        <strong>Standaard</strong> volgt het thema hierboven (Licht of Donker).
+        {% trans %}<strong>Standaard</strong> volgt het thema hierboven (Licht of Donker).
         <strong>Aangepast</strong> gebruikt de drie kleuren hieronder voor
-        achtergrond, tabelvulling en navigatiebalk — staat los van Licht/Donker.
+        achtergrond, tabelvulling en navigatiebalk — staat los van Licht/Donker.{% endtrans %}
       </p>
     </div>
 
@@ -96,25 +95,24 @@
        restores them), they just visually disappear. #}
     <fieldset class="sb-field" id="huisstijl_custom_fields"
               style="display:none; border:0; padding:0; margin:0;">
-      <legend class="sb-label" style="padding:0;">Aangepaste kleuren</legend>
+      <legend class="sb-label" style="padding:0;">{{ _('Aangepaste kleuren') }}</legend>
 
       <div style="display:flex; flex-wrap:wrap; gap:18px; margin-top:8px;">
         <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
           <input type="color" name="theme_custom_bg" id="theme_custom_bg">
-          <span>Achtergrond</span>
+          <span>{{ _('Achtergrond') }}</span>
         </label>
         <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
           <input type="color" name="theme_custom_table" id="theme_custom_table">
-          <span>Tabelvulling</span>
+          <span>{{ _('Tabelvulling') }}</span>
         </label>
         <label class="sb-label" style="display:flex; align-items:center; gap:8px;">
           <input type="color" name="theme_custom_nav" id="theme_custom_nav">
-          <span>Navigatiebalk</span>
+          <span>{{ _('Navigatiebalk') }}</span>
         </label>
       </div>
       <p class="sb-help">
-        Klik op een kleurvak om een andere kleur te kiezen. Wijzigingen
-        worden direct toegepast bij Opslaan; geen pagina-refresh nodig.
+        {{ _('Klik op een kleurvak om een andere kleur te kiezen. Wijzigingen worden direct toegepast bij Opslaan; geen pagina-refresh nodig.') }}
       </p>
     </fieldset>
 
@@ -123,35 +121,35 @@
         <input type="checkbox"
                name="vakanties_scrape_enabled"
                id="vakanties_scrape_enabled">
-        <span>Schoolvakanties van rijksoverheid.nl ophalen</span>
+        <span>{{ _('Schoolvakanties van rijksoverheid.nl ophalen') }}</span>
       </label>
       <p class="sb-help">
-        Aan: de daemon haalt elke ~maand de officiële Nederlandse
+        {% trans %}Aan: de daemon haalt elke ~maand de officiële Nederlandse
         schoolvakanties op (huidig schooljaar + 4 vooruit) en de
         knoppen op de Agenda zijn beschikbaar.
         Uit: data/vakanties.json wordt niet aangepast en de
         Vakanties-kaart op de Agenda is verborgen — handig voor
-        installs buiten Nederland.
+        installs buiten Nederland.{% endtrans %}
       </p>
     </div>
 
     <div class="sb-field">
-      <label class="sb-label" for="vakantieregio">Vakantieregio</label>
+      <label class="sb-label" for="vakantieregio">{{ _('Vakantieregio') }}</label>
       <select name="vakantieregio" id="vakantieregio" class="sb-select">
-        <option value="Noord">Noord</option>
-        <option value="Midden">Midden</option>
-        <option value="Zuid">Zuid</option>
+        <option value="Noord">{{ _('Noord') }}</option>
+        <option value="Midden">{{ _('Midden') }}</option>
+        <option value="Zuid">{{ _('Zuid') }}</option>
       </select>
       <p class="sb-help">
-        Regio die de knop <em>Vakanties importeren</em> op de Agenda
+        {% trans %}Regio die de knop <em>Vakanties importeren</em> op de Agenda
         gebruikt om dates uit <code class="sb-code-mono">data/vakanties.json</code>
-        te kiezen.
+        te kiezen.{% endtrans %}
       </p>
     </div>
 
     <div class="sb-settings-actions">
       <button type="submit" class="sb-btn sb-btn--success">
-        Opslaan
+        {{ _('Opslaan') }}
       </button>
       <span id="status" class="sb-settings-status sb-help"></span>
     </div>
@@ -159,44 +157,44 @@
 </div>
 
 <div class="sb-card sb-card--section">
-  <h2 class="sb-card__title">Status vakantie-scrape</h2>
+  <h2 class="sb-card__title">{{ _('Status vakantie-scrape') }}</h2>
   {% if vakanties_status.saved_schooljaren %}
-    <p class="sb-help">Opgeslagen schooljaren in
-      <code class="sb-code-mono">data/vakanties.json</code>:</p>
+    <p class="sb-help">{% trans %}Opgeslagen schooljaren in
+      <code class="sb-code-mono">data/vakanties.json</code>:{% endtrans %}</p>
     <ul class="sb-list">
       {% for sj in vakanties_status.saved_schooljaren %}
         <li>
           <strong>{{ sj.schooljaar }}</strong>
           {% if sj.fetched_at %}
-            <span class="sb-help">— opgehaald {{ sj.fetched_at[:10] }}</span>
+            <span class="sb-help">{% trans datum=sj.fetched_at[:10] %}— opgehaald {{ datum }}{% endtrans %}</span>
           {% endif %}
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="sb-help"><em>Nog geen vakantiegegevens opgeslagen.</em></p>
+    <p class="sb-help"><em>{{ _('Nog geen vakantiegegevens opgeslagen.') }}</em></p>
   {% endif %}
 
   <p class="sb-help" style="margin-top:12px;">
     {% if vakanties_status.last_success_at %}
-      Laatste geslaagde fetch:
-      <strong>{{ vakanties_status.last_success_at[:19].replace('T',' ') }} UTC</strong>.
+      {% trans tijd=vakanties_status.last_success_at[:19].replace('T',' ') %}Laatste geslaagde fetch:
+      <strong>{{ tijd }} UTC</strong>.{% endtrans %}
     {% else %}
-      Nog geen geslaagde fetch geregistreerd.
+      {{ _('Nog geen geslaagde fetch geregistreerd.') }}
     {% endif %}
     {% if vakanties_status.last_error %}
       <br>
       <span style="color: var(--sb-color-danger);">
-        Laatste fout: {{ vakanties_status.last_error }}
+        {% trans error=vakanties_status.last_error %}Laatste fout: {{ error }}{% endtrans %}
       </span>
       {% if vakanties_status.last_failed_schooljaren %}
-        (mislukt: {{ vakanties_status.last_failed_schooljaren|join(', ') }})
+        {% trans jaren=vakanties_status.last_failed_schooljaren|join(', ') %}(mislukt: {{ jaren }}){% endtrans %}
       {% endif %}
     {% endif %}
     {% if vakanties_status.last_attempt_at and vakanties_status.last_attempt_at != vakanties_status.last_success_at %}
       <br>
       <span class="sb-help">
-        Laatste poging: {{ vakanties_status.last_attempt_at[:19].replace('T',' ') }} UTC.
+        {% trans tijd=vakanties_status.last_attempt_at[:19].replace('T',' ') %}Laatste poging: {{ tijd }} UTC.{% endtrans %}
       </span>
     {% endif %}
   </p>
