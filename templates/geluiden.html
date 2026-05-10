@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Geluiden{% endblock %}
+{% block title %}{{ _('Geluiden') }}{% endblock %}
 
 {% block content %}
 
 <header class="sb-page-header">
-  <h1>Geluiden</h1>
+  <h1>{{ _('Geluiden') }}</h1>
 </header>
 
 <div class="sb-card sb-card--section">
-  <h2 class="sb-card__title">Beschikbare geluiden</h2>
+  <h2 class="sb-card__title">{{ _('Beschikbare geluiden') }}</h2>
 
   {% if files %}
     <ul class="audio-list">
@@ -19,32 +19,32 @@
             <button type="button"
                     class="sb-btn sb-btn--success sb-btn--icon"
                     onclick="playAudio('{{ url_for('geluiden.serve_audio', filename=name) }}')"
-                    title="Voorbeeluister in browser">
+                    title="{{ _('Voorbeeluister in browser') }}">
               ▶
             </button>
             <form method="post"
                   action="{{ url_for('geluiden.geluiden_play') }}"
                   class="inline"
-                  data-confirm="&quot;{{ name }}&quot; nu door de hele school afspelen?"
-                  data-confirm-button="Afspelen">
+                  data-confirm="{% trans name=name %}&quot;{{ name }}&quot; nu door de hele school afspelen?{% endtrans %}"
+                  data-confirm-button="{{ _('Afspelen') }}">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="filename" value="{{ name }}">
               <button type="submit"
                       class="sb-btn sb-btn--ghost sb-btn--icon"
-                      title="Speel af via omroepinstallatie school">
+                      title="{{ _('Speel af via omroepinstallatie school') }}">
                 🔊
               </button>
             </form>
             <form method="post"
                   action="{{ url_for('geluiden.geluiden_delete') }}"
                   class="inline"
-                  data-confirm="Bestand &quot;{{ name }}&quot; verwijderen?"
-                  data-confirm-button="Verwijderen">
+                  data-confirm="{% trans name=name %}Bestand &quot;{{ name }}&quot; verwijderen?{% endtrans %}"
+                  data-confirm-button="{{ _('Verwijderen') }}">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="filename" value="{{ name }}">
               <button type="submit"
                       class="sb-btn sb-btn--danger sb-btn--icon"
-                      title="Verwijderen">
+                      title="{{ _('Verwijderen') }}">
                 ✕
               </button>
             </form>
@@ -53,12 +53,12 @@
       {% endfor %}
     </ul>
   {% else %}
-    <p class="sb-help"><em>Geen audiobestanden gevonden.</em></p>
+    <p class="sb-help"><em>{{ _('Geen audiobestanden gevonden.') }}</em></p>
   {% endif %}
 </div>
 
 <div class="sb-card sb-card--section">
-  <h2 class="sb-card__title">Nieuw geluid uploaden</h2>
+  <h2 class="sb-card__title">{{ _('Nieuw geluid uploaden') }}</h2>
 
   <form class="upload-form"
         method="post"
@@ -70,7 +70,7 @@
       <input type="text"
              name="naam"
              class="sb-input"
-             placeholder="Unieke naam (max 35 tekens)"
+             placeholder="{{ _('Unieke naam (max 35 tekens)') }}"
              required>
       <input type="file"
              name="file"
@@ -80,12 +80,12 @@
     </div>
 
     <div class="upload-hint sb-help">
-      Toegestane extensies: {{ allowed_exts|join(', ') }} • max {{ max_mb }} MB • Naam: letters/cijfers/spatie/_/-
+      {% trans exts=allowed_exts|join(', '), max_mb=max_mb %}Toegestane extensies: {{ exts }} • max {{ max_mb }} MB • Naam: letters/cijfers/spatie/_/-{% endtrans %}
     </div>
 
     <div class="upload-actions">
       <button type="submit" class="sb-btn sb-btn--success">
-        Uploaden
+        {{ _('Uploaden') }}
       </button>
     </div>
   </form>

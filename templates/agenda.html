@@ -1,47 +1,47 @@
 {% extends "base.html" %}
-{% block title %}Agenda{% endblock %}
+{% block title %}{{ _('Agenda') }}{% endblock %}
 
 {% block content %}
 
 {% if vakanties_scrape_enabled %}
 <div class="sb-card sb-card--section">
-  <h2 class="sb-card__title">Vakanties</h2>
+  <h2 class="sb-card__title">{{ _('Vakanties') }}</h2>
   <p class="sb-help">
-    Importeer schoolvakanties uit
+    {% trans vakantieregio=vakantieregio, settings_url=url_for('settings.settings_page') %}Importeer schoolvakanties uit
     <code class="sb-code-mono">data/vakanties.json</code>
     voor regio <strong>{{ vakantieregio }}</strong>
-    (instelbaar via <a href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>).
+    (instelbaar via <a href="{{ settings_url }}">Voorkeuren</a>).
     De getroffen weken worden automatisch op <em>Bel uit</em> gezet.
-    Bestaande markeringen blijven staan — de import voegt alleen toe.
+    Bestaande markeringen blijven staan — de import voegt alleen toe.{% endtrans %}
     {% if not vakanties_path_exists %}
       <br>
-      <strong>Nog geen bestand gevonden.</strong> Klik
-      <em>Verversen van rijksoverheid.nl</em> om het op te halen.
+      {% trans %}<strong>Nog geen bestand gevonden.</strong> Klik
+      <em>Verversen van rijksoverheid.nl</em> om het op te halen.{% endtrans %}
     {% endif %}
   </p>
   <div class="sb-form-row">
     <form method="post" action="{{ url_for('agenda.import_vakanties') }}" class="inline"
-          data-confirm="Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan)."
-          data-confirm-button="Importeren">
+          data-confirm="{% trans vakantieregio=vakantieregio %}Vakanties importeren voor regio {{ vakantieregio }}? De getroffen weken worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven staan).{% endtrans %}"
+          data-confirm-button="{{ _('Importeren') }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button type="submit" class="sb-btn sb-btn--ghost"
               {{ 'disabled' if not vakanties_path_exists else '' }}>
-        Vakanties importeren
+        {{ _('Vakanties importeren') }}
       </button>
     </form>
     <form method="post" action="{{ url_for('agenda.refresh_vakanties') }}" class="inline"
-          data-confirm="Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan verloren."
-          data-confirm-button="Verversen">
+          data-confirm="{{ _('Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan verloren.') }}"
+          data-confirm-button="{{ _('Verversen') }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button type="submit" class="sb-btn sb-btn--ghost">
-        Verversen van rijksoverheid.nl
+        {{ _('Verversen van rijksoverheid.nl') }}
       </button>
     </form>
   </div>
   <p class="sb-help" style="margin-top:8px; font-size:0.85em;">
-    De daemon ververst dit automatisch ongeveer elke maand. Met de
+    {% trans settings_url=url_for('settings.settings_page') %}De daemon ververst dit automatisch ongeveer elke maand. Met de
     knop hierboven kun je tussentijds verversen of de eerste keer
-    ophalen. Status zichtbaar in <a href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>.
+    ophalen. Status zichtbaar in <a href="{{ settings_url }}">Voorkeuren</a>.{% endtrans %}
   </p>
 </div>
 {% endif %}
@@ -52,15 +52,15 @@
 
     <header class="sb-page-header">
       <div>
-        <h1>Agenda</h1>
+        <h1>{{ _('Agenda') }}</h1>
         <p class="sb-help">
-          Wijzig per dag het rooster, of zet een hele week uit. Klik daarna op
-          <strong>Alles opslaan</strong>.
+          {% trans %}Wijzig per dag het rooster, of zet een hele week uit. Klik daarna op
+          <strong>Alles opslaan</strong>.{% endtrans %}
         </p>
       </div>
       <div class="agenda-actions">
         <button type="submit" class="sb-btn sb-btn--success">
-          Alles opslaan
+          {{ _('Alles opslaan') }}
         </button>
       </div>
     </header>
@@ -71,18 +71,18 @@
       label (Ma/Di/...) is then exposed inside each cell so the
       stacked layout still tells you which day a select belongs to.
     #}
-    {% set dagnamen = ["Ma", "Di", "Wo", "Do", "Vr"] %}
+    {% set dagnamen = [_('Ma'), _('Di'), _('Wo'), _('Do'), _('Vr')] %}
     <div class="agenda-scroll">
       <table class="sb-table agenda-table">
         <thead>
           <tr>
-            <th class="col-week">Week</th>
-            <th>Ma</th>
-            <th>Di</th>
-            <th>Wo</th>
-            <th>Do</th>
-            <th>Vr</th>
-            <th class="col-bel-uit">Bel uit</th>
+            <th class="col-week">{{ _('Week') }}</th>
+            <th>{{ _('Ma') }}</th>
+            <th>{{ _('Di') }}</th>
+            <th>{{ _('Wo') }}</th>
+            <th>{{ _('Do') }}</th>
+            <th>{{ _('Vr') }}</th>
+            <th class="col-bel-uit">{{ _('Bel uit') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -114,7 +114,7 @@
                          name="week_off[{{ wk.key }}]"
                          value="1"
                          {{ 'checked' if wk.off else '' }}>
-                  <span>Uit</span>
+                  <span>{{ _('Uit') }}</span>
                 </label>
               </td>
             </tr>
@@ -125,7 +125,7 @@
 
     <div class="agenda-actions">
       <button type="submit" class="sb-btn sb-btn--success">
-        Alles opslaan
+        {{ _('Alles opslaan') }}
       </button>
     </div>
   </form>

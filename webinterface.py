@@ -118,7 +118,7 @@ app.config.update(
 # when the user picked "auto". Phase 1 of issue #29 only wires this
 # up — no strings are marked for translation yet, so every page
 # still renders in Dutch regardless of the chosen locale.
-from flask_babel import Babel  # noqa: E402
+from flask_babel import Babel, gettext as _  # noqa: E402
 
 from core.i18n import DEFAULT_LOCALE, SUPPORTED_LOCALES, select_locale  # noqa: E402, F401
 
@@ -193,6 +193,10 @@ def get_daemon_heartbeat() -> dict:
 # everywhere without each route having to remember to pass it.
 @app.context_processor
 def _inject_template_globals():
+    # Expose flask_babel.get_locale to templates so <html lang="..."> can
+    # render the active locale code. Flask-Babel auto-exposes gettext,
+    # ngettext, and the _() alias, but not get_locale.
+    from flask_babel import get_locale as _get_locale
     try:
         s = Settings.load()
         mode = s.theme_mode
@@ -213,6 +217,7 @@ def _inject_template_globals():
         huisstijl = "standaard"
     return {
         "now": datetime.now,
+        "get_locale": _get_locale,
         "theme_mode": mode,
         "huisstijl": huisstijl,
         "theme_custom_bg": custom_bg,
@@ -254,7 +259,7 @@ def csrf_protect():
 
 @app.errorhandler(413)
 def too_large(_e):
-    flash("Upload te groot (controleer de ingestelde limiet bij Voorkeuren).")
+    flash(_("Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."))
     return redirect(url_for("geluiden.geluiden"))
 
 def ensure_dirs():
@@ -490,7 +495,7 @@ def compute_upcoming(limit=20):
     results = []
 
     day = date.today()
-    for _ in range(14):
+    for _i in range(14):
         wk_key = iso_week_key(day)
         if not weken_uit.get(wk_key):
             d_iso = day.isoformat()

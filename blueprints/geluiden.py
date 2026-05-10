@@ -26,6 +26,7 @@ from flask import (
     send_from_directory,
     url_for,
 )
+from flask_babel import gettext as _
 
 # Importing the parent module gives us access to constants and
 # helpers that have not yet been split out (AUDIO_DIR, ensure_dirs,
@@ -91,33 +92,33 @@ def geluiden_upload():
 
     base = (request.form.get("naam") or "").strip()
     if "file" not in request.files:
-        flash("Geen bestand ontvangen.")
+        flash(_("Geen bestand ontvangen."))
         return redirect(url_for("geluiden.geluiden"))
 
     f = request.files["file"]
     if not f or f.filename == "":
-        flash("Geen bestand geselecteerd.")
+        flash(_("Geen bestand geselecteerd."))
         return redirect(url_for("geluiden.geluiden"))
 
     # Extension + validation
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in allowed_exts:
-        flash(f"Alleen bestanden met deze extensies zijn toegestaan: {', '.join(allowed_exts)}.")
+        flash(_("Alleen bestanden met deze extensies zijn toegestaan: %(exts)s.", exts=", ".join(allowed_exts)))
         return redirect(url_for("geluiden.geluiden"))
 
     filename = safe_audio_filename(base, ext)
     if not filename:
-        flash("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -.")
+        flash(_("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."))
         return redirect(url_for("geluiden.geluiden"))
 
     dest = os.path.join(wi.AUDIO_DIR, filename)
     if os.path.exists(dest):
-        flash("Er bestaat al een audiobestand met deze naam. Kies een andere naam.")
+        flash(_("Er bestaat al een audiobestand met deze naam. Kies een andere naam."))
         return redirect(url_for("geluiden.geluiden"))
 
     # Quick pre-check
     if request.content_length and request.content_length > max_bytes + 64 * 1024:
-        flash(f"Bestand is groter dan de ingestelde limiet van {s.max_file_size_mb} MB.")
+        flash(_("Bestand is groter dan de ingestelde limiet van %(mb)s MB.", mb=s.max_file_size_mb))
         return redirect(url_for("geluiden.geluiden"))
 
     # Precise check
@@ -131,13 +132,13 @@ def geluiden_upload():
         f.stream.seek(0)
 
     if size > max_bytes:
-        flash(f"Bestand is groter dan de ingestelde limiet van {s.max_file_size_mb} MB.")
+        flash(_("Bestand is groter dan de ingestelde limiet van %(mb)s MB.", mb=s.max_file_size_mb))
         return redirect(url_for("geluiden.geluiden"))
 
     try:
         f.save(dest)
     except Exception as e:
-        flash(f"Kon bestand niet opslaan: {e}")
+        flash(_("Kon bestand niet opslaan: %(err)s", err=e))
         return redirect(url_for("geluiden.geluiden"))
 
     # Pre-flight: try to actually load the file via pygame, the same
@@ -159,7 +160,7 @@ def geluiden_upload():
             "size": size,
             "reason": msg,
         })
-        flash(f"Bestand afgewezen: {msg}")
+        flash(_("Bestand afgewezen: %(reason)s", reason=msg))
         return redirect(url_for("geluiden.geluiden"))
 
     wi.log_event("ui", {
@@ -168,7 +169,7 @@ def geluiden_upload():
         "size": size,
         "limit_mb": s.max_file_size_mb
     })
-    flash(f"Upload geslaagd: {filename}")
+    flash(_("Upload geslaagd: %(filename)s", filename=filename))
     return redirect(url_for("geluiden.geluiden"))
 
 
@@ -185,20 +186,20 @@ def geluiden_play():
     name = os.path.basename(name)
     path = os.path.join(wi.AUDIO_DIR, name)
     if not os.path.isfile(path):
-        flash("Bestand niet gevonden.")
+        flash(_("Bestand niet gevonden."))
         return redirect(url_for("geluiden.geluiden"))
 
     try:
         v = max(0, min(100, int(Settings.load().volume_percent))) / 100.0
         _play_via_pygame(path, v)
         wi.log_event("ui", {"action": "test_bell", "filename": name})
-        flash(f"Test gestart: {name}")
+        flash(_("Test gestart: %(name)s", name=name))
     except Exception as e:
         # Common failure modes here: ALSA can't open the device
         # (audio config wrong), or the file isn't a format pygame
         # can decode. Surface the error so the admin can debug.
         wi.log_event("ui", {"action": "test_bell_error", "filename": name, "error": str(e)})
-        flash(f"Afspelen mislukt: {e}")
+        flash(_("Afspelen mislukt: %(err)s", err=e))
     return redirect(url_for("geluiden.geluiden"))
 
 
@@ -210,7 +211,7 @@ def geluiden_delete():
     name = os.path.basename(name)
     path = os.path.join(wi.AUDIO_DIR, name)
     if not os.path.isfile(path):
-        flash("Bestand niet gevonden.")
+        flash(_("Bestand niet gevonden."))
         return redirect(url_for("geluiden.geluiden"))
 
     # Block-and-warn if the file is still used by any rooster moment.
@@ -227,17 +228,18 @@ def geluiden_delete():
                 break  # one mention per rooster is enough
     if used_by:
         voorb = "; ".join(used_by[:3])
-        meer = "" if len(used_by) <= 3 else f" en {len(used_by) - 3} meer"
-        flash(
-            f"Geluid '{name}' wordt nog gebruikt door: {voorb}{meer}. "
-            f"Verwijder of vervang deze momenten eerst voordat je het bestand verwijdert."
-        )
+        meer = "" if len(used_by) <= 3 else _(" en %(n)d meer", n=len(used_by) - 3)
+        flash(_(
+            "Geluid '%(name)s' wordt nog gebruikt door: %(voorb)s%(meer)s. "
+            "Verwijder of vervang deze momenten eerst voordat je het bestand verwijdert.",
+            name=name, voorb=voorb, meer=meer,
+        ))
         return redirect(url_for("geluiden.geluiden"))
 
     try:
         os.remove(path)
         wi.log_event("ui", {"action": "delete_audio", "filename": name})
-        flash(f"Verwijderd: {name}")
+        flash(_("Verwijderd: %(name)s", name=name))
     except Exception as e:
-        flash(f"Kon niet verwijderen: {e}")
+        flash(_("Kon niet verwijderen: %(err)s", err=e))
     return redirect(url_for("geluiden.geluiden"))

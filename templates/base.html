@@ -13,7 +13,7 @@
   with "light" as a cautious default and correct it immediately in an
   inline <script> in <head>, before <body> renders.
 #}
-<html lang="nl"
+<html lang="{{ get_locale() }}"
       data-theme-mode="{{ theme_mode|default('light') }}"
       data-theme="{{ 'dark' if theme_mode == 'dark' else 'light' }}"
       data-huisstijl="{{ huisstijl|default('standaard') }}"
@@ -30,7 +30,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block title %}Schoolbel{% endblock %} · IVKO</title>
+  <title>{% block title %}{{ _('Schoolbel') }}{% endblock %} · IVKO</title>
 
   <!-- CSRF token available to JS -->
   <meta name="csrf-token" content="{{ csrf_token }}">
@@ -64,17 +64,17 @@
         <img src="{{ url_for('static', filename='img/logo.svg') }}"
              alt="IVKO"
              class="sb-brand__logo">
-        <span class="sb-brand__name">IVKO Schoolbel</span>
+        <span class="sb-brand__name">{{ _('IVKO Schoolbel') }}</span>
       </a>
 
       <!-- Navigation -->
       <nav class="sb-nav">
-        <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda.agenda') }}">Agenda</a>        
-        <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters.roosters') }}">Roosters</a>
-        <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('roosters.standaardweek') }}">Standaardweek</a>
-        <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden.geluiden') }}">Geluiden</a>
-        <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('monitoring.logs_page') }}">Logboek</a>
-        <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings.settings_page') }}">Voorkeuren</a>
+        <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda.agenda') }}">{{ _('Agenda') }}</a>
+        <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters.roosters') }}">{{ _('Roosters') }}</a>
+        <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('roosters.standaardweek') }}">{{ _('Standaardweek') }}</a>
+        <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden.geluiden') }}">{{ _('Geluiden') }}</a>
+        <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('monitoring.logs_page') }}">{{ _('Logboek') }}</a>
+        <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings.settings_page') }}">{{ _('Voorkeuren') }}</a>
       </nav>
 
       <!-- Daemon heartbeat indicator -->
@@ -82,23 +82,23 @@
         {% set _hb_class = 'ok' if daemon_heartbeat.alive else 'down' %}
         {% set _hb_age = daemon_heartbeat.age_seconds %}
         {% if daemon_heartbeat.alive %}
-          {% set _hb_label = 'Daemon actief' %}
+          {% set _hb_label = _('Daemon actief') %}
         {% elif _hb_age is none %}
-          {% set _hb_label = 'Daemon: geen heartbeat' %}
+          {% set _hb_label = _('Daemon: geen heartbeat') %}
         {% else %}
-          {% set _hb_label = 'Daemon: ' ~ _hb_age ~ 's stil' %}
+          {% set _hb_label = _('Daemon: %(age)ss stil', age=_hb_age) %}
         {% endif %}
         <span class="sb-daemon-status sb-daemon-status--{{ _hb_class }}"
-              title="{{ _hb_label }}{% if daemon_heartbeat.last_poll_at %} (laatste poll: {{ daemon_heartbeat.last_poll_at[:19].replace('T',' ') }} UTC){% endif %}">
+              title="{{ _hb_label }}{% if daemon_heartbeat.last_poll_at %} {{ _('(laatste poll: %(t)s UTC)', t=daemon_heartbeat.last_poll_at[:19].replace('T',' ')) }}{% endif %}">
           <span class="sb-daemon-dot" aria-hidden="true"></span>
-          <span class="sb-daemon-label">Daemon</span>
+          <span class="sb-daemon-label">{{ _('Daemon') }}</span>
         </span>
       {% endif %}
 
       <!-- Logout -->
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <button type="submit" class="sb-btn">Uitloggen</button>
+        <button type="submit" class="sb-btn">{{ _('Uitloggen') }}</button>
       </form>
 
     </div>
@@ -129,7 +129,7 @@
   <!-- FOOTER -->
   <footer class="sb-footer">
     <div class="sb-container">
-      © {{ now().year }} IVKO · Schoolbel
+      © {{ now().year }} {{ _('IVKO · Schoolbel') }}
     </div>
   </footer>
 
@@ -147,14 +147,15 @@
        aria-modal="true"
        aria-labelledby="sb-confirm-modal-msg">
     <div class="sb-modal__backdrop" data-modal-cancel></div>
-    <div class="sb-modal__panel">
+    <div class="sb-modal__panel"
+         data-default-confirm-msg="{{ _('Weet je het zeker?') }}">
       <p class="sb-modal__msg" id="sb-confirm-modal-msg"></p>
       <div class="sb-modal__actions">
         <button type="button" class="sb-btn sb-btn--ghost" data-modal-cancel>
-          Annuleren
+          {{ _('Annuleren') }}
         </button>
         <button type="button" class="sb-btn sb-btn--danger" data-modal-confirm>
-          Bevestigen
+          {{ _('Bevestigen') }}
         </button>
       </div>
     </div>
@@ -188,7 +189,7 @@
     function open(form) {
       pendingForm = form;
       triggerEl = document.activeElement;
-      msg.textContent = form.dataset.confirm || 'Weet je het zeker?';
+      msg.textContent = form.dataset.confirm || modal.querySelector('.sb-modal__panel').dataset.defaultConfirmMsg || 'Weet je het zeker?';
       okBtn.textContent = form.dataset.confirmButton || defaultOkLabel;
       modal.hidden = false;
       // Focus the confirm button so Enter triggers it; Tab stays inside

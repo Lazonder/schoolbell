@@ -20,6 +20,7 @@ blueprint reflects that workflow.
 """
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_babel import gettext as _
 
 import webinterface as wi
 from core.rooster import (
@@ -58,7 +59,7 @@ def add_rooster():
     wi.ensure_dirs()
     naam = (request.form.get("naam") or "").strip()
     if not naam:
-        flash("Naam van rooster is verplicht.")
+        flash(_("Naam van rooster is verplicht."))
         return redirect(url_for("roosters.roosters"))
     # Validate against NAME_RE so the rooster name can be used safely
     # everywhere it ends up (dropdown values, JSON keys, log lines).
@@ -68,12 +69,12 @@ def add_rooster():
     # an explicit silence override. The regex also blocks weirdness
     # like '../', '<script>', newlines, etc.
     if not NAME_RE.match(naam):
-        flash("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -.")
+        flash(_("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."))
         return redirect(url_for("roosters.roosters"))
 
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if naam in roosters:
-            flash("Er bestaat al een rooster met deze naam.")
+            flash(_("Er bestaat al een rooster met deze naam."))
             return redirect(url_for("roosters.roosters"))
 
         kopieer = "kopieer_van_eerste" in request.form
@@ -86,7 +87,7 @@ def add_rooster():
         save(roosters)
 
     wi.log_event("ui", {"action": "add_rooster", "rooster": naam})
-    flash(f"Rooster '{naam}' aangemaakt.")
+    flash(_("Rooster '%(naam)s' aangemaakt.", naam=naam))
     return redirect(url_for("roosters.roosters"))
 
 
@@ -96,7 +97,7 @@ def delete_rooster(rooster):
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
-            flash("Onbekend rooster.")
+            flash(_("Onbekend rooster."))
             return redirect(url_for("roosters.roosters"))
 
         # Before deleting: check if the rooster is still used somewhere.
@@ -118,22 +119,23 @@ def delete_rooster(rooster):
         if gebruikt_in_stdweek or gebruikt_in_dagplanning:
             delen = []
             if gebruikt_in_stdweek:
-                delen.append(f"Standaardweek ({', '.join(gebruikt_in_stdweek)})")
+                delen.append(_("Standaardweek (%(dagen)s)", dagen=", ".join(gebruikt_in_stdweek)))
             if gebruikt_in_dagplanning:
                 voorb = ", ".join(gebruikt_in_dagplanning[:3])
-                meer = "" if len(gebruikt_in_dagplanning) <= 3 else f" en {len(gebruikt_in_dagplanning) - 3} meer"
-                delen.append(f"Agenda ({voorb}{meer})")
-            flash(
-                f"Rooster '{rooster}' is nog in gebruik bij: {'; '.join(delen)}. "
-                f"Haal deze verwijzingen eerst weg voordat je het rooster verwijdert."
-            )
+                meer = "" if len(gebruikt_in_dagplanning) <= 3 else _(" en %(n)d meer", n=len(gebruikt_in_dagplanning) - 3)
+                delen.append(_("Agenda (%(voorb)s%(meer)s)", voorb=voorb, meer=meer))
+            flash(_(
+                "Rooster '%(rooster)s' is nog in gebruik bij: %(delen)s. "
+                "Haal deze verwijzingen eerst weg voordat je het rooster verwijdert.",
+                rooster=rooster, delen="; ".join(delen),
+            ))
             return redirect(url_for("roosters.roosters"))
 
         del roosters[rooster]
         save(roosters)
 
     wi.log_event("ui", {"action": "delete_rooster", "rooster": rooster})
-    flash(f"Rooster '{rooster}' verwijderd.")
+    flash(_("Rooster '%(rooster)s' verwijderd.", rooster=rooster))
     return redirect(url_for("roosters.roosters"))
 
 
@@ -150,13 +152,13 @@ def add_moment(rooster):
     bestand = (request.form.get("bestand") or "").strip()
 
     if not tijd:
-        flash("Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05).")
+        flash(_("Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."))
         return redirect(url_for("roosters.roosters"))
     if not naam:
-        flash("Naam is verplicht.")
+        flash(_("Naam is verplicht."))
         return redirect(url_for("roosters.roosters"))
     if not bestand:
-        flash("Kies een geluidsbestand.")
+        flash(_("Kies een geluidsbestand."))
         return redirect(url_for("roosters.roosters"))
 
     # Optional warning fields. Empty/0 → no warning. The form sends
@@ -170,13 +172,13 @@ def add_moment(rooster):
         try:
             warn_min = int(warn_min_raw)
         except ValueError:
-            flash("Waarschuwing: minuten moeten een getal zijn.")
+            flash(_("Waarschuwing: minuten moeten een getal zijn."))
             return redirect(url_for("roosters.roosters"))
         if not (0 <= warn_min <= 60):
-            flash("Waarschuwing: minuten moeten tussen 0 en 60 liggen.")
+            flash(_("Waarschuwing: minuten moeten tussen 0 en 60 liggen."))
             return redirect(url_for("roosters.roosters"))
     if warn_min > 0 and not warn_bestand:
-        flash("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0.")
+        flash(_("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."))
         return redirect(url_for("roosters.roosters"))
 
     new_moment = {"tijd": tijd, "naam": naam, "bestand": bestand}
@@ -186,7 +188,7 @@ def add_moment(rooster):
 
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
-            flash("Onbekend rooster.")
+            flash(_("Onbekend rooster."))
             return redirect(url_for("roosters.roosters"))
 
         roosters[rooster].append(new_moment)
@@ -205,7 +207,7 @@ def add_moment(rooster):
             "warn_bestand": warn_bestand if warn_min > 0 else None,
         },
     )
-    flash(f"Moment toegevoegd aan '{rooster}'.")
+    flash(_("Moment toegevoegd aan '%(rooster)s'.", rooster=rooster))
     return redirect(url_for("roosters.roosters"))
 
 
@@ -215,7 +217,7 @@ def delete_moment(rooster, index):
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
-            flash("Onbekend rooster.")
+            flash(_("Onbekend rooster."))
             return redirect(url_for("roosters.roosters"))
         moments = roosters[rooster]
         if 0 <= index < len(moments):
@@ -223,9 +225,9 @@ def delete_moment(rooster, index):
             roosters[rooster] = normalize_and_sort_moments(moments)
             save(roosters)
             wi.log_event("ui", {"action": "delete_moment", "rooster": rooster, "tijd": removed.get("tijd",""), "naam": removed.get("naam","")})
-            flash(f"Moment '{removed.get('naam','')}' verwijderd uit '{rooster}'.")
+            flash(_("Moment '%(naam)s' verwijderd uit '%(rooster)s'.", naam=removed.get("naam",""), rooster=rooster))
         else:
-            flash("Onbekende regel.")
+            flash(_("Onbekende regel."))
     return redirect(url_for("roosters.roosters"))
 
 
@@ -241,15 +243,15 @@ def standaardweek():
         # protects us from concurrent saves of the standard week itself.
         roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
         with wi.locked_json(wi.STANDAARDWEEK_PATH, default_standaardweek_obj()) as (std, save):
-            for key, _label in WEEKDAYS:
+            for key, label in WEEKDAYS:
                 keuze = (request.form.get(f"rooster_{key}") or "").strip()
                 if keuze and keuze not in roosters:
-                    flash(f"'{keuze}' bestaat niet als rooster; overslaan voor {_label}.")
+                    flash(_("'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s.", keuze=keuze, dag=label))
                     continue
                 std[key] = keuze
             save(std)
             wi.log_event("ui", {"action": "save_standaardweek", "keuzes": std})
-        flash("Standaardweek opgeslagen.")
+        flash(_("Standaardweek opgeslagen."))
         return redirect(url_for("roosters.standaardweek"))
 
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())

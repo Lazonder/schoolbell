@@ -8,11 +8,11 @@
    second so there's no flicker, and a fetch() against /api/now every
    minute brings in any planning changes the admin made. #}
 <!doctype html>
-<html lang="nl">
+<html lang="{{ get_locale() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Schoolbel · Volgende bel</title>
+  <title>{{ _('Schoolbel · Volgende bel') }}</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
   <style>
     /* Use the same color tokens as the rest of the app where it
@@ -81,7 +81,17 @@
          stale countdown that's already 30s old by the time it
          reaches the screen. -->
   </main>
-  <div id="stale" class="stale-dot" title="Laatste data-fetch faalde"></div>
+  <div id="stale" class="stale-dot" title="{{ _('Laatste data-fetch faalde') }}"></div>
+
+  {# Translatable strings consumed by the JS render() function below.
+     Pre-rendered into data-* attributes here so the JS picks the
+     right language without itself having to call gettext. #}
+  <div id="i18n"
+       data-label-next-bell="{{ _('Volgende bel') }}"
+       data-label-no-more-today="{{ _('Geen bel meer vandaag.') }}"
+       data-label-brand="{{ _('Schoolbel') }}"
+       data-label-at="{{ _('om') }}"
+       hidden></div>
 
   <script>
     // State updated by /api/now and the per-second tick.
@@ -92,6 +102,13 @@
 
     const root = document.getElementById("root");
     const stale = document.getElementById("stale");
+    const i18nEl = document.getElementById("i18n");
+    const T = {
+      nextBell: i18nEl.dataset.labelNextBell,
+      noMoreToday: i18nEl.dataset.labelNoMoreToday,
+      brand: i18nEl.dataset.labelBrand,
+      at: i18nEl.dataset.labelAt,
+    };
 
     function pad(n) { return String(n).padStart(2, "0"); }
 
@@ -115,8 +132,8 @@
     function render() {
       if (!bell) {
         root.innerHTML = `
-          <div class="label">Schoolbel</div>
-          <div class="empty">Geen bel meer vandaag.</div>
+          <div class="label">${escapeHtml(T.brand)}</div>
+          <div class="empty">${escapeHtml(T.noMoreToday)}</div>
           <div class="clock" id="clock"></div>`;
         document.getElementById("clock").textContent = fmtClock(new Date());
         return;
@@ -129,12 +146,12 @@
 
       const cls = secs === 0 ? "now" : (secs < 60 ? "imminent" : "");
       root.innerHTML = `
-        <div class="label">Volgende bel</div>
+        <div class="label">${escapeHtml(T.nextBell)}</div>
         <h1 class="bell-name">${escapeHtml(bell.naam)}</h1>
         <div class="countdown ${cls}">${fmtCountdown(secs)}</div>
         <div class="clock" id="clock"></div>`;
       document.getElementById("clock").textContent =
-        `${fmtClock(new Date())} · om ${bell.tijd}`;
+        `${fmtClock(new Date())} · ${T.at} ${bell.tijd}`;
     }
 
     // Belt-and-braces — bell.naam is admin-controlled so XSS isn't

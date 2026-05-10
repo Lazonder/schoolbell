@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Roosters{% endblock %}
+{% block title %}{{ _('Roosters') }}{% endblock %}
 
 {% block content %}
 
 <header class="sb-page-header">
-  <h1>Roosters</h1>
+  <h1>{{ _('Roosters') }}</h1>
 </header>
 
 <div class="grid-roosters">
@@ -17,10 +17,10 @@
         <table class="sb-table">
           <thead>
             <tr>
-              <th class="col-tijd">Tijd</th>
-              <th>Naam</th>
-              <th>Bestand</th>
-              <th>Waarschuwing</th>
+              <th class="col-tijd">{{ _('Tijd') }}</th>
+              <th>{{ _('Naam') }}</th>
+              <th>{{ _('Bestand') }}</th>
+              <th>{{ _('Waarschuwing') }}</th>
               <th class="col-acties"></th>
             </tr>
           </thead>
@@ -38,7 +38,7 @@
                   <td>
                     {% if m.warn_min and m.warn_bestand %}
                       <span class="sb-help">
-                        {{ m.warn_min }} min eerder · {{ m.warn_bestand }}
+                        {% trans warn_min=m.warn_min, warn_bestand=m.warn_bestand %}{{ warn_min }} min eerder · {{ warn_bestand }}{% endtrans %}
                       </span>
                     {% else %}
                       <span class="sb-help"><em>—</em></span>
@@ -47,12 +47,12 @@
                   <td class="col-acties">
                     <form class="inline" method="post"
                           action="{{ url_for('roosters.delete_moment', rooster=naam, index=loop.index0) }}"
-                          data-confirm="Moment {{ m.tijd }} ({{ m.naam }}) verwijderen?"
-                          data-confirm-button="Verwijderen">
+                          data-confirm="{% trans tijd=m.tijd, naam=m.naam %}Moment {{ tijd }} ({{ naam }}) verwijderen?{% endtrans %}"
+                          data-confirm-button="{{ _('Verwijderen') }}">
                       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                       <button type="submit"
                               class="sb-btn sb-btn--danger sb-btn--icon"
-                              title="Verwijder dit moment">
+                              title="{{ _('Verwijder dit moment') }}">
                         ✕
                       </button>
                     </form>
@@ -62,7 +62,7 @@
             {% else %}
               <tr>
                 <td colspan="5">
-                  <em class="sb-help">Geen momenten</em>
+                  <em class="sb-help">{{ _('Geen momenten') }}</em>
                 </td>
               </tr>
             {% endif %}
@@ -82,7 +82,7 @@
                    pattern="^(?:[01]\d|2[0-3]):[0-5]\d$">
             <input name="naam"
                    class="sb-input"
-                   placeholder="Naam (verplicht)"
+                   placeholder="{{ _('Naam (verplicht)') }}"
                    required>
           </div>
 
@@ -90,7 +90,7 @@
             <select name="bestand"
                     class="sb-select"
                     required>
-              <option value="">— Kies geluid —</option>
+              <option value="">{{ _('— Kies geluid —') }}</option>
               {% for g in geluiden %}
                 <option value="{{ g }}">{{ g }}</option>
               {% endfor %}
@@ -102,7 +102,7 @@
              is intentionally not required so the common case (no
              warning) requires zero clicks. #}
           <div class="line3 sb-warn-row">
-            <span class="sb-help">Waarschuwing:</span>
+            <span class="sb-help">{{ _('Waarschuwing:') }}</span>
             <input name="warn_min"
                    class="sb-input sb-warn-min"
                    type="number"
@@ -110,16 +110,16 @@
                    max="60"
                    step="1"
                    placeholder="0"
-                   title="Minuten vóór de bel een waarschuwing afspelen (0 = uit)">
-            <span class="sb-help">min. eerder met</span>
+                   title="{{ _('Minuten vóór de bel een waarschuwing afspelen (0 = uit)') }}">
+            <span class="sb-help">{{ _('min. eerder met') }}</span>
             <select name="warn_bestand" class="sb-select sb-warn-bestand">
-              <option value="">— geen waarschuwing —</option>
+              <option value="">{{ _('— geen waarschuwing —') }}</option>
               {% for g in geluiden %}
                 <option value="{{ g }}">{{ g }}</option>
               {% endfor %}
             </select>
             <button type="submit" class="sb-btn sb-btn--success">
-              Moment toevoegen
+              {{ _('Moment toevoegen') }}
             </button>
           </div>
         </form>
@@ -127,11 +127,11 @@
         <form class="inline"
               method="post"
               action="{{ url_for('roosters.delete_rooster', rooster=naam) }}"
-              data-confirm="Rooster &quot;{{ naam }}&quot; verwijderen? Dit verwijdert ook alle momenten in dit rooster."
-              data-confirm-button="Verwijderen">
+              data-confirm="{% trans naam=naam %}Rooster &quot;{{ naam }}&quot; verwijderen? Dit verwijdert ook alle momenten in dit rooster.{% endtrans %}"
+              data-confirm-button="{{ _('Verwijderen') }}">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <button type="submit" class="sb-btn sb-btn--danger">
-            Rooster verwijderen
+            {{ _('Rooster verwijderen') }}
           </button>
         </form>
 
@@ -139,38 +139,38 @@
     {% endfor %}
   {% else %}
     <div class="card rooster sb-card">
-      <h2 class="sb-card__title">Roosters</h2>
-      <p class="sb-help">Er zijn nog geen roosters. Maak de eerste aan.</p>
+      <h2 class="sb-card__title">{{ _('Roosters') }}</h2>
+      <p class="sb-help">{{ _('Er zijn nog geen roosters. Maak de eerste aan.') }}</p>
     </div>
   {% endif %}
 </div>
 
 <div class="card sb-card sb-card--section">
-  <h2 class="sb-card__title">Nieuw rooster</h2>
+  <h2 class="sb-card__title">{{ _('Nieuw rooster') }}</h2>
   <form method="post" action="{{ url_for('roosters.add_rooster') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
     <div class="sb-new-rooster-row">
       <input name="naam"
              class="sb-input sb-new-rooster-name"
-             placeholder="Naam nieuw rooster"
+             placeholder="{{ _('Naam nieuw rooster') }}"
              required>
 
       <label class="sb-checkbox-row">
         <input type="checkbox" name="kopieer_van_eerste" checked>
-        <span class="sb-help">Start als kopie van het eerste rooster</span>
+        <span class="sb-help">{{ _('Start als kopie van het eerste rooster') }}</span>
       </label>
 
       <button type="submit" class="sb-btn">
-        Aanmaken
+        {{ _('Aanmaken') }}
       </button>
     </div>
   </form>
 </div>
 
 <p class="sb-hint">
-  Na wijzigingen: herlaad de daemon met
-  <code class="sb-code-mono">sudo systemctl kill -s HUP schoolbell-daemon.service</code>.
+  {% trans %}Na wijzigingen: herlaad de daemon met
+  <code class="sb-code-mono">sudo systemctl kill -s HUP schoolbell-daemon.service</code>.{% endtrans %}
 </p>
 
 {% endblock %}

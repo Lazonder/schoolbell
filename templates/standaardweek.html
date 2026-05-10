@@ -1,14 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Standaardweek{% endblock %}
+{% block title %}{{ _('Standaardweek') }}{% endblock %}
 
 {% block content %}
 
 <header class="sb-page-header">
   <div>
-    <h1>Standaardweek</h1>
+    <h1>{{ _('Standaardweek') }}</h1>
     <p class="sb-help">
-      Kies per weekdag een standaardrooster.
-      De <strong>Agenda</strong> per datum overschrijft deze keuze wanneer ingesteld.
+      {% trans %}Kies per weekdag een standaardrooster. De <strong>Agenda</strong> per datum overschrijft deze keuze wanneer ingesteld.{% endtrans %}
     </p>
   </div>
 </header>
@@ -20,18 +19,18 @@
     <table class="sb-table stdweek-table">
       <thead>
         <tr>
-          <th class="stdweek-day-col">Dag</th>
-          <th>Standaardrooster</th>
+          <th class="stdweek-day-col">{{ _('Dag') }}</th>
+          <th>{{ _('Standaardrooster') }}</th>
         </tr>
       </thead>
       <tbody>
         {% for key, label in weekdagen %}
           <tr>
-            <td class="stdweek-day-col">{{ label }}</td>
+            <td class="stdweek-day-col">{{ _(label) }}</td>
             <td>
               <select name="rooster_{{ key }}"
                       class="sb-select stdweek-select">
-                <option value="">— geen —</option>
+                <option value="">{{ _('— geen —') }}</option>
                 {% for o in opties %}
                   <option value="{{ o }}" {% if o == huidige[key] %}selected{% endif %}>
                     {{ o }}
@@ -46,7 +45,7 @@
 
     <div class="stdweek-actions">
       <button type="submit" class="sb-btn sb-btn--success">
-        Opslaan
+        {{ _('Opslaan') }}
       </button>
     </div>
   </form>
