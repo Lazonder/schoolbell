@@ -1,0 +1,1000 @@
+# French translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-05-10 10:23+0200\n"
+"PO-Revision-Date: 2026-05-10 16:35+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: webinterface.py:262
+msgid "Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."
+msgstr ""
+"Téléversement trop volumineux (vérifiez la limite configurée dans "
+"Paramètres)."
+
+#: blueprints/agenda.py:118
+#, python-format
+msgid "Ongeldig rooster voor %(datum)s: '%(waarde)s' bestaat niet. Overgeslagen."
+msgstr "Horaire invalide pour %(datum)s : '%(waarde)s' n'existe pas. Ignoré."
+
+#: blueprints/agenda.py:152
+msgid "Agenda opgeslagen."
+msgstr "Calendrier enregistré."
+
+#: blueprints/agenda.py:240 blueprints/agenda.py:378
+msgid "Vakantie-scraping is uitgeschakeld in Voorkeuren."
+msgstr "La récupération des vacances est désactivée dans Paramètres."
+
+#: blueprints/agenda.py:246
+#, python-format
+msgid "Importeren mislukt: %(err)s"
+msgstr "Échec de l'import : %(err)s"
+
+#: blueprints/agenda.py:250
+#, python-format
+msgid ""
+"Geen vakantiebestand gevonden (%(path)s). Klik 'Verversen van "
+"rijksoverheid.nl' om het op te halen."
+msgstr ""
+"Aucun fichier de vacances trouvé (%(path)s). Cliquez sur « Actualiser "
+"depuis rijksoverheid.nl » pour le récupérer."
+
+#: blueprints/agenda.py:259
+msgid ""
+"Vakantiebestand bevat geen 'schooljaren'. Klik 'Verversen van "
+"rijksoverheid.nl' om opnieuw op te halen."
+msgstr ""
+"Le fichier de vacances ne contient pas « schooljaren ». Cliquez sur « "
+"Actualiser depuis rijksoverheid.nl » pour le récupérer à nouveau."
+
+#: blueprints/agenda.py:307
+#, python-format
+msgid ""
+"Geen schooljaren in het bestand bevatten regio '%(regio)s'. Aanwezige "
+"schooljaren: %(schooljaren)s."
+msgstr ""
+"Aucune année scolaire du fichier ne contient la région « %(regio)s ». "
+"Années scolaires présentes : %(schooljaren)s."
+
+#: blueprints/agenda.py:314
+#, python-format
+msgid ""
+"Geen weken om te markeren voor regio %(regio)s. Controleer het "
+"vakantiebestand (%(count)s ongeldige entries)."
+msgstr ""
+"Aucune semaine à marquer pour la région %(regio)s. Vérifiez le fichier de"
+" vacances (%(count)s entrées invalides)."
+
+#: blueprints/agenda.py:338
+#, python-format
+msgid ""
+"%(weken)s week(weken) gemarkeerd als 'Bel uit' (regio %(regio)s, uit "
+"%(aantal)s schooljaar/jaren: %(schooljaren)s)."
+msgstr ""
+"%(weken)s semaine(s) marquée(s) comme « Cloche désactivée » (région "
+"%(regio)s, depuis %(aantal)s année(s) scolaire(s) : %(schooljaren)s)."
+
+#: blueprints/agenda.py:347
+#, python-format
+msgid " en %(count)s meer"
+msgstr " et %(count)s de plus"
+
+#: blueprints/agenda.py:348
+#, python-format
+msgid " Overgeslagen: %(voorb)s%(meer)s."
+msgstr " Ignorées : %(voorb)s%(meer)s."
+
+#: blueprints/agenda.py:397
+#, python-format
+msgid ""
+"Bestaand vakantiebestand kon niet gelezen worden (%(err)s); wordt "
+"overschreven."
+msgstr ""
+"Le fichier de vacances existant n'a pas pu être lu (%(err)s) ; il sera "
+"écrasé."
+
+#: blueprints/agenda.py:412
+#, python-format
+msgid "Verversen mislukt voor alle %(n)d schooljaren. Eerste fout: %(err)s"
+msgstr ""
+"Actualisation échouée pour les %(n)d années scolaires. Première erreur : "
+"%(err)s"
+
+#: blueprints/auth.py:59
+msgid "Onjuiste inloggegevens."
+msgstr "Identifiants invalides."
+
+#: blueprints/geluiden.py:95
+msgid "Geen bestand ontvangen."
+msgstr "Aucun fichier reçu."
+
+#: blueprints/geluiden.py:100
+msgid "Geen bestand geselecteerd."
+msgstr "Aucun fichier sélectionné."
+
+#: blueprints/geluiden.py:106
+#, python-format
+msgid "Alleen bestanden met deze extensies zijn toegestaan: %(exts)s."
+msgstr "Seuls les fichiers avec ces extensions sont autorisés : %(exts)s."
+
+#: blueprints/geluiden.py:111 blueprints/roosters.py:72
+msgid "Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."
+msgstr ""
+"Nom invalide. Utilisez 1 à 35 caractères : lettres, chiffres, espace, _ "
+"ou -."
+
+#: blueprints/geluiden.py:116
+msgid "Er bestaat al een audiobestand met deze naam. Kies een andere naam."
+msgstr "Un fichier audio avec ce nom existe déjà. Choisissez un autre nom."
+
+#: blueprints/geluiden.py:121 blueprints/geluiden.py:135
+#, python-format
+msgid "Bestand is groter dan de ingestelde limiet van %(mb)s MB."
+msgstr "Le fichier dépasse la limite configurée de %(mb)s Mo."
+
+#: blueprints/geluiden.py:141
+#, python-format
+msgid "Kon bestand niet opslaan: %(err)s"
+msgstr "Impossible d'enregistrer le fichier : %(err)s"
+
+#: blueprints/geluiden.py:163
+#, python-format
+msgid "Bestand afgewezen: %(reason)s"
+msgstr "Fichier refusé : %(reason)s"
+
+#: blueprints/geluiden.py:172
+#, python-format
+msgid "Upload geslaagd: %(filename)s"
+msgstr "Téléversement réussi : %(filename)s"
+
+#: blueprints/geluiden.py:189 blueprints/geluiden.py:214
+msgid "Bestand niet gevonden."
+msgstr "Fichier introuvable."
+
+#: blueprints/geluiden.py:196
+#, python-format
+msgid "Test gestart: %(name)s"
+msgstr "Test démarré : %(name)s"
+
+#: blueprints/geluiden.py:202
+#, python-format
+msgid "Afspelen mislukt: %(err)s"
+msgstr "Lecture échouée : %(err)s"
+
+#: blueprints/geluiden.py:231 blueprints/roosters.py:125
+#, python-format
+msgid " en %(n)d meer"
+msgstr " et %(n)d de plus"
+
+#: blueprints/geluiden.py:233
+#, python-format
+msgid ""
+"Geluid '%(name)s' wordt nog gebruikt door: %(voorb)s%(meer)s. Verwijder "
+"of vervang deze momenten eerst voordat je het bestand verwijdert."
+msgstr ""
+"Le son « %(name)s » est encore utilisé par : %(voorb)s%(meer)s. Supprimez"
+" ou remplacez ces moments avant de supprimer le fichier."
+
+#: blueprints/geluiden.py:242
+#, python-format
+msgid "Verwijderd: %(name)s"
+msgstr "Supprimé : %(name)s"
+
+#: blueprints/geluiden.py:244
+#, python-format
+msgid "Kon niet verwijderen: %(err)s"
+msgstr "Suppression impossible : %(err)s"
+
+#: blueprints/roosters.py:62
+msgid "Naam van rooster is verplicht."
+msgstr "Le nom de l'horaire est obligatoire."
+
+#: blueprints/roosters.py:77
+msgid "Er bestaat al een rooster met deze naam."
+msgstr "Un horaire avec ce nom existe déjà."
+
+#: blueprints/roosters.py:90
+#, python-format
+msgid "Rooster '%(naam)s' aangemaakt."
+msgstr "Horaire « %(naam)s » créé."
+
+#: blueprints/roosters.py:100 blueprints/roosters.py:191
+#: blueprints/roosters.py:220
+msgid "Onbekend rooster."
+msgstr "Horaire inconnu."
+
+#: blueprints/roosters.py:122
+#, python-format
+msgid "Standaardweek (%(dagen)s)"
+msgstr "Semaine type (%(dagen)s)"
+
+#: blueprints/roosters.py:126
+#, python-format
+msgid "Agenda (%(voorb)s%(meer)s)"
+msgstr "Calendrier (%(voorb)s%(meer)s)"
+
+#: blueprints/roosters.py:128
+#, python-format
+msgid ""
+"Rooster '%(rooster)s' is nog in gebruik bij: %(delen)s. Haal deze "
+"verwijzingen eerst weg voordat je het rooster verwijdert."
+msgstr ""
+"L'horaire « %(rooster)s » est encore utilisé par : %(delen)s. Supprimez "
+"ces références avant de supprimer l'horaire."
+
+#: blueprints/roosters.py:138
+#, python-format
+msgid "Rooster '%(rooster)s' verwijderd."
+msgstr "Horaire « %(rooster)s » supprimé."
+
+#: blueprints/roosters.py:155
+msgid "Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."
+msgstr "L'heure doit être au format HH:MM (par ex. 8:05 ou 08:05)."
+
+#: blueprints/roosters.py:158
+msgid "Naam is verplicht."
+msgstr "Le nom est obligatoire."
+
+#: blueprints/roosters.py:161
+msgid "Kies een geluidsbestand."
+msgstr "Choisissez un fichier audio."
+
+#: blueprints/roosters.py:175
+msgid "Waarschuwing: minuten moeten een getal zijn."
+msgstr "Avertissement : les minutes doivent être un nombre."
+
+#: blueprints/roosters.py:178
+msgid "Waarschuwing: minuten moeten tussen 0 en 60 liggen."
+msgstr "Avertissement : les minutes doivent être entre 0 et 60."
+
+#: blueprints/roosters.py:181
+msgid "Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."
+msgstr ""
+"Choisissez un son pour la cloche d'avertissement, ou réglez « minutes "
+"avant » sur 0."
+
+#: blueprints/roosters.py:210
+#, python-format
+msgid "Moment toegevoegd aan '%(rooster)s'."
+msgstr "Moment ajouté à « %(rooster)s »."
+
+#: blueprints/roosters.py:228
+#, python-format
+msgid "Moment '%(naam)s' verwijderd uit '%(rooster)s'."
+msgstr "Moment « %(naam)s » supprimé de « %(rooster)s »."
+
+#: blueprints/roosters.py:230
+msgid "Onbekende regel."
+msgstr "Ligne inconnue."
+
+#: blueprints/roosters.py:249
+#, python-format
+msgid "'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s."
+msgstr "« %(keuze)s » n'existe pas comme horaire ; ignoré pour %(dag)s."
+
+#: blueprints/roosters.py:254
+msgid "Standaardweek opgeslagen."
+msgstr "Semaine type enregistrée."
+
+#: templates/agenda.html:2 templates/agenda.html:55 templates/base.html:72
+msgid "Agenda"
+msgstr "Calendrier"
+
+#: templates/agenda.html:8
+msgid "Vakanties"
+msgstr "Vacances"
+
+#: templates/agenda.html:10
+#, python-format
+msgid ""
+"Importeer schoolvakanties uit\n"
+"    <code class=\"sb-code-mono\">data/vakanties.json</code>\n"
+"    voor regio <strong>%(vakantieregio)s</strong>\n"
+"    (instelbaar via <a href=\"%(settings_url)s\">Voorkeuren</a>).\n"
+"    De getroffen weken worden automatisch op <em>Bel uit</em> gezet.\n"
+"    Bestaande markeringen blijven staan — de import voegt alleen toe."
+msgstr ""
+"Importer les vacances scolaires depuis\n"
+"    <code class=\"sb-code-mono\">data/vakanties.json</code>\n"
+"    pour la région <strong>%(vakantieregio)s</strong>\n"
+"    (configurable via <a href=\"%(settings_url)s\">Paramètres</a>).\n"
+"    Les semaines concernées sont automatiquement mises sur <em>Cloche "
+"désactivée</em>.\n"
+"    Les marquages existants restent — l'import ne fait qu'ajouter."
+
+#: templates/agenda.html:18
+msgid ""
+"<strong>Nog geen bestand gevonden.</strong> Klik\n"
+"      <em>Verversen van rijksoverheid.nl</em> om het op te halen."
+msgstr ""
+"<strong>Aucun fichier trouvé pour l'instant.</strong> Cliquez sur\n"
+"      <em>Actualiser depuis rijksoverheid.nl</em> pour le récupérer."
+
+#: templates/agenda.html:24
+#, python-format
+msgid ""
+"Vakanties importeren voor regio %(vakantieregio)s? De getroffen weken "
+"worden op &quot;Bel uit&quot; gezet (bestaande markeringen blijven "
+"staan)."
+msgstr ""
+"Importer les vacances pour la région %(vakantieregio)s ? Les semaines "
+"concernées seront mises sur &quot;Cloche désactivée&quot; (les marquages "
+"existants restent)."
+
+#: templates/agenda.html:25
+msgid "Importeren"
+msgstr "Importer"
+
+#: templates/agenda.html:29
+msgid "Vakanties importeren"
+msgstr "Importer les vacances"
+
+#: templates/agenda.html:33
+msgid ""
+"Vakantiegegevens ophalen van rijksoverheid.nl en data/vakanties.json "
+"overschrijven? Eventuele handmatige aanpassingen aan dat bestand gaan "
+"verloren."
+msgstr ""
+"Récupérer les données de vacances depuis rijksoverheid.nl et écraser "
+"data/vakanties.json ? Toute modification manuelle de ce fichier sera "
+"perdue."
+
+#: templates/agenda.html:34
+msgid "Verversen"
+msgstr "Actualiser"
+
+#: templates/agenda.html:37
+msgid "Verversen van rijksoverheid.nl"
+msgstr "Actualiser depuis rijksoverheid.nl"
+
+#: templates/agenda.html:42
+#, python-format
+msgid ""
+"De daemon ververst dit automatisch ongeveer elke maand. Met de\n"
+"    knop hierboven kun je tussentijds verversen of de eerste keer\n"
+"    ophalen. Status zichtbaar in <a "
+"href=\"%(settings_url)s\">Voorkeuren</a>."
+msgstr ""
+"Le daemon actualise automatiquement environ une fois par mois. Avec le\n"
+"    bouton ci-dessus, vous pouvez actualiser entre-temps ou récupérer\n"
+"    pour la première fois. Statut visible dans <a "
+"href=\"%(settings_url)s\">Paramètres</a>."
+
+#: templates/agenda.html:57
+msgid ""
+"Wijzig per dag het rooster, of zet een hele week uit. Klik daarna op\n"
+"          <strong>Alles opslaan</strong>."
+msgstr ""
+"Modifiez l'horaire par jour, ou désactivez une semaine entière. Cliquez "
+"ensuite sur\n"
+"          <strong>Tout enregistrer</strong>."
+
+#: templates/agenda.html:63 templates/agenda.html:128
+msgid "Alles opslaan"
+msgstr "Tout enregistrer"
+
+#: templates/agenda.html:74 templates/agenda.html:80
+msgid "Ma"
+msgstr "Lun"
+
+#: templates/agenda.html:74 templates/agenda.html:81
+msgid "Di"
+msgstr "Mar"
+
+#: templates/agenda.html:74 templates/agenda.html:82
+msgid "Wo"
+msgstr "Mer"
+
+#: templates/agenda.html:74 templates/agenda.html:83
+msgid "Do"
+msgstr "Jeu"
+
+#: templates/agenda.html:74 templates/agenda.html:84
+msgid "Vr"
+msgstr "Ven"
+
+#: templates/agenda.html:79
+msgid "Week"
+msgstr "Semaine"
+
+#: templates/agenda.html:85
+msgid "Bel uit"
+msgstr "Cloche désactivée"
+
+#: templates/agenda.html:117
+msgid "Uit"
+msgstr "Désact."
+
+#: templates/base.html:33 templates/now.html:92
+msgid "Schoolbel"
+msgstr "Cloche d'école"
+
+#: templates/base.html:67
+msgid "IVKO Schoolbel"
+msgstr "Cloche d'école IVKO"
+
+#: templates/base.html:73 templates/roosters.html:2 templates/roosters.html:7
+#: templates/roosters.html:142
+msgid "Roosters"
+msgstr "Horaires"
+
+#: templates/base.html:74 templates/standaardweek.html:2
+#: templates/standaardweek.html:8
+msgid "Standaardweek"
+msgstr "Semaine type"
+
+#: templates/base.html:75 templates/geluiden.html:2 templates/geluiden.html:7
+msgid "Geluiden"
+msgstr "Sons"
+
+#: templates/base.html:76 templates/logs.html:2 templates/logs.html:8
+msgid "Logboek"
+msgstr "Journal"
+
+#: templates/base.html:77 templates/settings.html:2 templates/settings.html:8
+msgid "Voorkeuren"
+msgstr "Paramètres"
+
+#: templates/base.html:85
+msgid "Daemon actief"
+msgstr "Daemon actif"
+
+#: templates/base.html:87
+msgid "Daemon: geen heartbeat"
+msgstr "Daemon : pas de heartbeat"
+
+#: templates/base.html:89
+#, python-format
+msgid "Daemon: %(age)ss stil"
+msgstr "Daemon : %(age)s s sans signe"
+
+#: templates/base.html:92
+#, python-format
+msgid "(laatste poll: %(t)s UTC)"
+msgstr "(dernier sondage : %(t)s UTC)"
+
+#: templates/base.html:94
+msgid "Daemon"
+msgstr "Daemon"
+
+#: templates/base.html:101
+msgid "Uitloggen"
+msgstr "Déconnexion"
+
+#: templates/base.html:132
+msgid "IVKO · Schoolbel"
+msgstr "IVKO · Cloche d'école"
+
+#: templates/base.html:151
+msgid "Weet je het zeker?"
+msgstr "Êtes-vous sûr ?"
+
+#: templates/base.html:155
+msgid "Annuleren"
+msgstr "Annuler"
+
+#: templates/base.html:158
+msgid "Bevestigen"
+msgstr "Confirmer"
+
+#: templates/geluiden.html:11
+msgid "Beschikbare geluiden"
+msgstr "Sons disponibles"
+
+#: templates/geluiden.html:22
+msgid "Voorbeeluister in browser"
+msgstr "Aperçu dans le navigateur"
+
+#: templates/geluiden.html:28
+#, python-format
+msgid "&quot;%(name)s&quot; nu door de hele school afspelen?"
+msgstr "Jouer &quot;%(name)s&quot; maintenant dans toute l'école ?"
+
+#: templates/geluiden.html:29
+msgid "Afspelen"
+msgstr "Lire"
+
+#: templates/geluiden.html:34
+msgid "Speel af via omroepinstallatie school"
+msgstr "Jouer via la sonorisation de l'école"
+
+#: templates/geluiden.html:41
+#, python-format
+msgid "Bestand &quot;%(name)s&quot; verwijderen?"
+msgstr "Supprimer le fichier &quot;%(name)s&quot; ?"
+
+#: templates/geluiden.html:42 templates/geluiden.html:47
+#: templates/roosters.html:51 templates/roosters.html:131
+msgid "Verwijderen"
+msgstr "Supprimer"
+
+#: templates/geluiden.html:56
+msgid "Geen audiobestanden gevonden."
+msgstr "Aucun fichier audio trouvé."
+
+#: templates/geluiden.html:61
+msgid "Nieuw geluid uploaden"
+msgstr "Téléverser un nouveau son"
+
+#: templates/geluiden.html:73
+msgid "Unieke naam (max 35 tekens)"
+msgstr "Nom unique (max. 35 caractères)"
+
+#: templates/geluiden.html:83
+#, python-format
+msgid ""
+"Toegestane extensies: %(exts)s • max %(max_mb)s MB • Naam: "
+"letters/cijfers/spatie/_/-"
+msgstr ""
+"Extensions autorisées : %(exts)s • max %(max_mb)s Mo • Nom : "
+"lettres/chiffres/espace/_/-"
+
+#: templates/geluiden.html:88
+msgid "Uploaden"
+msgstr "Téléverser"
+
+#: templates/login.html:2 templates/login.html:50
+msgid "Inloggen"
+msgstr "Connexion"
+
+#: templates/login.html:8
+msgid "Schoolbel — Inloggen"
+msgstr "Cloche d'école — Connexion"
+
+#: templates/login.html:29
+msgid "Gebruikersnaam"
+msgstr "Nom d'utilisateur"
+
+#: templates/login.html:39
+msgid "Wachtwoord"
+msgstr "Mot de passe"
+
+#: templates/login.html:56
+#, python-format
+msgid ""
+"Je gebruikersnaam is meestal <code class=\"sb-code-"
+"mono\">%(admin_user)s</code>."
+msgstr ""
+"Votre nom d'utilisateur est généralement <code class=\"sb-code-"
+"mono\">%(admin_user)s</code>."
+
+#: templates/logs.html:10
+msgid ""
+"Overzicht van komende belmomenten, recente bel-events (daemon) en recente"
+" UI-acties."
+msgstr ""
+"Vue d'ensemble des prochains moments de cloche, des événements récents "
+"(daemon) et des actions UI récentes."
+
+#: templates/logs.html:18
+msgid "Eerstkomende belmomenten"
+msgstr "Prochains moments de cloche"
+
+#: templates/logs.html:22
+msgid "Datum/Tijd"
+msgstr "Date/Heure"
+
+#: templates/logs.html:23 templates/logs.html:93 templates/roosters.html:21
+msgid "Naam"
+msgstr "Nom"
+
+#: templates/logs.html:24 templates/logs.html:95 templates/roosters.html:22
+msgid "Bestand"
+msgstr "Fichier"
+
+#: templates/logs.html:25
+msgid "Rooster"
+msgstr "Horaire"
+
+#: templates/logs.html:41
+msgid "Geen komende momenten gevonden."
+msgstr "Aucun moment à venir."
+
+#: templates/logs.html:50
+msgid "Recente UI-acties"
+msgstr "Actions UI récentes"
+
+#: templates/logs.html:54 templates/logs.html:92
+msgid "Ts"
+msgstr "Ts"
+
+#: templates/logs.html:55
+msgid "Actie"
+msgstr "Action"
+
+#: templates/logs.html:56
+msgid "Details"
+msgstr "Détails"
+
+#: templates/logs.html:79
+msgid "Geen UI-acties gelogd."
+msgstr "Aucune action UI enregistrée."
+
+#: templates/logs.html:88
+msgid "Recente bel-events (daemon)"
+msgstr "Événements de cloche récents (daemon)"
+
+#: templates/logs.html:94 templates/roosters.html:20
+msgid "Tijd"
+msgstr "Heure"
+
+#: templates/logs.html:96
+msgid "Status"
+msgstr "Statut"
+
+#: templates/logs.html:97
+msgid "Bericht"
+msgstr "Message"
+
+#: templates/logs.html:117
+msgid "Geen bel-logregels (daemon heeft nog niet gelogd)."
+msgstr "Aucun journal de cloche (le daemon n'a encore rien enregistré)."
+
+#: templates/now.html:15
+msgid "Schoolbel · Volgende bel"
+msgstr "Cloche d'école · Prochaine cloche"
+
+#: templates/now.html:84
+msgid "Laatste data-fetch faalde"
+msgstr "Dernière récupération de données échouée"
+
+#: templates/now.html:90
+msgid "Volgende bel"
+msgstr "Prochaine cloche"
+
+#: templates/now.html:91
+msgid "Geen bel meer vandaag."
+msgstr "Plus de cloche aujourd'hui."
+
+#: templates/now.html:93
+msgid "om"
+msgstr "à"
+
+#: templates/roosters.html:23
+msgid "Waarschuwing"
+msgstr "Avertissement"
+
+#: templates/roosters.html:41
+#, python-format
+msgid "%(warn_min)s min eerder · %(warn_bestand)s"
+msgstr "%(warn_min)s min avant · %(warn_bestand)s"
+
+#: templates/roosters.html:50
+#, python-format
+msgid "Moment %(tijd)s (%(naam)s) verwijderen?"
+msgstr "Supprimer le moment %(tijd)s (%(naam)s) ?"
+
+#: templates/roosters.html:55
+msgid "Verwijder dit moment"
+msgstr "Supprimer ce moment"
+
+#: templates/roosters.html:65
+msgid "Geen momenten"
+msgstr "Aucun moment"
+
+#: templates/roosters.html:85
+msgid "Naam (verplicht)"
+msgstr "Nom (obligatoire)"
+
+#: templates/roosters.html:93
+msgid "— Kies geluid —"
+msgstr "— Choisir un son —"
+
+#: templates/roosters.html:105
+msgid "Waarschuwing:"
+msgstr "Avertissement :"
+
+#: templates/roosters.html:113
+msgid "Minuten vóór de bel een waarschuwing afspelen (0 = uit)"
+msgstr "Minutes avant la cloche pour jouer un avertissement (0 = désactivé)"
+
+#: templates/roosters.html:114
+msgid "min. eerder met"
+msgstr "min. avant avec"
+
+#: templates/roosters.html:116
+msgid "— geen waarschuwing —"
+msgstr "— pas d'avertissement —"
+
+#: templates/roosters.html:122
+msgid "Moment toevoegen"
+msgstr "Ajouter un moment"
+
+#: templates/roosters.html:130
+#, python-format
+msgid ""
+"Rooster &quot;%(naam)s&quot; verwijderen? Dit verwijdert ook alle "
+"momenten in dit rooster."
+msgstr ""
+"Supprimer l'horaire &quot;%(naam)s&quot; ? Cela supprimera aussi tous les"
+" moments de cet horaire."
+
+#: templates/roosters.html:134
+msgid "Rooster verwijderen"
+msgstr "Supprimer l'horaire"
+
+#: templates/roosters.html:143
+msgid "Er zijn nog geen roosters. Maak de eerste aan."
+msgstr "Aucun horaire pour l'instant. Créez le premier."
+
+#: templates/roosters.html:149
+msgid "Nieuw rooster"
+msgstr "Nouvel horaire"
+
+#: templates/roosters.html:156
+msgid "Naam nieuw rooster"
+msgstr "Nom du nouvel horaire"
+
+#: templates/roosters.html:161
+msgid "Start als kopie van het eerste rooster"
+msgstr "Démarrer comme copie du premier horaire"
+
+#: templates/roosters.html:165
+msgid "Aanmaken"
+msgstr "Créer"
+
+#: templates/roosters.html:172
+msgid ""
+"Na wijzigingen: herlaad de daemon met\n"
+"  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-"
+"daemon.service</code>."
+msgstr ""
+"Après modifications : rechargez le daemon avec\n"
+"  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-"
+"daemon.service</code>."
+
+#: templates/settings.html:10
+msgid ""
+"Pas hier algemene instellingen van de schoolbel aan, zoals volume, "
+"maximale bestandsgrootte en polling-interval."
+msgstr ""
+"Ajustez ici les paramètres généraux de la cloche d'école : volume, taille"
+" de fichier maximale et intervalle de sondage."
+
+#: templates/settings.html:20
+msgid "Belvolume:"
+msgstr "Volume de la cloche :"
+
+#: templates/settings.html:30
+msgid "Standaard afspeelvolume van de bel."
+msgstr "Volume de lecture par défaut de la cloche."
+
+#: templates/settings.html:34
+msgid "Max. bestandsgrootte (MB)"
+msgstr "Taille de fichier max. (Mo)"
+
+#: templates/settings.html:41
+msgid "Maximale grootte van geüploade audiobestanden."
+msgstr "Taille maximale des fichiers audio téléversés."
+
+#: templates/settings.html:45
+msgid "Polling-tijd (seconden)"
+msgstr "Intervalle de sondage (secondes)"
+
+#: templates/settings.html:52
+msgid "Hoe vaak de daemon de planning controleert."
+msgstr "Fréquence à laquelle le daemon vérifie le planning."
+
+#: templates/settings.html:56
+msgid "Taal"
+msgstr "Langue"
+
+#: templates/settings.html:62
+msgid "Automatisch (volgt browser)"
+msgstr "Automatique (suit le navigateur)"
+
+#: templates/settings.html:65
+msgid ""
+"Taal van de webinterface. Vertalingen worden in een latere update "
+"toegevoegd; voor nu blijft alle tekst Nederlands."
+msgstr ""
+"Langue de l'interface web. Les traductions seront ajoutées dans une mise "
+"à jour ultérieure ; pour l'instant tout le texte reste en néerlandais."
+
+#: templates/settings.html:70
+msgid "Thema"
+msgstr "Thème"
+
+#: templates/settings.html:72
+msgid "Licht"
+msgstr "Clair"
+
+#: templates/settings.html:73
+msgid "Donker"
+msgstr "Sombre"
+
+#: templates/settings.html:74
+msgid "Automatisch (volgt systeem)"
+msgstr "Automatique (suit le système)"
+
+#: templates/settings.html:76
+msgid "Kies de kleurmodus voor de interface."
+msgstr "Choisissez le mode de couleur de l'interface."
+
+#: templates/settings.html:80
+msgid "Huisstijl"
+msgstr "Charte graphique"
+
+#: templates/settings.html:82
+msgid "Standaard"
+msgstr "Par défaut"
+
+#: templates/settings.html:83
+msgid "Aangepast"
+msgstr "Personnalisé"
+
+#: templates/settings.html:86
+msgid ""
+"<strong>Standaard</strong> volgt het thema hierboven (Licht of Donker).\n"
+"        <strong>Aangepast</strong> gebruikt de drie kleuren hieronder "
+"voor\n"
+"        achtergrond, tabelvulling en navigatiebalk — staat los van "
+"Licht/Donker."
+msgstr ""
+"<strong>Par défaut</strong> suit le thème ci-dessus (Clair ou Sombre).\n"
+"        <strong>Personnalisé</strong> utilise les trois couleurs ci-"
+"dessous pour\n"
+"        l'arrière-plan, le remplissage des tableaux et la barre de "
+"navigation — indépendant de Clair/Sombre."
+
+#: templates/settings.html:98
+msgid "Aangepaste kleuren"
+msgstr "Couleurs personnalisées"
+
+#: templates/settings.html:103
+msgid "Achtergrond"
+msgstr "Arrière-plan"
+
+#: templates/settings.html:107
+msgid "Tabelvulling"
+msgstr "Remplissage des tableaux"
+
+#: templates/settings.html:111
+msgid "Navigatiebalk"
+msgstr "Barre de navigation"
+
+#: templates/settings.html:115
+msgid ""
+"Klik op een kleurvak om een andere kleur te kiezen. Wijzigingen worden "
+"direct toegepast bij Opslaan; geen pagina-refresh nodig."
+msgstr ""
+"Cliquez sur une case de couleur pour en choisir une autre. Les "
+"modifications sont appliquées immédiatement à l'enregistrement ; aucune "
+"actualisation de page nécessaire."
+
+#: templates/settings.html:124
+msgid "Schoolvakanties van rijksoverheid.nl ophalen"
+msgstr "Récupérer les vacances scolaires depuis rijksoverheid.nl"
+
+#: templates/settings.html:127
+msgid ""
+"Aan: de daemon haalt elke ~maand de officiële Nederlandse\n"
+"        schoolvakanties op (huidig schooljaar + 4 vooruit) en de\n"
+"        knoppen op de Agenda zijn beschikbaar.\n"
+"        Uit: data/vakanties.json wordt niet aangepast en de\n"
+"        Vakanties-kaart op de Agenda is verborgen — handig voor\n"
+"        installs buiten Nederland."
+msgstr ""
+"Activé : le daemon récupère les vacances scolaires officielles "
+"néerlandaises\n"
+"        environ une fois par mois (année scolaire actuelle + 4 à venir) "
+"et les boutons\n"
+"        du Calendrier sont disponibles.\n"
+"        Désactivé : data/vakanties.json n'est pas modifié et la carte "
+"Vacances\n"
+"        du Calendrier est masquée — pratique pour les installations\n"
+"        hors des Pays-Bas."
+
+#: templates/settings.html:137
+msgid "Vakantieregio"
+msgstr "Région de vacances"
+
+#: templates/settings.html:139
+msgid "Noord"
+msgstr "Nord"
+
+#: templates/settings.html:140
+msgid "Midden"
+msgstr "Centre"
+
+#: templates/settings.html:141
+msgid "Zuid"
+msgstr "Sud"
+
+#: templates/settings.html:144
+msgid ""
+"Regio die de knop <em>Vakanties importeren</em> op de Agenda\n"
+"        gebruikt om dates uit <code class=\"sb-code-"
+"mono\">data/vakanties.json</code>\n"
+"        te kiezen."
+msgstr ""
+"Région que le bouton <em>Importer les vacances</em> du Calendrier\n"
+"        utilise pour choisir les dates depuis <code class=\"sb-code-"
+"mono\">data/vakanties.json</code>."
+
+#: templates/settings.html:152 templates/standaardweek.html:48
+msgid "Opslaan"
+msgstr "Enregistrer"
+
+#: templates/settings.html:160
+msgid "Status vakantie-scrape"
+msgstr "Statut de la récupération des vacances"
+
+#: templates/settings.html:162
+msgid ""
+"Opgeslagen schooljaren in\n"
+"      <code class=\"sb-code-mono\">data/vakanties.json</code>:"
+msgstr ""
+"Années scolaires enregistrées dans\n"
+"      <code class=\"sb-code-mono\">data/vakanties.json</code> :"
+
+#: templates/settings.html:169
+#, python-format
+msgid "— opgehaald %(datum)s"
+msgstr "— récupéré le %(datum)s"
+
+#: templates/settings.html:175
+msgid "Nog geen vakantiegegevens opgeslagen."
+msgstr "Aucune donnée de vacances enregistrée."
+
+#: templates/settings.html:180
+#, python-format
+msgid ""
+"Laatste geslaagde fetch:\n"
+"      <strong>%(tijd)s UTC</strong>."
+msgstr ""
+"Dernière récupération réussie :\n"
+"      <strong>%(tijd)s UTC</strong>."
+
+#: templates/settings.html:183
+msgid "Nog geen geslaagde fetch geregistreerd."
+msgstr "Aucune récupération réussie enregistrée."
+
+#: templates/settings.html:188
+#, python-format
+msgid "Laatste fout: %(error)s"
+msgstr "Dernière erreur : %(error)s"
+
+#: templates/settings.html:191
+#, python-format
+msgid "(mislukt: %(jaren)s)"
+msgstr "(échoué : %(jaren)s)"
+
+#: templates/settings.html:197
+#, python-format
+msgid "Laatste poging: %(tijd)s UTC."
+msgstr "Dernière tentative : %(tijd)s UTC."
+
+#: templates/standaardweek.html:10
+msgid ""
+"Kies per weekdag een standaardrooster. De <strong>Agenda</strong> per "
+"datum overschrijft deze keuze wanneer ingesteld."
+msgstr ""
+"Choisissez un horaire par défaut pour chaque jour de la semaine. Le "
+"<strong>Calendrier</strong> par date remplace ce choix quand il est "
+"défini."
+
+#: templates/standaardweek.html:22
+msgid "Dag"
+msgstr "Jour"
+
+#: templates/standaardweek.html:23
+msgid "Standaardrooster"
+msgstr "Horaire par défaut"
+
+#: templates/standaardweek.html:33
+msgid "— geen —"
+msgstr "— aucun —"
+
