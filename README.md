@@ -1,370 +1,138 @@
-# IVKO Schoolbel
+# Schoolbell
 
-Een Raspberry Pi-gebaseerde schoolbel die automatisch geluiden afspeelt volgens instelbare roosters, met een webinterface voor beheer.
-Ontwikkeld voor gebruik binnen het schoolnetwerk (optioneel via VPN extern bereikbaar).
+[Nederlands](README.nl.md) · English
 
----
+A school bell that runs on a Raspberry Pi. It plays sounds at the
+times you set, has a web page where you manage everything from your
+browser, and can show a big countdown to the next bell on a screen
+in the staff room.
 
-## Overzicht
-
-### Architectuur
-
-```
-Browser
-  ↓ HTTP (LAN; HTTPS staat op de todo-lijst)
-Nginx (poort 80)
-  ↓ proxy_pass
-Gunicorn (Flask app, 127.0.0.1:5000)
-  ↓ API (Basic Auth, localhost)
-schoolbell-daemon (systemd)
-```
-
-### Componenten
-
-| Component             | Functie                                                 |
-| --------------------- | ------------------------------------------------------- |
-| `webinterface.py`     | Flask-webapp (beheer, agenda, roosters, geluiden, logs) |
-| `schoolbelldaemon.py` | Achtergrondproces dat belmomenten uitvoert              |
-| `settings_store.py`   | Leest en schrijft instellingen (JSON)                   |
-| `vakanties_fetcher.py` | Schraapt vakantiedata van rijksoverheid.nl + parser    |
-| `health_check.py`     | Testscript voor periodieke functionele checks           |
-| `templates/`          | HTML/Jinja2-templates                                   |
-| `static/geluiden/`    | Opslag voor mp3 / wav / ogg                             |
-| `data/`               | JSON-bestanden voor roosters, planning, logs, vakanties, daemon-heartbeat |
-| `certs/`              | TLS-certificaten (indien niet via Nginx geregeld)       |
+Built for use inside a school network. The interface speaks Dutch
+and English (German and French are planned).
 
 ---
 
-## Functionaliteit
+## What it does
 
-### Webinterface
+**Schedules**: you make one or more *schedules* (the Dutch word
+"rooster"). A schedule is a list of moments — each moment has a
+time, a name like "Start of class" or "Lunch break", and a sound
+file. You can assign a different schedule to every weekday, or
+override one specific date.
 
-* Roosters aanmaken en bewerken — per moment optioneel een **waarschuwingsbel** N minuten eerder met een eigen geluid (bv. zachte ping vóór de hoofdbel)
-* Standaardweek en agenda per dag instellen — agenda is responsive en wordt op smalle schermen (≤700px) gestapeld als kaart-per-week
-* Geluiden uploaden en verwijderen
-* Logboek bekijken
-* Instellingen aanpassen (volume, uploadlimiet, polling-interval)
-* In **Voorkeuren** een keuze voor **Huisstijl** — _Standaard_ volgt het Licht/Donker-thema, _Aangepast_ laat je drie kleuren handmatig kiezen (achtergrond, tabelvulling, navigatiebalk) zodat de interface bij de huisstijl van je school past
-* Vakantieweken automatisch importeren van [rijksoverheid.nl](https://www.rijksoverheid.nl/onderwerpen/schoolvakanties), per regio (Noord / Midden / Zuid)
-* In **Voorkeuren** een statuspaneel met de opgeslagen schooljaren, laatste fetch-tijdstip, en een toggle om de scrape-functionaliteit volledig uit te zetten (bv. voor gebruik buiten Nederland)
-* Heartbeat-indicator in de header — een klein groen/rood bolletje dat aangeeft of de daemon recent heeft gepoll'd; klik erop voor de laatste poll-tijd
+**Sounds**: upload your own mp3 / wav / ogg files through the web
+page and pick which one rings at each moment. Each moment can also
+have an optional **warning bell** that plays a few minutes before
+the main one — handy for "two minutes left" cues.
 
-### Publieke pagina `/now`
+**Holidays**: the web page can fetch the official Dutch school
+holidays from rijksoverheid.nl with one click. The weeks that fall
+inside a holiday are then automatically silenced.
 
-Een unauthed read-only pagina met een grote aftelling tot de volgende bel — geschikt voor een TV in de docentenkamer of een tablet bij de receptie. Toont alleen "Volgende bel: <naam>" + countdown + huidige tijd; nooit het volledige rooster of admin-controles. JS telt zelf elke seconde af (geen flikker) en haalt elke ronde minuut nieuwe data op via `/api/now`. Bij een mislukte fetch verschijnt rechtsboven een rood stipje zodat een passant ziet dat het scherm verouderd is.
+**Public countdown**: visit `http://<pi-ip>/now` from any browser
+in the school. You'll see a big "Next bell: Lunch break / 3:42"
+display that updates by itself. Nothing to log into.
 
-```
-http://<pi-ip>/now
-```
-
-### Daemon
-
-* Haalt periodiek het effectieve rooster op via de API
-* Speelt belgeluiden af met ingesteld volume
-* Plant per moment ook eventuele waarschuwingsbellen op `tijd − warn_min` met een eigen geluid; waarschuwingen die voor middernacht zouden vallen worden overgeslagen
-* Logt elk belmoment in `data/events.jsonl`
-* Herlaadt instellingen direct na `SIGHUP`
-* Schrijft per poll-iteratie een heartbeat-bestand (`data/daemon_heartbeat.json`) — gelezen door de webinterface (header-indicator) en door `/healthz` (zie Monitoring)
-* Ververst maandelijks de vakantiedata van rijksoverheid.nl, mits de scrape-toggle in Voorkeuren aanstaat. De manuele "Verversen"-knop op Agenda blijft altijd beschikbaar.
+**Health page**: visit `/healthz` to get a quick yes/no on whether
+the system is working. Useful if you want to set up automatic
+monitoring.
 
 ---
 
-## Beveiliging
+## How it's put together
 
-* Nginx draait voorlopig op **plain HTTP** (poort 80). HTTPS staat op de roadmap — tot die tijd alleen in vertrouwd LAN/VPN draaien.
-* Sessiegebaseerde login met CSRF-bescherming
-* Basic Auth voor de daemon → web-API (over localhost)
-* Admin-wachtwoord wordt bij installatie willekeurig gegenereerd en als werkzeug-scrypt-hash opgeslagen (zie [Credentials & wachtwoord](#credentials--wachtwoord))
-* Session-secret wordt bij installatie willekeurig gegenereerd (64 hex-bytes)
-* Upload-limiet en extensie-check via `config.json`
+A *daemon* — a program that runs all the time in the background —
+plays the bell sounds at the right moments. A *web app* lets you
+edit the schedules from your browser. The two talk to each other
+through a small internal API.
+
+```
+Your browser
+   ↓ over the school network
+Nginx (a web server) on port 80
+   ↓
+The Schoolbell web app (Flask)
+   ↓ tells the daemon what to ring
+Schoolbell daemon → speaker
+```
+
+`Nginx` and `Flask` are the two pieces of standard web software
+this app runs on. You don't need to know them in detail — the
+install script sets them up for you.
 
 ---
 
-## Installatie in 3 commando’s
+## Installing it
 
-> Getest op **Raspberry Pi OS (Debian)**
-> Vereist: sudo-rechten en internetverbinding
+You need:
+
+* A Raspberry Pi (any model with audio output, tested on Pi 3 and 4)
+* A fresh install of **Raspberry Pi OS**
+* An admin (`sudo`) account
+* Internet access for the install
+
+Then:
 
 ```bash
-git clone https://github.com/<jouw-account>/schoolbell.git
+git clone https://github.com/<your-account>/schoolbell.git
 cd schoolbell
 sudo ./install.sh
 ```
 
-> **Belangrijk bij de eerste run:** het script genereert een willekeurig admin-wachtwoord en toont dat **één keer** in de output, in een omkaderd blok. Noteer het meteen. Kwijtgeraakt? Zie [Credentials & wachtwoord](#credentials--wachtwoord).
+The script does everything: installs Python, sets up the web server,
+creates a random admin password, and starts the bell daemon. It
+prints the password **once** in a box at the end — write it down.
 
-Na afloop:
+When it's done, open a browser to `http://<your-pi's-ip>/`.
 
-* draait de webinterface via *Nginx + Gunicorn*
-* draait de schoolbel als *systemd-daemon*
-* zijn credentials, session-secret, logging, logrotate en basisconfig ingericht
-
-Open daarna in je browser:
-
-```
-http://<ip-van-de-pi>/
-```
+For full installation details, troubleshooting, and how to recover
+a lost password, see the [Admin guide](docs/admin-guide.md).
 
 ---
 
-## Wat doet het installatiescript?
+## Languages
 
-Het script `install.sh` voert automatisch uit:
+The interface is available in **Dutch** and **English** today.
+Pick one in *Settings* (or *Voorkeuren* in Dutch). The default is
+Dutch; setting *Automatic* makes the page follow the language of
+the visitor's browser.
 
-* installeren van systeempackages (nginx, audio, python)
-* aanmaken van een Python virtual environment
-* installeren van Python dependencies (`requirements.txt`)
-* aanmaken van:
-
-  * `/etc/schoolbell/config.json`
-  * `/etc/schoolbell/web.env` en `daemon.env` (admin-credentials + session-secret, alleen bij eerste run)
-  * `data/` en `static/geluiden/`
-* installeren en activeren van:
-
-  * `schoolbell-web.service` (Gunicorn)
-  * `schoolbell-daemon.service`
-* configureren van:
-
-  * Nginx reverse proxy (poort 80 → Gunicorn op 5000)
-  * logrotate voor `data/events.jsonl`
-
-Het script is **veilig opnieuw uit te voeren** (idempotent): bestaande env-files worden niet overschreven, en beide services worden aan het eind altijd herstart zodat nieuwe code/config direct wordt opgepikt.
-
----
-### Voorbeeld `/etc/schoolbell/config.json`
-
-```json
-{
-  "volume_percent": 70,
-  "max_file_size_mb": 15,
-  "poll_interval_sec": 2,
-  "allowed_extensions": [".mp3", ".wav", ".ogg"]
-}
-```
+**German** and **French** translations are planned. Want to add
+a language yourself? See [CONTRIBUTING.md](CONTRIBUTING.md) — no
+programming needed for translation work, just a `.po` file editor.
 
 ---
 
-## Credentials & wachtwoord
+## What if something breaks
 
-Bij de eerste `install.sh`-run worden twee env-files aangemaakt. Beide hebben `chmod 640` met eigenaar `root:pi`.
-
-* `/etc/schoolbell/web.env` — wordt gelezen door `schoolbell-web.service`:
-  * `SCHOOLBELL_WEB_USER` — admin-gebruikersnaam
-  * `SCHOOLBELL_WEB_PWHASH` — werkzeug-scrypt-hash van het wachtwoord
-  * `SCHOOLBELL_SECRET` — Flask session-secret (64 hex)
-  * `SCHOOLBELL_SECURE_COOKIES` — zie hieronder
-* `/etc/schoolbell/daemon.env` — wordt gelezen door `schoolbell-daemon.service`:
-  * `SCHOOLBELL_WEB_USER` — dezelfde gebruikersnaam
-  * `SCHOOLBELL_WEB_PASS` — het wachtwoord in klare tekst (de daemon moet ermee inloggen op de web-API, dus een hash volstaat daar niet)
-
-### Wachtwoord kwijt?
-
-Het wachtwoord wordt maar één keer in de install-output getoond. Terug te vinden op de Pi:
+The daemon writes a *heartbeat file* every couple of seconds so
+the web page knows it's alive. If you see a red dot in the top
+bar of the web page instead of a green one, the daemon stopped.
+Check the logs with:
 
 ```bash
-sudo cat /etc/schoolbell/daemon.env
+journalctl -u schoolbell-daemon.service
 ```
 
-### Wachtwoord wijzigen
-
-Genereer eerst een nieuwe hash:
-
-```bash
-/home/pi/schoolbell/venv/bin/python -c \
-  'from werkzeug.security import generate_password_hash; print(generate_password_hash("nieuw-wachtwoord"))'
-```
-
-Werk vervolgens beide files bij:
-* `web.env` → plak de hash in `SCHOOLBELL_WEB_PWHASH`
-* `daemon.env` → plak het klare wachtwoord in `SCHOOLBELL_WEB_PASS`
-
-Daarna:
-
-```bash
-sudo systemctl restart schoolbell-web.service schoolbell-daemon.service
-```
-
-### `SCHOOLBELL_SECURE_COOKIES`
-
-Regelt de `Secure`-flag op de sessie-cookie.
-
-* `0` — cookies mogen ook over plain HTTP. **Noodzakelijk zolang Nginx op HTTP draait**, anders weigert de browser de cookie terug te sturen en werkt inloggen niet.
-* `1` — cookies alleen over HTTPS. Zet deze waarde zodra je HTTPS op Nginx hebt geconfigureerd.
-
-De installer zet deze standaard op `0`. Tip: edit `/etc/schoolbell/web.env` en herstart `schoolbell-web.service` om te wisselen.
+For more on debugging, see the [Admin guide](docs/admin-guide.md).
 
 ---
 
-## Webserver (Nginx + Gunicorn)
+## License
 
-### Gunicorn
-
-* Draait de Flask-app
-* Meerdere *workers* en *threads*
-* Timeouts voorkomen vastlopende requests
-* Periodieke worker refresh voorkomt geheugenlekken
-
-Voorbeeld (systemd):
-
-```
-ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
-  --workers 2 \
-  --threads 4 \
-  --timeout 30 \
-  --max-requests 1000 \
-  --max-requests-jitter 100 \
-  --bind 127.0.0.1:5000 \
-  webinterface:app
-```
-
-### Nginx
-
-* Luistert op poort 80 (plain HTTP)
-* Reverse proxy naar Gunicorn op `127.0.0.1:5000`
-* HTTPS + certificaten zijn **nog niet geconfigureerd** — optionele toekomstige uitbreiding (self-signed of Let's Encrypt, daarna 80→443 redirect)
-* Eventueel IP-restricties via `allow`/`deny` in het server-blok
-
-Toegang:
-
-```
-http://<pi-ip>/
-```
+Schoolbell is released under the **MIT license** — see the
+[LICENSE](LICENSE) file. In short: you can use, modify and share
+this code freely, including in commercial settings, as long as you
+keep the copyright notice in copies you distribute. There is no
+warranty.
 
 ---
 
-## Starten & beheren
+## Built with
 
-### Services
-
-```bash
-sudo systemctl start schoolbell-web.service
-sudo systemctl start schoolbell-daemon.service
-```
-
-### Herladen instellingen daemon
-
-```bash
-sudo systemctl kill -s HUP schoolbell-daemon.service
-```
-
-### Herstarten
-
-```bash
-sudo systemctl restart schoolbell-web.service
-sudo systemctl restart schoolbell-daemon.service
-```
-
----
-
-## Logging & logrotate
-
-### Runtime logs
-
-* Web: `journalctl -u schoolbell-web.service`
-* Daemon: `journalctl -u schoolbell-daemon.service`
-
-### Bel-events
-
-* Bestand: `data/events.jsonl`
-
-Logrotate is geconfigureerd voor:
-
-* Periodieke rotatie
-* Compressie (`.gz`)
-* Behoud van oudere logs
-* Geen onbegrensde groei van het logbestand
-
----
-
-## Monitoring
-
-### `/healthz` endpoint
-
-Korte JSON-statuscheck zonder authenticatie, bedoeld voor externe uptime-monitoring (bv. Uptime Kuma, een cron met `curl`, of een Pi-statusbord).
-
-```bash
-curl http://<pi-ip>/healthz
-```
-
-Antwoord:
-
-* **200 OK** als alle checks slagen
-* **503 Service Unavailable** als één of meer checks falen
-
-De gecontroleerde keys zijn altijd alle vier aanwezig in de response, zodat een monitoring-tool op een specifieke key kan alerteren:
-
-* `data_dir_writable` — kan de webinterface naar `data/` schrijven
-* `audio_dir_readable` — kan `static/geluiden/` worden gelezen
-* `settings_loadable` — laadt `Settings.load()` zonder error
-* `daemon_alive` — heeft de daemon recent (binnen ~2× poll-interval) een heartbeat geschreven
-
-### `health_check.py`
-
-Uitgebreidere integratiecheck die echt inlogt, een aantal pagina's bezoekt, en optioneel een upload/delete-rondje doet. Dit script vereist credentials.
-
-```bash
-source venv/bin/activate
-# Via Nginx (poort 80), plain HTTP zolang HTTPS nog niet aan staat.
-export SCHOOLBELL_BASE="http://127.0.0.1"
-export SCHOOLBELL_WEB_USER="admin"
-# Zie /etc/schoolbell/daemon.env voor het gegenereerde wachtwoord.
-export SCHOOLBELL_WEB_PASS="jouw-wachtwoord"
-python health_check.py
-```
-
-Optioneel upload/delete testen:
-
-```bash
-export SCHOOLBELL_HEALTH_UPLOAD=1
-python health_check.py
-```
-
-De check controleert:
-
-* Login en CSRF-bescherming
-* Bereikbaarheid van `/geluiden`, `/roosters`, `/logs`
-* API’s `/api/settings` en `/api/effectief-rooster`
-
----
-
-## Onderhoud
-
-* **Back-up**: `data/` en `/etc/schoolbell/config.json`
-* **Geluidstest**: upload kort mp3’tje en gebruik ▶ in de interface
-* **Debuggen**: check `journalctl` en `events.jsonl`
-
----
-
-## Ontwikkelen
-
-### Tests draaien
-
-```bash
-pip install -r requirements-dev.txt
-SCHOOLBELL_WEB_USER=admin SCHOOLBELL_WEB_PASS=test \
-  SCHOOLBELL_WEB_PWHASH='pbkdf2:sha256:600000$x$0' \
-  SCHOOLBELL_SECRET=test \
-  python3 -m pytest tests/
-```
-
-### Pre-commit hook
-
-Eénmalig per checkout activeren:
-
-```bash
-pip install -r requirements-dev.txt
-pre-commit install
-```
-
-Vanaf dan draait bij elke `git commit` automatisch:
-
-* **ruff** — lint (zie `ruff.toml`; format-check staat uit, kan later aan)
-* **pytest** — alle tests in `tests/`
-
-Zonder commit-actie handmatig op alle bestanden:
-
-```bash
-pre-commit run --all-files
-```
-
-
+[Flask](https://flask.palletsprojects.com/) ·
+[Flask-Babel](https://python-babel.github.io/flask-babel/) ·
+[pygame](https://www.pygame.org/) ·
+[gunicorn](https://gunicorn.org/) ·
+[nginx](https://nginx.org/) ·
+[Raspberry Pi OS](https://www.raspberrypi.com/software/)
