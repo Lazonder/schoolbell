@@ -37,6 +37,11 @@ daemon_heartbeat.json
 .env
 *.env
 
+# SSL certificates and private keys
+certs/
+*.pem
+*.key
+
 # OS
 .DS_Store
 
