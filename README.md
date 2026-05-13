@@ -136,3 +136,16 @@ warranty.
 [gunicorn](https://gunicorn.org/) ·
 [nginx](https://nginx.org/) ·
 [Raspberry Pi OS](https://www.raspberrypi.com/software/)
+
+---
+
+## Acknowledgements
+
+The earliest idea for Schoolbell was inspired by
+[AlarmPi](https://github.com/MckennaCisler/AlarmPi) by Mckenna
+Cisler — a Raspberry Pi alarm clock with a web configuration
+interface. Schoolbell shares no code with AlarmPi and has grown
+into a different project for a different purpose (a school bell on
+a school network rather than a personal alarm clock), but the
+original spark of "Pi + daemon + web interface + sound files" came
+from there.

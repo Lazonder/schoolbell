@@ -139,3 +139,16 @@ Er is geen garantie.
 [gunicorn](https://gunicorn.org/) ·
 [nginx](https://nginx.org/) ·
 [Raspberry Pi OS](https://www.raspberrypi.com/software/)
+
+---
+
+## Met dank aan
+
+Het allereerste idee voor Schoolbel is geïnspireerd door
+[AlarmPi](https://github.com/MckennaCisler/AlarmPi) van Mckenna
+Cisler — een Raspberry Pi-wekker met een web-configuratie-
+interface. Schoolbel deelt geen code met AlarmPi en is uitgegroeid
+tot een ander project met een ander doel (een schoolbel op een
+schoolnetwerk in plaats van een persoonlijke wekker), maar de
+eerste vonk van "Pi + daemon + webinterface + geluidsbestanden"
+komt daarvandaan.
