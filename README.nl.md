@@ -7,8 +7,8 @@ op de tijden die je instelt, heeft een webpagina waar je alles vanuit
 je browser regelt, en kan een grote aftelling tot de volgende bel
 tonen op een scherm in de docentenkamer.
 
-Gebouwd voor gebruik binnen een schoolnetwerk. De interface spreekt
-Nederlands en Engels (Duits en Frans staan op de planning).
+Gebouwd voor gebruik binnen een schoolnetwerk. De interface is
+beschikbaar in het Nederlands, Engels, Duits en Frans.
 
 ---
 
@@ -94,15 +94,24 @@ herstellen van een verloren wachtwoord, zie de
 
 ## Talen
 
-De interface is op dit moment beschikbaar in **Nederlands** en
-**Engels**. Kies er een in *Voorkeuren*. De standaard is Nederlands;
-zet 'm op *Automatisch* om de pagina de taal van de bezoekers
-browser te laten volgen.
+De interface is beschikbaar in het **Nederlands**, **Engels**,
+**Duits** en **Frans**. Kies er een in *Voorkeuren*. De standaard
+is Nederlands; zet 'm op *Automatisch* om de pagina de taal van de
+bezoekers browser te laten volgen.
 
-**Duitse** en **Franse** vertalingen staan op de planning. Wil je
-zelf een taal toevoegen? Zie [CONTRIBUTING.md](CONTRIBUTING.md)
-(Engels) — voor vertaalwerk hoef je niet te kunnen programmeren,
-je hebt alleen een `.po`-editor nodig.
+Wil je zelf een andere taal toevoegen? Zie
+[CONTRIBUTING.md](CONTRIBUTING.md) (Engels) — voor vertaalwerk hoef
+je niet te kunnen programmeren, je hebt alleen een `.po`-editor
+nodig.
+
+---
+
+## Roadmap
+
+Geplande uitbreidingen: HTTPS, een multi-user systeem met
+per-tab-rechten, en wachtwoord-reset via e-mail. Zie
+[docs/roadmap.md](docs/roadmap.md) voor de volledige lijst met scope
+en motivatie per onderdeel.
 
 ---
 

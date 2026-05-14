@@ -7,8 +7,8 @@ times you set, has a web page where you manage everything from your
 browser, and can show a big countdown to the next bell on a screen
 in the staff room.
 
-Built for use inside a school network. The interface speaks Dutch
-and English (German and French are planned).
+Built for use inside a school network. The interface is available
+in Dutch, English, German and French.
 
 ---
 
@@ -92,14 +92,23 @@ a lost password, see the [Admin guide](docs/admin-guide.md).
 
 ## Languages
 
-The interface is available in **Dutch** and **English** today.
-Pick one in *Settings* (or *Voorkeuren* in Dutch). The default is
-Dutch; setting *Automatic* makes the page follow the language of
-the visitor's browser.
+The interface is available in **Dutch**, **English**, **German**
+and **French**. Pick one in *Settings* (or *Voorkeuren* in Dutch).
+The default is Dutch; setting *Automatic* makes the page follow the
+language of the visitor's browser.
 
-**German** and **French** translations are planned. Want to add
-a language yourself? See [CONTRIBUTING.md](CONTRIBUTING.md) — no
-programming needed for translation work, just a `.po` file editor.
+Want to add another language? See [CONTRIBUTING.md](CONTRIBUTING.md)
+— no programming needed for translation work, just a `.po` file
+editor.
+
+---
+
+## Roadmap
+
+Planned additions: HTTPS, a multi-user system with per-tab
+permissions, and password reset by e-mail. See
+[docs/roadmap.md](docs/roadmap.md) for the full list with scope and
+motivation per item.
 
 ---
 

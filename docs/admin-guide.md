@@ -10,7 +10,7 @@ Schoolbell does, read the [README](../README.md) first.
 
 ```
 Browser
-  ↓ HTTP (LAN; HTTPS is on the roadmap)
+  ↓ HTTP (LAN; HTTPS planned — see roadmap.md)
 Nginx (port 80)
   ↓ proxy_pass
 Gunicorn (Flask app, 127.0.0.1:5000)
@@ -163,8 +163,9 @@ The installer defaults to `0`. To change: edit
 
 ## Security
 
-* Nginx currently runs **plain HTTP** (port 80). HTTPS is on the
-  roadmap — until then, only run on a trusted LAN/VPN.
+* Nginx currently runs **plain HTTP** (port 80). HTTPS is planned —
+  see [roadmap.md](roadmap.md). Until then, only run on a trusted
+  LAN/VPN.
 * Session-based login with CSRF protection.
 * Basic Auth for the daemon → web-API path (over localhost).
 * Admin password is randomly generated on install and stored as a
@@ -201,8 +202,8 @@ ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
 
 * Listens on port 80 (plain HTTP)
 * Reverse proxies to Gunicorn on `127.0.0.1:5000`
-* HTTPS + certificates **not yet configured** — possible future
-  addition (self-signed or Let's Encrypt, then 80→443 redirect)
+* HTTPS + certificates **not yet configured** — planned (self-signed
+  or Let's Encrypt, then 80→443 redirect). See [roadmap.md](roadmap.md).
 * Optional IP restrictions via `allow`/`deny` in the server block
 
 ---
