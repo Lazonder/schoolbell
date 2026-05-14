@@ -39,6 +39,7 @@ from webinterface import (
     safe_audio_filename,
     weekday_key,
 )
+from core.audio_files import safe_audio_path
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +112,78 @@ def test_safe_audio_filename_rejects_invalid(base):
     # On an invalid name you get an empty string back. The caller is
     # expected to check for that and refuse.
     assert safe_audio_filename(base, ".mp3") == ""
+
+
+# ---------------------------------------------------------------------------
+# safe_audio_path: confines a user-supplied filename to AUDIO_DIR
+# ---------------------------------------------------------------------------
+
+
+def test_safe_audio_path_happy_path(tmp_path):
+    # A plain valid filename inside the audio dir resolves to its
+    # absolute path. The file doesn't need to exist; this helper
+    # only guarantees the path is safe to form.
+    result = safe_audio_path("bel.mp3", str(tmp_path))
+    assert result is not None
+    assert result.endswith("bel.mp3")
+    assert result.startswith(str(tmp_path))
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../etc/passwd",       # parent-dir traversal
+        "/etc/passwd",         # absolute path
+        "sub/bel.mp3",         # slash inside the name
+        "sub\\bel.mp3",        # backslash inside the name
+        "bel..mp3",            # double dot before extension
+        "bel.mp3.bak",         # two extensions
+        ".env",                # hidden file, no stem
+        "bel",                 # no extension
+        "bel.mp3extra",        # extension too long (>5 chars after dot)
+        "bel.m@3",             # non-alphanumeric in extension
+        "héllo.mp3",           # non-ASCII in stem
+        "",                    # empty
+        "   ",                 # whitespace only
+    ],
+)
+def test_safe_audio_path_rejects_unsafe(tmp_path, name):
+    assert safe_audio_path(name, str(tmp_path)) is None
+
+
+def test_safe_audio_path_rejects_non_string(tmp_path):
+    # The caller is expected to pass a string. Anything else is a
+    # programming error, but the helper must not crash on it.
+    assert safe_audio_path(None, str(tmp_path)) is None
+    assert safe_audio_path(123, str(tmp_path)) is None
+
+
+def test_safe_audio_path_blocks_symlink_outside(tmp_path):
+    # Defense in depth: even if someone smuggled a valid-looking
+    # name in that points to a symlink leading outside AUDIO_DIR,
+    # the realpath confinement should catch it.
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir()
+    outside = tmp_path / "outside.mp3"
+    outside.write_bytes(b"")
+    link = audio_dir / "trick.mp3"
+    link.symlink_to(outside)
+
+    result = safe_audio_path("trick.mp3", str(audio_dir))
+    assert result is None
+
+
+def test_safe_audio_path_accepts_spaces_and_dashes(tmp_path):
+    # The naming rules allow spaces, underscores and hyphens —
+    # confirm a realistic upload filename round-trips cleanly.
+    result = safe_audio_path("1 ivko schoolbel.mp3", str(tmp_path))
+    assert result is not None
+    assert result.endswith("1 ivko schoolbel.mp3")
+
+
+# ---------------------------------------------------------------------------
+# Silence-sentinel invariant
+# ---------------------------------------------------------------------------
 
 
 def test_name_re_rejects_silence_sentinel():

@@ -101,6 +101,77 @@ def test_login_with_correct_password_redirects(client):
     assert "/login" not in r.headers["Location"]
 
 
+# ---------------------------------------------------------------------------
+# Open-redirect defense: ?next=... is only honoured for local paths
+# ---------------------------------------------------------------------------
+
+
+def test_login_honours_safe_next_param(client):
+    # A legitimate ?next=/agenda must round-trip through login: the
+    # post-login redirect should land on /agenda, not the default.
+    r = client.get("/login?next=/agenda")
+    csrf = csrf_from_html(r.get_data(as_text=True))
+    r = client.post(
+        "/login",
+        data={
+            "_csrf": csrf,
+            "username": "admin",
+            "password": TEST_PASSWORD,
+            "next": "/agenda",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert r.headers["Location"].endswith("/agenda")
+
+
+def _post_login_with_next(client, next_value):
+    r = client.get("/login")
+    csrf = csrf_from_html(r.get_data(as_text=True))
+    return client.post(
+        "/login",
+        data={
+            "_csrf": csrf,
+            "username": "admin",
+            "password": TEST_PASSWORD,
+            "next": next_value,
+        },
+        follow_redirects=False,
+    )
+
+
+def test_login_rejects_absolute_url_in_next(client):
+    # Open-redirect defense: ?next=https://evil.example must be
+    # silently discarded. The post-login redirect should NOT lead
+    # off-site.
+    r = _post_login_with_next(client, "https://evil.example/phishing")
+    assert r.status_code in (302, 303)
+    loc = r.headers["Location"]
+    assert "evil.example" not in loc, (
+        "Absolute external URL was accepted as ?next= target — "
+        "open-redirect protection regressed."
+    )
+
+
+def test_login_rejects_protocol_relative_url_in_next(client):
+    # //evil.example is a protocol-relative URL: the browser resolves
+    # it with the current scheme but a different host. Must be
+    # rejected as firmly as a fully absolute URL.
+    r = _post_login_with_next(client, "//evil.example/phishing")
+    assert r.status_code in (302, 303)
+    loc = r.headers["Location"]
+    assert "evil.example" not in loc
+
+
+def test_login_rejects_javascript_scheme_in_next(client):
+    # javascript: URLs would execute in the browser when followed.
+    # Reject the same way.
+    r = _post_login_with_next(client, "javascript:alert(1)")
+    assert r.status_code in (302, 303)
+    loc = r.headers["Location"]
+    assert "javascript" not in loc.lower()
+
+
 def test_login_clears_old_csrf_token(client):
     # Session-fixation defense: anything in the session before login
     # gets discarded. A token captured from /login should NOT match

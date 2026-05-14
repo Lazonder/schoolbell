@@ -33,16 +33,43 @@ from core.auth import (
 auth_bp = Blueprint("auth", __name__)
 
 
+def _is_safe_next_url(target: str) -> bool:
+    """True if ``target`` is a safe local URL to redirect to after login.
+
+    Defends against the open-redirect pattern where an attacker
+    crafts a link like ``/login?next=https://evil.example/phishing``
+    and uses the post-login redirect to push the user onto a
+    look-alike site that asks for credentials again.
+
+    We accept only paths that begin with a single ``/`` and do not
+    begin with ``//`` (protocol-relative URLs that browsers resolve
+    against the current scheme but a different host). That covers
+    all legitimate use inside this app — every internal route is a
+    plain local path — and rejects everything else, including
+    absolute URLs, javascript: pseudo-URLs and the like.
+    """
+    if not isinstance(target, str) or not target:
+        return False
+    if not target.startswith("/"):
+        return False
+    if target.startswith("//"):
+        return False
+    return True
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if ui_logged_in():
         return redirect(url_for("agenda.agenda"))
 
-    next_url = (
-        request.args.get("next")
-        or request.form.get("next")
-        or url_for("roosters.roosters")
-    )
+    # Drop unsafe ?next= values silently and fall back to the
+    # default. We do not flash an error because the user did not
+    # type the URL — it was almost certainly handed to them.
+    raw_next = request.args.get("next") or request.form.get("next") or ""
+    if _is_safe_next_url(raw_next):
+        next_url = raw_next
+    else:
+        next_url = url_for("roosters.roosters")
 
     if request.method == "POST":
         u = (request.form.get("username") or "").strip()

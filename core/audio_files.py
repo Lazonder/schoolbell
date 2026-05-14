@@ -6,7 +6,18 @@ tests by passing a path inside ``tmp_path`` and skipping ``pygame``
 mocks where possible.
 """
 
+import os
+import re
+
 from core.rooster import NAME_RE
+
+
+# Matches a complete audio filename: a NAME_RE-compatible stem (1-35
+# chars of letters/digits/space/_/-), then a single dot, then a short
+# alphanumeric extension (mp3, wav, ogg, m4a, ...). Used by
+# safe_audio_path() to validate user-supplied filenames for the play
+# and delete handlers before they touch the filesystem.
+_AUDIO_FILENAME_RE = re.compile(r"^[A-Za-z0-9 _-]{1,35}\.[A-Za-z0-9]{1,5}$")
 
 
 def safe_audio_filename(base_no_ext: str, ext: str) -> str:
@@ -25,6 +36,44 @@ def safe_audio_filename(base_no_ext: str, ext: str) -> str:
     if not (1 <= len(base_no_ext) <= 35):
         return ""
     return f"{base_no_ext}{ext}"
+
+
+def safe_audio_path(name: str, audio_dir: str) -> str | None:
+    """Resolve a user-supplied filename to a safe absolute path inside ``audio_dir``.
+
+    Used by routes that accept a filename from a form (play, delete)
+    and need to turn it into a path on disk without giving the
+    submitter a way to escape ``audio_dir``.
+
+    Two independent checks have to pass:
+
+    1. **Allow-list on the name itself.** The name must match
+       ``_AUDIO_FILENAME_RE``: a NAME_RE-style stem plus a short
+       alphanumeric extension. That rejects path separators,
+       parent-dir markers, control characters, NUL bytes, and
+       basically anything that isn't a plain filename.
+
+    2. **Realpath confinement.** Even if step 1 lets something
+       unexpected through, the resolved absolute path of
+       ``audio_dir / name`` must stay inside the resolved
+       ``audio_dir``. Symlinks pointing outside are caught here.
+
+    Returns the absolute path on success and ``None`` otherwise.
+    Callers are still responsible for checking existence with
+    ``os.path.isfile`` — this function only guarantees the path is
+    safe to *form*, not that anything lives there yet.
+    """
+    if not isinstance(name, str) or not name:
+        return None
+    if not _AUDIO_FILENAME_RE.match(name):
+        return None
+
+    candidate = os.path.realpath(os.path.join(audio_dir, name))
+    base = os.path.realpath(audio_dir)
+    # Sep-anchored prefix check: '/foo/barx' must not match base '/foo/bar'.
+    if candidate != base and not candidate.startswith(base + os.sep):
+        return None
+    return candidate
 
 
 def _validate_audio_file(path: str) -> tuple[bool, str]:

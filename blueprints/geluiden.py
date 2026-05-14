@@ -33,7 +33,12 @@ from flask_babel import gettext as _
 # list_audio, log_event, ...). When more phases of issue #28 land,
 # many of these moves will tidy up these imports.
 import webinterface as wi
-from core.audio_files import _play_via_pygame, _validate_audio_file, safe_audio_filename
+from core.audio_files import (
+    _play_via_pygame,
+    _validate_audio_file,
+    safe_audio_filename,
+    safe_audio_path,
+)
 from core.rooster import default_roosters_obj
 from settings_store import Settings
 
@@ -111,7 +116,15 @@ def geluiden_upload():
         flash(_("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."))
         return redirect(url_for("geluiden.geluiden"))
 
-    dest = os.path.join(wi.AUDIO_DIR, filename)
+    # Double-check: safe_audio_filename already constrained the stem,
+    # but safe_audio_path also pins the result inside AUDIO_DIR via
+    # realpath. That makes path traversal impossible even if the
+    # validation rules above ever loosen.
+    dest = safe_audio_path(filename, wi.AUDIO_DIR)
+    if dest is None:
+        flash(_("Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."))
+        return redirect(url_for("geluiden.geluiden"))
+
     if os.path.exists(dest):
         flash(_("Er bestaat al een audiobestand met deze naam. Kies een andere naam."))
         return redirect(url_for("geluiden.geluiden"))
@@ -183,9 +196,12 @@ def geluiden_play():
     """
     wi.ensure_dirs()
     name = (request.form.get("filename") or "").strip()
-    name = os.path.basename(name)
-    path = os.path.join(wi.AUDIO_DIR, name)
-    if not os.path.isfile(path):
+    # safe_audio_path validates the name against the audio-filename
+    # allow-list AND confirms the resolved path stays inside
+    # AUDIO_DIR. Anything else is rejected before we ever touch
+    # the filesystem.
+    path = safe_audio_path(name, wi.AUDIO_DIR)
+    if path is None or not os.path.isfile(path):
         flash(_("Bestand niet gevonden."))
         return redirect(url_for("geluiden.geluiden"))
 
@@ -208,9 +224,10 @@ def geluiden_play():
 def geluiden_delete():
     wi.ensure_dirs()
     name = (request.form.get("filename") or "").strip()
-    name = os.path.basename(name)
-    path = os.path.join(wi.AUDIO_DIR, name)
-    if not os.path.isfile(path):
+    # Same safety check as in geluiden_play: only accept plain
+    # filenames whose resolved path lives inside AUDIO_DIR.
+    path = safe_audio_path(name, wi.AUDIO_DIR)
+    if path is None or not os.path.isfile(path):
         flash(_("Bestand niet gevonden."))
         return redirect(url_for("geluiden.geluiden"))
 
