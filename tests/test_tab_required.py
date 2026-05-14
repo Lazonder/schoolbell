@@ -150,6 +150,31 @@ def test_root_redirects_to_first_accessible_tab(client):
     assert r.headers["Location"].endswith("/geluiden")
 
 
+def test_login_lands_restricted_user_on_their_own_tab(client):
+    """After login (no explicit ?next=), users go to their first tab.
+
+    Pre-fix, the login route hard-coded a redirect to /roosters,
+    which 403'd any user without the "roosters" tab — exactly the
+    case multi-user is meant to support. The fix sends every user
+    through monitoring.home, which then picks the right tab.
+
+    The test follows the post-login redirects to confirm the user
+    actually lands on a 200 page rather than the 403 they would
+    have hit before.
+    """
+    core_users.create_user("anna", "passw0rd!", "gebruiker", ["geluiden"])
+    r = client.get("/login")
+    csrf = csrf_from_html(r.get_data(as_text=True))
+    r = client.post(
+        "/login",
+        data={"_csrf": csrf, "username": "anna", "password": "passw0rd!"},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    # Final hop should be /geluiden — anna's only tab.
+    assert r.request.path == "/geluiden"
+
+
 def test_root_logs_out_user_without_any_tab(client):
     """An empty tabs list shouldn't trap the user in a 403 loop.
 

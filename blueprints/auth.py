@@ -66,7 +66,13 @@ def login():
     if candidate and not parsed.scheme and not parsed.netloc:
         next_url = candidate
     else:
-        next_url = url_for("roosters.roosters")
+        # No explicit ?next= → bounce through the bare site root.
+        # monitoring.home then redirects the user to their first
+        # accessible tab. Previously this defaulted to /roosters,
+        # which 403'd for any user without the "roosters" tab — fine
+        # for the single-admin world, broken now that we support
+        # restricted-access users.
+        next_url = url_for("monitoring.home")
 
     if request.method == "POST":
         # Normalize the username to lowercase: the user store is
