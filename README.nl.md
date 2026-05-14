@@ -110,7 +110,7 @@ nodig.
 
 Geplande uitbreidingen: HTTPS, een multi-user systeem met
 per-tab-rechten, en wachtwoord-reset via e-mail. Zie
-[docs/roadmap.md](docs/roadmap.md) voor de volledige lijst met scope
+[docs/roadmap.nl.md](docs/roadmap.nl.md) voor de volledige lijst met scope
 en motivatie per onderdeel.
 
 ---

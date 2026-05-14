@@ -1,143 +1,147 @@
 # Schoolbell Roadmap
 
-Dit document verzamelt de geplande uitbreidingen voor Schoolbell. Het
-is bewust niet streng gedateerd — Schoolbell is een hobby/school-
-project en de volgorde hangt af van wat eerst nodig blijkt in de
-praktijk. Wel staat per onderdeel een korte motivatie en ruwe scope,
-zodat duidelijk is *wat* het inhoudt en *waarom* het op de lijst staat.
+English · [Nederlands](roadmap.nl.md)
 
-Status-legenda:
+This document collects the planned additions to Schoolbell.
+Intentionally not dated strictly — Schoolbell is a hobby/school
+project and the order depends on what turns out to be needed first
+in practice. Every item has a short motivation and rough scope, so
+it's clear *what* it covers and *why* it's on the list.
 
-- **Gepland** — besloten dat het komt, nog niet aan begonnen.
-- **Gepland (per aanvraag)** — wordt opgepakt zodra een aanvraag
-  binnenkomt; niet op eigen initiatief.
-- **In uitwerking** — ontwerp is af, code volgt.
-- **In ontwikkeling** — er wordt actief aan gewerkt.
+Status legend:
 
-Een afgeronde feature verdwijnt van deze lijst en wordt opgenomen in
-de README of admin-guide.
+- **Planned** — agreed it's coming, not started yet.
+- **Planned (on request)** — picked up when someone asks for it;
+  not pursued on our own.
+- **In design** — design is settled, code to follow.
+- **In progress** — actively being worked on.
+
+A finished feature drops off this list and is folded into the README
+or admin guide.
 
 ---
 
 ## HTTPS
 
-**Status:** Gepland
+**Status:** Planned
 
-Nu draait Nginx alleen op poort 80 (plain HTTP). Voor een schoolnetwerk
-binnen één gebouw is dat hanteerbaar, maar:
+Right now Nginx only listens on port 80 (plain HTTP). For a school
+network inside a single building that's manageable, but:
 
-- Login-cookies kunnen meegelezen worden door wie het netwerk
-  passief afluistert.
-- Moderne browsers tonen "Niet veilig" in de adresbalk, wat het
-  onnodig onprofessioneel laat lijken.
-- `SCHOOLBELL_SECURE_COOKIES` staat nu op `0` omdat anders de login
-  breekt — een waarschuwingsteken in de configuratie.
+- Login cookies can be read by anyone passively sniffing the
+  network.
+- Modern browsers show "Not secure" in the address bar, which makes
+  the app look needlessly unprofessional.
+- `SCHOOLBELL_SECURE_COOKIES` is set to `0` because login would
+  break otherwise — a warning sign in the configuration.
 
-**Scope (ruwe schets):**
+**Scope (rough sketch):**
 
-- Nginx-config uitbreiden met een `listen 443 ssl`-server-block.
-- Twee paden ondersteunen:
-  - **Self-signed certificaat** voor LAN-only installs (snel,
-    geen DNS nodig, browser-waarschuwing acceptabel binnen school).
-  - **Let's Encrypt** via `certbot` voor wie de Pi via een
-    DNS-naam bereikbaar maakt.
-- `install.sh` vragen of HTTPS aangezet moet worden, en zo ja welk
-  pad.
-- 80 → 443 redirect-server-block.
-- `SCHOOLBELL_SECURE_COOKIES=1` als default in `web.env` zodra HTTPS
-  draait.
-- Documenteren in admin-guide: certificaat-vernieuwing, troubleshoot
-  als certbot faalt.
-
----
-
-## Multi-user systeem met per-tab rechten
-
-**Status:** In uitwerking
-
-Op dit moment is er één admin-account (uit env-vars). Voor scholen
-met meerdere personeelsleden die het belschema beheren is dat te
-beperkt: ofwel je deelt één wachtwoord (geen audit), ofwel iedereen
-moet voor elke wijziging langs één persoon.
-
-**Doel:** meerdere benoemde accounts, elk met een eigen
-wachtwoord, en per account de mogelijkheid om alleen bepaalde tabs
-te zien/bewerken (bv. een conciërge die alleen Geluiden mag beheren,
-of een stagiair die alleen Agenda mag bekijken).
-
-**Het volledige implementatieplan staat in
-[multi-user-plan.md](multi-user-plan.md).** Daarin staat per stap
-wat er moet gebeuren in `core/users.py`, `core/auth.py`, de
-blueprints en de templates.
-
-**Bewust buiten scope van de eerste iteratie:**
-
-- Geen wachtwoord-reset zonder admin (zie volgende item).
-- Geen automatische lockout na X mislukte pogingen — wel wordt elke
-  mislukte login gelogd.
-- Sessie-invalidatie bij rechtenwijziging gebeurt pas na re-login.
+- Extend the Nginx config with a `listen 443 ssl` server block.
+- Support two paths:
+  - **Self-signed certificate** for LAN-only installs (fast, no
+    DNS needed, browser warning acceptable inside a school).
+  - **Let's Encrypt** via `certbot` for installs that expose the
+    Pi under a DNS name.
+- Make `install.sh` ask whether HTTPS should be enabled, and if so
+  which path.
+- Add an 80 → 443 redirect server block.
+- Default `SCHOOLBELL_SECURE_COOKIES=1` in `web.env` once HTTPS is
+  live.
+- Document in the admin guide: certificate renewal, troubleshooting
+  when certbot fails.
 
 ---
 
-## Wachtwoord-reset via e-mail
+## Multi-user system with per-tab permissions
 
-**Status:** Gepland (na multi-user)
+**Status:** In design
 
-Volgt logisch ná het multi-user systeem. Zolang er één admin is, is
-"env-var fallback + herstart" een acceptabele rescue. Met meerdere
-benoemde accounts wordt het onhandig als gewone gebruikers voor elke
-vergeten wachtwoord langs de admin moeten.
+Today there is one admin account (from env vars). For schools where
+multiple staff members manage the bell schedule that's too limited:
+either everyone shares a single password (no audit trail), or every
+change has to go through one person.
 
-**Scope (ruwe schets):**
+**Goal:** multiple named accounts, each with its own password, and
+the ability per account to see/edit only certain tabs (e.g. a
+caretaker who only manages Sounds, or an intern who can only view
+the Agenda).
 
-- E-mailadres als optioneel veld in `users.json` toevoegen.
-- SMTP-config in `/etc/schoolbell/web.env` (host, poort, user, pass,
-  from-adres).
-- Nieuwe routes: `/wachtwoord-vergeten` (vraagt e-mailadres en
-  verstuurt token-mail), `/wachtwoord-reset/<token>` (formulier).
-- Tokens kort houdbaar (15 minuten), eenmalig bruikbaar, opgeslagen
-  in een aparte JSON met TTL — niet in `users.json` zelf zodat de
-  user-store schoon blijft.
-- Documenteren: SMTP-configuratie, troubleshooting als de mail niet
-  aankomt.
+**The full implementation plan lives in
+[multi-user-plan.md](multi-user-plan.md).** It walks through, step
+by step, what changes in `core/users.py`, `core/auth.py`, the
+blueprints, and the templates. (That document is in Dutch — it's an
+internal implementation plan rather than user-facing documentation.)
 
-Open vraag: bij een schoolinstallatie is een eigen SMTP-server
-zelden voorhanden. Een alternatief is "reset-link in het Logboek
-laten verschijnen, kopieer-link delen via een ander kanaal". Minder
-elegant, maar veel installs hebben geen mailserver.
+**Intentionally out of scope for the first iteration:**
+
+- No password reset without an admin (see next item).
+- No automatic lockout after X failed attempts — but every failed
+  login is logged.
+- Session invalidation after a permission change only happens after
+  the user logs in again.
 
 ---
 
-## Extra talen op aanvraag
+## Password reset by e-mail
 
-**Status:** Gepland (per aanvraag)
+**Status:** Planned (after multi-user)
 
-Schoolbell ondersteunt op dit moment **Nederlands**, **Engels**,
-**Duits** en **Frans** als volwaardige UI-talen. Vertalingen worden
-via `gettext`/`.po`-bestanden beheerd (zie `translations/` en
+This follows naturally after the multi-user system. With a single
+admin, "env-var fallback + restart" is an acceptable rescue. With
+several named accounts it becomes awkward if regular users have to
+queue up at the admin every time they forget a password.
+
+**Scope (rough sketch):**
+
+- Add e-mail address as an optional field in `users.json`.
+- SMTP config in `/etc/schoolbell/web.env` (host, port, user, pass,
+  from address).
+- New routes: `/forgot-password` (asks for the e-mail and sends a
+  token mail), `/reset-password/<token>` (the form).
+- Tokens short-lived (15 minutes), single-use, stored in a separate
+  JSON with TTL — not in `users.json` itself, to keep the user
+  store clean.
+- Document: SMTP configuration, troubleshooting when mail does not
+  arrive.
+
+Open question: a school install rarely has its own SMTP server.
+One alternative is "make the reset link appear in the Log, then
+share that link out-of-band". Less elegant, but many installs have
+no mail server.
+
+---
+
+## More languages on request
+
+**Status:** Planned (on request)
+
+Schoolbell currently ships with full UI translations in **Dutch**,
+**English**, **German** and **French**. Translations are managed
+through `gettext`/`.po` files (see `translations/` and
 CONTRIBUTING.md).
 
-Er staan geen extra talen vast op de planning, maar het toevoegen
-van een nieuwe taal is een licht traject — vooral vertaalwerk, geen
-Python-werk. Aanvragen welkom.
+There are no extra languages firmly on the roadmap, but adding a
+new one is a light effort — mostly translation work, no Python
+work. Requests welcome.
 
-**Scope per nieuwe taal:**
+**Scope per new language:**
 
-- `pybabel init -l <code>` om een nieuw catalog-bestand te maken.
-- Strings vertalen via een `.po`-editor (Poedit) of handmatig.
-- `pybabel compile` om `.mo`-bestanden te genereren.
-- `core/i18n.py` aanvullen in `SUPPORTED_LOCALES` zodat de taal in
-  het dropdown verschijnt.
-- Testen dat date-formatting van Babel klopt voor die locale
-  (vakantie-datums, weekdagen).
+- `pybabel init -l <code>` to create a fresh catalog file.
+- Translate the strings via a `.po` editor (Poedit) or by hand.
+- `pybabel compile` to generate the `.mo` files.
+- Add the code to `SUPPORTED_LOCALES` in `core/i18n.py` so it
+  shows up in the language dropdown.
+- Verify that Babel's date formatting is correct for the locale
+  (holiday dates, weekdays).
 
-Of een aanvraag terechtkomt hangt vooral af van de beschikbaarheid
-van een vertaler — niet van programmeerwerk.
+Whether a request lands depends mostly on whether a translator
+volunteers — not on the programming side.
 
 ---
 
-## Vragen, suggesties, eigen wensen
+## Questions, suggestions, requests
 
-Open een issue op de repository, of werk dit bestand bij in een
-pull-request. Een roadmap zonder context is niet veel waard, dus geef
-liefst een korte motivatie ("waarom is dit handig") mee.
+Open an issue on the repository, or amend this file in a pull
+request. A roadmap without context isn't worth much, so please add
+a short motivation ("why this is useful").
