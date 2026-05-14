@@ -11,6 +11,8 @@ typing /logout into the address bar) and POST (the nav-bar form
 with a CSRF token); both end up doing the same ``session.clear()``.
 """
 
+from urllib.parse import urlparse
+
 from flask import (
     Blueprint,
     flash,
@@ -41,18 +43,21 @@ def _is_safe_next_url(target: str) -> bool:
     and uses the post-login redirect to push the user onto a
     look-alike site that asks for credentials again.
 
-    We accept only paths that begin with a single ``/`` and do not
-    begin with ``//`` (protocol-relative URLs that browsers resolve
-    against the current scheme but a different host). That covers
-    all legitimate use inside this app — every internal route is a
-    plain local path — and rejects everything else, including
-    absolute URLs, javascript: pseudo-URLs and the like.
+    Follows the urlparse-based pattern from CodeQL's py/url-redirection
+    documentation: a URL is safe to redirect to only when it has
+    *neither* a scheme (http, javascript, ...) *nor* a netloc (host).
+    That accepts plain paths like ``/agenda`` and rejects absolute
+    URLs, protocol-relative URLs and pseudo-URLs.
+
+    Backslashes are normalised away first because browsers treat
+    ``\\`` like ``/`` in URLs but urlparse does not — without that
+    pass a payload like ``\\evil.example`` would slip through.
     """
     if not isinstance(target, str) or not target:
         return False
-    if not target.startswith("/"):
-        return False
-    if target.startswith("//"):
+    target = target.replace("\\", "")
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
         return False
     return True
 
