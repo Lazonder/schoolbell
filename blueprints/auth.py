@@ -35,44 +35,28 @@ from core.auth import (
 auth_bp = Blueprint("auth", __name__)
 
 
-def _is_safe_next_url(target: str) -> bool:
-    """True if ``target`` is a safe local URL to redirect to after login.
-
-    Defends against the open-redirect pattern where an attacker
-    crafts a link like ``/login?next=https://evil.example/phishing``
-    and uses the post-login redirect to push the user onto a
-    look-alike site that asks for credentials again.
-
-    Follows the urlparse-based pattern from CodeQL's py/url-redirection
-    documentation: a URL is safe to redirect to only when it has
-    *neither* a scheme (http, javascript, ...) *nor* a netloc (host).
-    That accepts plain paths like ``/agenda`` and rejects absolute
-    URLs, protocol-relative URLs and pseudo-URLs.
-
-    Backslashes are normalised away first because browsers treat
-    ``\\`` like ``/`` in URLs but urlparse does not — without that
-    pass a payload like ``\\evil.example`` would slip through.
-    """
-    if not isinstance(target, str) or not target:
-        return False
-    target = target.replace("\\", "")
-    parsed = urlparse(target)
-    if parsed.scheme or parsed.netloc:
-        return False
-    return True
-
-
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if ui_logged_in():
         return redirect(url_for("agenda.agenda"))
 
-    # Drop unsafe ?next= values silently and fall back to the
-    # default. We do not flash an error because the user did not
-    # type the URL — it was almost certainly handed to them.
+    # Open-redirect defence. Drop unsafe ?next= values silently and
+    # fall back to the default landing page. The pattern below is
+    # the exact one from CodeQL's py/url-redirection documentation:
+    # only accept the value when urlparse reports no scheme and no
+    # netloc, i.e. a plain relative path. Backslashes are stripped
+    # first because browsers treat them like forward slashes but
+    # urlparse does not, so '\evil.example' would otherwise slip
+    # through.
+    #
+    # The check is inlined here (rather than hidden in a helper)
+    # so that CodeQL's static analysis sees the sanitizer guard in
+    # the same scope as the redirect() call it protects.
     raw_next = request.args.get("next") or request.form.get("next") or ""
-    if _is_safe_next_url(raw_next):
-        next_url = raw_next
+    candidate = raw_next.replace("\\", "")
+    parsed = urlparse(candidate)
+    if candidate and not parsed.scheme and not parsed.netloc:
+        next_url = candidate
     else:
         next_url = url_for("roosters.roosters")
 

@@ -9,6 +9,8 @@ mocks where possible.
 import os
 import re
 
+from werkzeug.utils import safe_join
+
 from core.rooster import NAME_RE
 
 
@@ -39,41 +41,52 @@ def safe_audio_filename(base_no_ext: str, ext: str) -> str:
 
 
 def safe_audio_path(name: str, audio_dir: str) -> str | None:
-    """Resolve a user-supplied filename to a safe absolute path inside ``audio_dir``.
+    """Resolve a user-supplied filename to a safe path inside ``audio_dir``.
 
-    Used by routes that accept a filename from a form (play, delete)
-    and need to turn it into a path on disk without giving the
-    submitter a way to escape ``audio_dir``.
+    Used by routes that accept a filename from a form (play, delete,
+    upload) and need to turn it into a path on disk without giving
+    the submitter a way to escape ``audio_dir``.
 
-    Two independent checks have to pass:
+    Three layered checks:
 
-    1. **Allow-list on the name itself.** The name must match
+    1. **Allow-list on the name.** The name must match
        ``_AUDIO_FILENAME_RE``: a NAME_RE-style stem plus a short
        alphanumeric extension. That rejects path separators,
        parent-dir markers, control characters, NUL bytes, and
        basically anything that isn't a plain filename.
 
-    2. **Realpath confinement.** Even if step 1 lets something
-       unexpected through, the resolved absolute path of
-       ``audio_dir / name`` must stay inside the resolved
-       ``audio_dir``. Symlinks pointing outside are caught here.
+    2. **werkzeug's ``safe_join``.** This is the standard path-
+       traversal sanitizer recognised by static analyzers like
+       CodeQL. It returns ``None`` when ``name`` contains an OS
+       alternate separator, an absolute path, or a parent-dir
+       marker. Belt-and-braces with step 1.
 
-    Returns the absolute path on success and ``None`` otherwise.
-    Callers are still responsible for checking existence with
-    ``os.path.isfile`` — this function only guarantees the path is
-    safe to *form*, not that anything lives there yet.
+    3. **Realpath confinement.** ``safe_join`` is a pure string
+       operation and does not follow symlinks. If somebody managed
+       to plant a symlink in ``audio_dir`` pointing elsewhere, the
+       resolved path would still be flagged here.
+
+    Returns the path on success and ``None`` otherwise. Callers are
+    still responsible for checking existence with ``os.path.isfile``
+    — this function only guarantees the path is safe to *form*, not
+    that anything lives there yet.
     """
     if not isinstance(name, str) or not name:
         return None
     if not _AUDIO_FILENAME_RE.match(name):
         return None
 
-    candidate = os.path.realpath(os.path.join(audio_dir, name))
-    base = os.path.realpath(audio_dir)
-    # Sep-anchored prefix check: '/foo/barx' must not match base '/foo/bar'.
-    if candidate != base and not candidate.startswith(base + os.sep):
+    joined = safe_join(audio_dir, name)
+    if joined is None:
         return None
-    return candidate
+
+    # Defense in depth against symlinks pointing outside audio_dir.
+    real = os.path.realpath(joined)
+    base = os.path.realpath(audio_dir)
+    # Sep-anchored prefix: '/foo/barx' must not match base '/foo/bar'.
+    if real != base and not real.startswith(base + os.sep):
+        return None
+    return joined
 
 
 def _validate_audio_file(path: str) -> tuple[bool, str]:
