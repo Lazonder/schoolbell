@@ -46,6 +46,7 @@ from core.auth import (  # noqa: F401  (re-exports for blueprints + tests)
     auth,
     get_csrf_token,
     require_admin,
+    tab_required,
     ui_logged_in,
     ui_login_required,
     verify_password,
@@ -216,6 +217,18 @@ def _inject_template_globals():
         mode = "light"
     if huisstijl not in ("standaard", "aangepast"):
         huisstijl = "standaard"
+    # Tab-access predicate used by base.html to render only the
+    # nav-links the current user is allowed to follow. Closes over
+    # the session, so it must be defined per-request. Returns True
+    # for admins (whose tabs list is ["*"]) and for any tab the user
+    # explicitly has. Anonymous visitors (no session yet, e.g. on
+    # /login) get False for everything — the navigation isn't shown
+    # there anyway.
+    _user_tabs = session.get("tabs") or []
+
+    def _mag_tab(naam: str) -> bool:
+        return "*" in _user_tabs or naam in _user_tabs
+
     return {
         "now": datetime.now,
         "get_locale": _get_locale,
@@ -225,6 +238,7 @@ def _inject_template_globals():
         "theme_custom_table": custom_table,
         "theme_custom_nav": custom_nav,
         "daemon_heartbeat": get_daemon_heartbeat(),
+        "mag_tab": _mag_tab,
     }
 
 # TIME_RE — see core/rooster.py

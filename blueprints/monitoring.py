@@ -19,7 +19,15 @@ review what is exposed without authentication.
 import os
 from datetime import date, datetime
 
-from flask import Blueprint, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 # Parent module: still owns the path constants, helpers (load_json,
 # ensure_dirs, get_csrf_token, log helpers, get_daemon_heartbeat,
@@ -27,6 +35,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 # ui_login_required decorator. Later phases of issue #28 will pull
 # these into core/, after which the wi.* indirection drops.
 import webinterface as wi
+from core import users as users_mod
 from core.dates import (
     _next_local_midnight,
     effective_rooster_for_date,
@@ -41,22 +50,52 @@ from core.rooster import (
 from settings_store import Settings
 
 
+# Map each tab key to the Flask endpoint that renders the
+# corresponding page. Used by the ``/`` redirect to send each user
+# to the first page they're allowed to see, instead of unconditionally
+# going to /agenda (which would 403 for a Geluiden-only user).
+# ``gebruikers`` is None until step 4 introduces the management page;
+# admins still land on agenda because TAB_ORDER lists it first.
+TAB_ENDPOINTS = {
+    "agenda": "agenda.agenda",
+    "roosters": "roosters.roosters",
+    "standaardweek": "roosters.standaardweek",
+    "geluiden": "geluiden.geluiden",
+    "logs": "monitoring.logs_page",
+    "settings": "settings.settings_page",
+    "gebruikers": None,
+}
+
+
 # Blueprint name 'monitoring' becomes the prefix for url_for():
 # url_for('monitoring.logs_page'), etc.
 monitoring_bp = Blueprint("monitoring", __name__)
 
 
 @monitoring_bp.route("/")
-@wi.ui_login_required
 def home():
-    # Hitting the bare site goes to the agenda. The agenda lives
-    # in webinterface.py for now (still on the main app, not a
-    # blueprint), so we use its plain endpoint name.
-    return redirect(url_for("agenda.agenda"))
+    """Bare-site entry: redirect each visitor to their first tab.
+
+    Anonymous → /login. Logged-in admin → /agenda (TAB_ORDER first).
+    Logged-in user with restricted tabs → their first accessible
+    tab. Users with no accessible tabs (broken admin config) are
+    routed to /logout so they end up somewhere sensible rather than
+    on a permanent 403 loop.
+    """
+    if not wi.ui_logged_in():
+        return redirect(url_for("auth.login"))
+    tabs = session.get("tabs") or []
+    first = users_mod.first_accessible_tab(tabs)
+    endpoint = TAB_ENDPOINTS.get(first) if first else None
+    if endpoint is None:
+        # User can't see anything — better to log them out than to
+        # leave them stuck. An admin can reassign tabs and try again.
+        return redirect(url_for("auth.logout"))
+    return redirect(url_for(endpoint))
 
 
 @monitoring_bp.route("/logs", methods=["GET"])
-@wi.ui_login_required
+@wi.tab_required("logs")
 def logs_page():
     wi.ensure_dirs()
     upcoming = wi.compute_upcoming(20)

@@ -39,7 +39,7 @@ roosters_bp = Blueprint("roosters", __name__)
 
 # -- Roosters --
 @roosters_bp.route("/roosters", methods=["GET"])
-@wi.ui_login_required
+@wi.tab_required("roosters")
 def roosters():
     wi.ensure_dirs()
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
@@ -54,7 +54,7 @@ def roosters():
 
 
 @roosters_bp.route("/roosters/add", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("roosters")
 def add_rooster():
     wi.ensure_dirs()
     naam = (request.form.get("naam") or "").strip()
@@ -92,7 +92,7 @@ def add_rooster():
 
 
 @roosters_bp.route("/roosters/<rooster>/delete", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("roosters")
 def delete_rooster(rooster):
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
@@ -142,7 +142,7 @@ def delete_rooster(rooster):
 
 
 @roosters_bp.route("/roosters/<rooster>/add-moment", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("roosters")
 def add_moment(rooster):
     wi.ensure_dirs()
 
@@ -214,7 +214,7 @@ def add_moment(rooster):
 
 
 @roosters_bp.route("/roosters/<rooster>/delete-moment/<int:index>", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("roosters")
 def delete_moment(rooster, index):
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
@@ -235,7 +235,7 @@ def delete_moment(rooster, index):
 
 # -- Standaardweek --
 @roosters_bp.route("/standaardweek", methods=["GET", "POST"])
-@wi.ui_login_required
+@wi.tab_required("standaardweek")
 def standaardweek():
     wi.ensure_dirs()
 

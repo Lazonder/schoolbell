@@ -36,7 +36,7 @@ import os
 import secrets
 from functools import wraps
 
-from flask import jsonify, redirect, request, session, url_for
+from flask import abort, jsonify, redirect, request, session, url_for
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
 
@@ -120,6 +120,58 @@ def get_csrf_token() -> str:
         tok = secrets.token_urlsafe(32)
         session["csrf"] = tok
     return tok
+
+
+def tab_required(tab_naam: str):
+    """Decorator factory: gate a route on a specific tab key.
+
+    Behaviour matrix:
+
+    - Anonymous visitor:
+        * HTML route  -> redirect to /login?next=... (so the browser
+                         lands back on the original page after login).
+        * API route   -> 401 JSON ``{"error": "auth_required"}``.
+    - Logged-in user without the tab:
+        * HTML route  -> 403 (a plain Flask abort; later we can swap
+                         this for a custom "no access" template).
+        * API route   -> 403 JSON ``{"error": "tab_required"}``.
+    - Admins always pass: an admin record carries ``tabs == ["*"]``
+      from the user store, and ``"*"`` is treated as "every tab".
+
+    Detection of API routes: we look at ``request.path``. Anything
+    under ``/api/`` is treated as a fetch() / programmatic call, so
+    it gets a JSON body instead of an HTTP redirect (which fetch()
+    would silently follow, hiding the auth failure from the page's
+    JavaScript).
+
+    Usage::
+
+        @blueprint.route("/agenda")
+        @tab_required("agenda")
+        def agenda():
+            ...
+    """
+    def deco(view):
+        @wraps(view)
+        def wrapper(*args, **kwargs):
+            is_api = request.path.startswith("/api/")
+            if not ui_logged_in():
+                if is_api:
+                    return jsonify(error="auth_required"), 401
+                nxt = (
+                    request.full_path
+                    if request.query_string
+                    else request.path
+                )
+                return redirect(url_for("auth.login", next=nxt))
+            tabs = session.get("tabs") or []
+            if "*" in tabs or tab_naam in tabs:
+                return view(*args, **kwargs)
+            if is_api:
+                return jsonify(error="tab_required"), 403
+            abort(403)
+        return wrapper
+    return deco
 
 
 def require_admin(f):

@@ -153,16 +153,18 @@ def test_gebruiker_can_log_in_and_session_reflects_tabs(client):
         assert sess["tabs"] == ["agenda", "roosters"]
 
 
-# ---- require_admin gating ------------------------------------------
+# ---- Settings API gating -------------------------------------------
 
 
-def test_require_admin_blocks_non_admin(client):
-    """A gebruiker hitting /api/settings POST gets 403, not 200.
+def test_settings_api_blocks_user_without_settings_tab(client):
+    """A gebruiker without the "settings" tab cannot reach /api/settings.
 
-    /api/settings is decorated with @require_admin; after step 2 the
-    decorator checks both ui_logged_in AND session["rol"] == "admin".
+    Step 3 swapped @require_admin for @tab_required("settings") on the
+    settings endpoints. Result: an admin still passes (their tabs
+    list is ["*"]), but a regular user only reaches the API if they
+    were explicitly granted the "settings" tab.
     """
-    # Create a regular user and log them in via the route.
+    # Create a regular user without "settings" and log them in.
     core_users.create_user("anna", "passw0rd!", "gebruiker", ["agenda"])
     r = client.get("/login")
     csrf = csrf_from_html(r.get_data(as_text=True))
@@ -173,12 +175,12 @@ def test_require_admin_blocks_non_admin(client):
     )
     assert r.status_code in (302, 303)
 
-    # /api/settings GET is also @require_admin; use GET (no CSRF
-    # needed) so the assertion is clean.
+    # GET (no CSRF needed) is easier to assert on. The body shape
+    # is part of the tab_required contract: fetch() callers can show
+    # a specific error message based on this string.
     r = client.get("/api/settings")
     assert r.status_code == 403
-    body = r.get_json()
-    assert body == {"error": "admin_required"}
+    assert r.get_json() == {"error": "tab_required"}
 
 
 # ---- Logout ----------------------------------------------------------

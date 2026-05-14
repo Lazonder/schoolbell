@@ -181,7 +181,7 @@ def _build_vakanties_status() -> dict:
 
 # -- Settings (pagina) --
 @settings_bp.get("/settings")
-@wi.ui_login_required
+@wi.tab_required("settings")
 def settings_page():
     return render_template(
         "settings.html",
@@ -192,14 +192,19 @@ def settings_page():
 
 
 # -- Settings API --
+# Was @require_admin pre-multi-user; switched to tab_required so a
+# non-admin user explicitly granted the "settings" tab can change
+# settings too. Admins keep access via their ["*"] wildcard. Future
+# admin-only operations (e.g. the user-management API in step 4)
+# should stick with @require_admin.
 @settings_bp.route("/api/settings", methods=["GET"])
-@wi.require_admin
+@wi.tab_required("settings")
 def api_settings_get():
     return jsonify(asdict(Settings.load()))
 
 
 @settings_bp.route("/api/settings", methods=["POST"])
-@wi.require_admin
+@wi.tab_required("settings")
 def api_settings_post():
     if not request.is_json:
         abort(400, "JSON expected")

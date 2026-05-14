@@ -60,7 +60,13 @@
     <div class="sb-container sb-header__inner">
 
       <!-- Branding -->
-      <a class="sb-brand" href="{{ url_for('roosters.roosters') }}">
+      {# Linking the logo to the bare site ('/') lets each user land
+         on their own first accessible tab (handled by the redirect
+         in monitoring.py). Previously this pointed straight to
+         /roosters, which 403'd for users without the "roosters"
+         tab — they'd click the logo expecting "home" and bounce
+         into an error page. #}
+      <a class="sb-brand" href="{{ url_for('monitoring.home') }}">
         <img src="{{ url_for('static', filename='img/logo.svg') }}"
              alt="IVKO"
              class="sb-brand__logo">
@@ -68,13 +74,30 @@
       </a>
 
       <!-- Navigation -->
+      {# Each link is wrapped in {% if mag_tab(...) %} so a restricted
+         user (e.g. a "geluiden"-only account) only sees the tabs they
+         can actually click. mag_tab() comes from a context processor
+         in webinterface.py and reads session["tabs"]; admins (whose
+         tabs list is ["*"]) get True for every tab. #}
       <nav class="sb-nav">
+        {% if mag_tab('agenda') %}
         <a class="sb-nav__link {{ 'active' if tab=='agenda' else '' }}"       href="{{ url_for('agenda.agenda') }}">{{ _('Agenda') }}</a>
+        {% endif %}
+        {% if mag_tab('roosters') %}
         <a class="sb-nav__link {{ 'active' if tab=='roosters' else '' }}"     href="{{ url_for('roosters.roosters') }}">{{ _('Roosters') }}</a>
+        {% endif %}
+        {% if mag_tab('standaardweek') %}
         <a class="sb-nav__link {{ 'active' if tab=='standaardweek' else '' }}"href="{{ url_for('roosters.standaardweek') }}">{{ _('Standaardweek') }}</a>
+        {% endif %}
+        {% if mag_tab('geluiden') %}
         <a class="sb-nav__link {{ 'active' if tab=='geluiden' else '' }}"     href="{{ url_for('geluiden.geluiden') }}">{{ _('Geluiden') }}</a>
+        {% endif %}
+        {% if mag_tab('logs') %}
         <a class="sb-nav__link {{ 'active' if tab=='logs' else '' }}"        href="{{ url_for('monitoring.logs_page') }}">{{ _('Logboek') }}</a>
+        {% endif %}
+        {% if mag_tab('settings') %}
         <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings.settings_page') }}">{{ _('Voorkeuren') }}</a>
+        {% endif %}
       </nav>
 
       <!-- Daemon heartbeat indicator -->

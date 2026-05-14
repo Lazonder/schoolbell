@@ -58,8 +58,14 @@ USERS_PATH = os.path.join(DATA_DIR, "users.json")
 # to render_template (see base.html navigation). When a new tab is
 # added in the UI, append the key here so the validator accepts it.
 # ``"gebruikers"`` is reserved for the user-management page itself
-# (introduced as part of this multi-user feature).
-KNOWN_TABS: frozenset = frozenset({
+# (introduced as part of this multi-user feature, see step 4).
+#
+# ``TAB_ORDER`` mirrors the visual order of the nav-bar in base.html
+# and is used by :func:`first_accessible_tab` to pick a sensible
+# landing page when a non-admin user hits ``/``. ``KNOWN_TABS`` is the
+# unordered set the validators check against; keep both in sync when
+# adding or renaming a tab.
+TAB_ORDER: tuple = (
     "agenda",
     "roosters",
     "standaardweek",
@@ -67,7 +73,8 @@ KNOWN_TABS: frozenset = frozenset({
     "logs",
     "settings",
     "gebruikers",
-})
+)
+KNOWN_TABS: frozenset = frozenset(TAB_ORDER)
 
 # Roles. ``ADMIN`` gets implicit access to every tab. We keep the
 # string values as module-level constants so that callers don't
@@ -198,6 +205,25 @@ def user_can_access(user: dict, tab: str) -> bool:
         return True
     tabs = user.get("tabs") or []
     return "*" in tabs or tab in tabs
+
+
+def first_accessible_tab(tabs: list) -> Optional[str]:
+    """Return the first tab in nav order the user is allowed to see.
+
+    Used to give a non-admin user a sensible landing page after
+    login. An admin (``tabs == ["*"]``) lands on the first tab in
+    :data:`TAB_ORDER`. A regular user with, say, ``["geluiden"]``
+    lands on Geluiden. A user without any accessible tab — which
+    shouldn't happen unless an admin set up a broken record —
+    returns ``None``, and the caller decides what to do (typically
+    log them out).
+    """
+    if "*" in tabs:
+        return TAB_ORDER[0]
+    for t in TAB_ORDER:
+        if t in tabs:
+            return t
+    return None
 
 
 def admin_count() -> int:

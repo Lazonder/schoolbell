@@ -70,7 +70,7 @@ def _load_vakanties_file() -> tuple[Optional[dict], Optional[str]]:
 
 # -- Agenda (per-date override of standaardweek) --
 @agenda_bp.route("/agenda", methods=["GET", "POST"])
-@wi.ui_login_required
+@wi.tab_required("agenda")
 def agenda():
     wi.ensure_dirs()
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
@@ -224,7 +224,7 @@ def agenda():
 
 
 @agenda_bp.route("/agenda/import-vakanties", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("agenda")
 def import_vakanties():
     """Import all stored school holidays from data/vakanties.json into
     weken_uit.
@@ -357,7 +357,7 @@ def import_vakanties():
 
 
 @agenda_bp.route("/agenda/refresh-vakanties", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("agenda")
 def refresh_vakanties():
     """Fetch the latest vakanties from rijksoverheid.nl and overwrite
     data/vakanties.json.

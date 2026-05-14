@@ -50,7 +50,7 @@ geluiden_bp = Blueprint("geluiden", __name__)
 
 
 @geluiden_bp.route("/audio/<path:filename>")
-@wi.ui_login_required
+@wi.tab_required("geluiden")
 def serve_audio(filename):
     """Send the requested audio file from AUDIO_DIR back to the browser.
 
@@ -65,7 +65,7 @@ def serve_audio(filename):
 
 
 @geluiden_bp.route("/geluiden", methods=["GET"])
-@wi.ui_login_required
+@wi.tab_required("geluiden")
 def geluiden():
     wi.ensure_dirs()
     files = wi.list_audio()
@@ -87,7 +87,7 @@ def geluiden():
 
 
 @geluiden_bp.route("/geluiden/upload", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("geluiden")
 def geluiden_upload():
     wi.ensure_dirs()
 
@@ -187,7 +187,7 @@ def geluiden_upload():
 
 
 @geluiden_bp.route("/geluiden/play", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("geluiden")
 def geluiden_play():
     """Trigger immediate playback through the school's speakers.
 
@@ -220,7 +220,7 @@ def geluiden_play():
 
 
 @geluiden_bp.route("/geluiden/delete", methods=["POST"])
-@wi.ui_login_required
+@wi.tab_required("geluiden")
 def geluiden_delete():
     wi.ensure_dirs()
     name = (request.form.get("filename") or "").strip()
