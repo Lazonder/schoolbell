@@ -63,7 +63,7 @@ TAB_ENDPOINTS = {
     "geluiden": "geluiden.geluiden",
     "logs": "monitoring.logs_page",
     "settings": "settings.settings_page",
-    "gebruikers": None,
+    "gebruikers": "gebruikers.lijst",
 }
 
 

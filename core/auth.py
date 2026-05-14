@@ -174,6 +174,37 @@ def tab_required(tab_naam: str):
     return deco
 
 
+def admin_page_required(view):
+    """HTML companion to :func:`require_admin`.
+
+    Same intent — gate a route on the admin role — but tuned for
+    browser pages instead of fetch() endpoints:
+
+    - Anonymous visitor: redirect to ``/login?next=...`` so the
+      user is bounced back to the management page after a
+      successful sign-in.
+    - Logged-in non-admin: ``abort(403)``, which Flask renders as
+      a plain 403 page (good enough until we ship a custom "no
+      access" template).
+
+    Use :func:`require_admin` for ``/api/...`` JSON endpoints and
+    this one for ``/gebruikers``-style admin pages.
+    """
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not ui_logged_in():
+            nxt = (
+                request.full_path
+                if request.query_string
+                else request.path
+            )
+            return redirect(url_for("auth.login", next=nxt))
+        if session.get("rol") != "admin":
+            abort(403)
+        return view(*args, **kwargs)
+    return wrapper
+
+
 def require_admin(f):
     """Decorator for JSON API endpoints that need a logged-in admin.
 

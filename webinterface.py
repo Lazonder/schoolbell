@@ -43,6 +43,7 @@ from core.auth import (  # noqa: F401  (re-exports for blueprints + tests)
     ADMIN_USER,
     FALLBACK_PLAIN,
     _check_password,
+    admin_page_required,
     auth,
     get_csrf_token,
     require_admin,
@@ -562,6 +563,7 @@ def compute_upcoming(limit=20):
 # compatibility: tests import it as ``webinterface._apply_settings_payload``.
 from blueprints.agenda import agenda_bp  # noqa: E402
 from blueprints.auth import auth_bp  # noqa: E402
+from blueprints.gebruikers import gebruikers_bp  # noqa: E402
 from blueprints.geluiden import geluiden_bp  # noqa: E402
 from blueprints.monitoring import monitoring_bp  # noqa: E402
 from blueprints.roosters import roosters_bp  # noqa: E402
@@ -572,6 +574,7 @@ from blueprints.settings import (  # noqa: E402, F401
 
 app.register_blueprint(agenda_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(gebruikers_bp)
 app.register_blueprint(geluiden_bp)
 app.register_blueprint(monitoring_bp)
 app.register_blueprint(roosters_bp)

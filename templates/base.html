@@ -98,6 +98,12 @@
         {% if mag_tab('settings') %}
         <a class="sb-nav__link {{ 'active' if tab=='settings' else '' }}"     href="{{ url_for('settings.settings_page') }}">{{ _('Voorkeuren') }}</a>
         {% endif %}
+        {# Gebruikers tab is admin-only. The route itself enforces
+           admin_page_required, so this nav-link visibility is purely
+           cosmetic. Only show it for admins (session.rol == 'admin'). #}
+        {% if session.get('rol') == 'admin' %}
+        <a class="sb-nav__link {{ 'active' if tab=='gebruikers' else '' }}"   href="{{ url_for('gebruikers.lijst') }}">{{ _('Gebruikers') }}</a>
+        {% endif %}
       </nav>
 
       <!-- Daemon heartbeat indicator -->

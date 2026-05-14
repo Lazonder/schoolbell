@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Gebruikers') }}{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <div>
+    <h1>{{ _('Gebruikers') }}</h1>
+    <p class="sb-help">
+      {{ _('Beheer wie kan inloggen en welke tabbladen elke gebruiker mag zien. Alleen admins zien deze pagina.') }}
+    </p>
+  </div>
+</header>
+
+{# ----- Existing users ----- #}
+<div class="sb-card">
+  <h2 class="sb-card__title">{{ _('Bestaande gebruikers') }}</h2>
+
+  <table class="sb-table">
+    <thead>
+      <tr>
+        <th>{{ _('Gebruikersnaam') }}</th>
+        <th>{{ _('Rol') }}</th>
+        <th>{{ _('Tabbladen') }}</th>
+        <th>{{ _('Acties') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for username, u in users %}
+        <tr>
+          <td>
+            {{ username }}
+            {% if username == session.get('user') %}
+              <em class="sb-help">({{ _('jij') }})</em>
+            {% endif %}
+          </td>
+          <td>{{ u.rol }}</td>
+          <td>
+            {% if "*" in u.tabs %}
+              <em>{{ _('alle') }}</em>
+            {% else %}
+              {{ u.tabs|join(", ") or '—' }}
+            {% endif %}
+          </td>
+          <td>
+            {# Edit role/tabs — collapsed by default so the table
+               stays tidy. The same input names match what
+               /gebruikers/<u>/wijzig parses. #}
+            <details>
+              <summary>{{ _('Bewerken') }}</summary>
+              <form method="post"
+                    action="{{ url_for('gebruikers.wijzig', username=username) }}"
+                    class="sb-inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+                <fieldset>
+                  <legend>{{ _('Rol') }}</legend>
+                  <label>
+                    <input type="radio" name="rol" value="gebruiker"
+                           {% if u.rol == 'gebruiker' %}checked{% endif %}>
+                    {{ _('Gebruiker') }}
+                  </label>
+                  <label>
+                    <input type="radio" name="rol" value="admin"
+                           {% if u.rol == 'admin' %}checked{% endif %}>
+                    {{ _('Admin') }}
+                  </label>
+                </fieldset>
+
+                <fieldset>
+                  <legend>{{ _('Tabbladen') }}</legend>
+                  {% for t in known_tabs if t != 'gebruikers' %}
+                    <label>
+                      <input type="checkbox" name="tabs" value="{{ t }}"
+                             {% if "*" in u.tabs or t in u.tabs %}checked{% endif %}>
+                      {{ t }}
+                    </label>
+                  {% endfor %}
+                  <p class="sb-help">
+                    {{ _("Admins krijgen automatisch toegang tot alle tabbladen; deze vinkjes worden dan genegeerd.") }}
+                  </p>
+                </fieldset>
+
+                <button type="submit" class="sb-btn">{{ _('Opslaan') }}</button>
+              </form>
+            </details>
+
+            {# Password reset — separate route + form so the
+               edit-form above doesn't ship a password input on
+               every render. #}
+            <details>
+              <summary>{{ _('Wachtwoord') }}</summary>
+              <form method="post"
+                    action="{{ url_for('gebruikers.wachtwoord', username=username) }}"
+                    class="sb-inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <label>
+                  {{ _('Nieuw wachtwoord') }}
+                  <input type="password" name="password"
+                         class="sb-input" required minlength="8">
+                </label>
+                <button type="submit" class="sb-btn">{{ _('Reset') }}</button>
+              </form>
+            </details>
+
+            {# Delete — hidden for the row representing yourself,
+               so an admin can't accidentally lock themselves out.
+               (The user store ALSO refuses to delete the last
+               admin, but hiding the button avoids the foot-gun. #}
+            {% if username != session.get('user') %}
+              <form method="post"
+                    action="{{ url_for('gebruikers.verwijder', username=username) }}"
+                    data-confirm="{{ _('Gebruiker %(u)s verwijderen?', u=username) }}"
+                    data-confirm-button="{{ _('Verwijderen') }}"
+                    style="display:inline">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <button type="submit" class="sb-btn sb-btn--danger">
+                  {{ _('Verwijderen') }}
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ----- New user form ----- #}
+<div class="sb-card">
+  <h2 class="sb-card__title">{{ _('Nieuwe gebruiker') }}</h2>
+
+  <form method="post" action="{{ url_for('gebruikers.nieuw') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+    <div class="sb-field">
+      <label class="sb-label" for="new-username">{{ _('Gebruikersnaam') }}</label>
+      <input id="new-username"
+             name="username"
+             class="sb-input"
+             required
+             minlength="2"
+             maxlength="32"
+             pattern="[a-z0-9_-]+"
+             autocomplete="off">
+      <p class="sb-help">
+        {{ _('Kleine letters, cijfers, _ en -. 2 tot 32 tekens.') }}
+      </p>
+    </div>
+
+    <div class="sb-field">
+      <label class="sb-label" for="new-password">{{ _('Wachtwoord') }}</label>
+      <input id="new-password"
+             type="password"
+             name="password"
+             class="sb-input"
+             required
+             minlength="8"
+             autocomplete="new-password">
+      <p class="sb-help">
+        {{ _('Minstens 8 tekens.') }}
+      </p>
+    </div>
+
+    <fieldset class="sb-field">
+      <legend class="sb-label">{{ _('Rol') }}</legend>
+      <label>
+        <input type="radio" name="rol" value="gebruiker" checked>
+        {{ _('Gebruiker') }}
+      </label>
+      <label>
+        <input type="radio" name="rol" value="admin">
+        {{ _('Admin') }}
+      </label>
+    </fieldset>
+
+    <fieldset class="sb-field">
+      <legend class="sb-label">{{ _('Tabbladen') }}</legend>
+      {% for t in known_tabs if t != 'gebruikers' %}
+        <label>
+          <input type="checkbox" name="tabs" value="{{ t }}">
+          {{ t }}
+        </label>
+      {% endfor %}
+      <p class="sb-help">
+        {{ _('Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles).') }}
+      </p>
+    </fieldset>
+
+    <div class="sb-actions">
+      <button type="submit" class="sb-btn sb-btn--success">
+        {{ _('Aanmaken') }}
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
