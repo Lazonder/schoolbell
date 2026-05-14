@@ -564,6 +564,28 @@ app.register_blueprint(roosters_bp)
 app.register_blueprint(settings_bp)
 
 
+# ---------- User store bootstrap ----------
+# Pre-multi-user installs only had SCHOOLBELL_WEB_USER and
+# SCHOOLBELL_WEB_PWHASH in /etc/schoolbell/web.env. From this commit
+# onwards the canonical source of truth is data/users.json, with the
+# env vars demoted to a seed for the very first start.
+#
+# We can't call bootstrap_from_env() at module import time: tests
+# monkeypatch core.users.USERS_PATH in their fixtures, and that has
+# to happen *before* the bootstrap writes anything. Hooking into
+# before_request keeps the patch order correct (fixture sets up,
+# test triggers a request, bootstrap then sees the tmp path).
+#
+# bootstrap_from_env() is idempotent (fast-path read, then locked
+# re-check), so calling it on every request is cheap once the store
+# has been seeded.
+from core import users as _users  # noqa: E402
+
+@app.before_request
+def _bootstrap_users():
+    _users.bootstrap_from_env(ADMIN_USER, ADMIN_HASH)
+
+
 # ---------- Dev server ----------
 # The previous version of this block also pre-created roosters.json,
 # dagplanning.json, standaardweek.json and weken_uit.json with empty

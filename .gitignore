@@ -28,6 +28,7 @@ weken_uit.json
 vakanties.json
 vakanties_fetch_state.json
 daemon_heartbeat.json
+users.json
 
 # Lock files for the JSON state above (created by fcntl.flock on
 # the sidecar files in webinterface.locked_json / settings_store.locked).

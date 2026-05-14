@@ -5,10 +5,18 @@ Two routes:
   GET/POST /login   — show the form / accept credentials
   GET/POST /logout  — clear the session cookie
 
-The actual credential check lives in ``core.auth``; this file is
-only the HTTP wiring around it. Logout supports both GET (admin
-typing /logout into the address bar) and POST (the nav-bar form
-with a CSRF token); both end up doing the same ``session.clear()``.
+The actual credential check lives in :mod:`core.users` (via
+:func:`core.users.verify_user`); this file is only the HTTP wiring
+around it. After a successful login the session carries three keys:
+
+  * ``user`` — the lowercased username
+  * ``rol``  — ``"admin"`` or ``"gebruiker"``
+  * ``tabs`` — list of tab keys the user may access, or ``["*"]``
+                for admins
+
+Logout supports both GET (admin typing /logout into the address bar)
+and POST (the nav-bar form with a CSRF token); both end up doing the
+same ``session.clear()``.
 """
 
 from urllib.parse import urlparse
@@ -24,9 +32,9 @@ from flask import (
 )
 from flask_babel import gettext as _
 
+from core import users as users_mod
 from core.auth import (
     ADMIN_USER,
-    _check_password,
     get_csrf_token,
     ui_logged_in,
 )
@@ -61,16 +69,29 @@ def login():
         next_url = url_for("roosters.roosters")
 
     if request.method == "POST":
-        u = (request.form.get("username") or "").strip()
+        # Normalize the username to lowercase: the user store is
+        # case-insensitive, so "Alice" and "alice" are the same
+        # account. Trimming whitespace handles accidental space
+        # before/after when typing.
+        u = (request.form.get("username") or "").strip().lower()
         p = request.form.get("password") or ""
-        if u == ADMIN_USER and _check_password(p):
-            # Close session fixation: discard everything that was in the session
-            # before login (including the CSRF token that was already generated
-            # on the login page), so any injected cookie is immediately worthless.
-            # get_csrf_token() then generates a fresh token on the first next render.
+        user = users_mod.verify_user(u, p)
+        if user is not None:
+            # Close session fixation: discard everything that was in
+            # the session before login (including the CSRF token that
+            # was already generated on the login page), so any
+            # injected cookie is immediately worthless. get_csrf_token()
+            # then generates a fresh token on the first next render.
             session.clear()
             session.permanent = True
-            session["user"] = ADMIN_USER
+            session["user"] = u
+            # Caching role and tab list in the session keeps every
+            # subsequent request from re-reading users.json. The
+            # trade-off: an admin who changes a user's permissions
+            # only sees the change take effect after that user logs
+            # back in (documented in multi-user-plan.md §9).
+            session["rol"] = user.get("rol", "gebruiker")
+            session["tabs"] = list(user.get("tabs") or [])
             return redirect(next_url)
         flash(_("Onjuiste inloggegevens."))
 

@@ -3,22 +3,33 @@
 Two ways to log in live in this project:
 
 1. **Session login** — used by humans through the browser. The
-   ``/login`` page sets ``session["user"]`` and every protected
-   route checks it via the ``ui_login_required`` decorator.
+   ``/login`` page validates against the user store
+   (:mod:`core.users`), then sets ``session["user"]``,
+   ``session["rol"]`` and ``session["tabs"]``. Every protected
+   route checks the session via :func:`ui_login_required`.
 2. **HTTP Basic Auth** — used by the daemon when it polls
    ``/api/effectief-rooster``. The daemon sends a username and
    password header on every request; ``flask_httpauth`` checks
-   them through the ``auth`` instance below.
+   them through the ``auth`` instance below, which delegates to
+   :func:`core.users.verify_user` and additionally requires the
+   admin role.
 
 The two ways are intentionally separate. A browser user gets a
 nice redirect to /login when not signed in. The daemon (which
 can't render an HTML login page) gets a 401 with a
 ``WWW-Authenticate`` header so requests can retry.
 
-This module also exposes ``require_admin`` for API endpoints that
-the browser calls with ``fetch()``. Instead of redirecting (which
-fetch() would silently follow), it returns ``401 {"error": ...}``
-so the JS can show a useful error.
+This module also exposes :func:`require_admin` for API endpoints
+that the browser calls with ``fetch()``. Instead of redirecting
+(which fetch() would silently follow), it returns ``401`` /
+``403`` JSON so the JS can show a useful error.
+
+Pre-multi-user installs only had ``SCHOOLBELL_WEB_USER`` /
+``SCHOOLBELL_WEB_PWHASH`` in ``/etc/schoolbell/web.env``. Those
+values are still read at import time and used by
+:func:`core.users.bootstrap_from_env` to seed ``data/users.json``
+on first start, so existing installations keep working without any
+manual migration.
 """
 
 import os
@@ -29,11 +40,18 @@ from flask import jsonify, redirect, request, session, url_for
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash
 
+from core import users as users_mod
 
-# Admin credentials read from environment at import time. Both are
-# expected to be set by /etc/schoolbell/web.env in production.
-# FALLBACK_PLAIN is for the very first install only. Once a
-# password hash is generated, SCHOOLBELL_WEB_PASS should be removed.
+
+# Legacy admin credentials read from environment at import time. Both
+# are expected to be set by /etc/schoolbell/web.env in production. They
+# are now only used to seed users.json on first start
+# (see core.users.bootstrap_from_env) — after that, the user store is
+# the canonical source of truth.
+#
+# FALLBACK_PLAIN is the one-time bootstrap state during a fresh
+# install.sh run. Once a password hash exists, SCHOOLBELL_WEB_PASS is
+# expected to be removed from the env file.
 ADMIN_USER = os.getenv("SCHOOLBELL_WEB_USER", "admin")
 ADMIN_HASH = os.getenv("SCHOOLBELL_WEB_PWHASH")      # e.g. pbkdf2:sha256:...
 FALLBACK_PLAIN = os.getenv("SCHOOLBELL_WEB_PASS")    # only for first test
@@ -48,24 +66,27 @@ auth = HTTPBasicAuth()
 # ---- UI login (session-cookie based) ----------------------------
 
 
-def _check_password(plain: str) -> bool:
-    """Compare ``plain`` against the stored admin credential.
+def _check_password(username: str, plain: str) -> bool:
+    """Backwards-compatible wrapper around :func:`core.users.verify_user`.
 
-    Tries the secure hash first. Only falls back to the plaintext
-    SCHOOLBELL_WEB_PASS when no hash is set, which is a one-time
-    bootstrap state. install.sh generates a hash on the first
-    run and clears the plaintext.
+    The single-arg ``_check_password(plain)`` form from before
+    multi-user is gone; callers must now pass the username they want
+    to verify. The implementation is a thin pass-through: any new
+    code should call :func:`core.users.verify_user` directly so it
+    can read back the user's role and tabs in the same call.
     """
-    if ADMIN_HASH:
-        return check_password_hash(ADMIN_HASH, plain)
-    if FALLBACK_PLAIN:
-        return plain == FALLBACK_PLAIN
-    return False
+    return users_mod.verify_user(username, plain) is not None
 
 
 def ui_logged_in() -> bool:
-    """True when the current request has a valid admin session cookie."""
-    return session.get("user") == ADMIN_USER
+    """True when the current request carries a logged-in session.
+
+    Multi-user aware: the presence of ``session["user"]`` is enough,
+    we no longer compare against a single admin name. Role-based
+    checks (e.g. "is the user an admin?") use :func:`require_admin`
+    or directly inspect ``session.get("rol")``.
+    """
+    return bool(session.get("user"))
 
 
 def ui_login_required(view):
@@ -104,15 +125,18 @@ def get_csrf_token() -> str:
 def require_admin(f):
     """Decorator for JSON API endpoints that need a logged-in admin.
 
-    Returns a JSON 401 instead of redirecting to /login, so that
-    fetch() callers in the UI get a machine-readable response. A
-    redirect would be silently followed by fetch() and the page's
-    JavaScript would never see the auth failure.
+    Returns a JSON 401 (no session) or 403 (logged in but not admin)
+    instead of redirecting to /login, so that fetch() callers in the
+    UI get a machine-readable response. A redirect would be silently
+    followed by fetch() and the page's JavaScript would never see
+    the auth failure.
     """
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not ui_logged_in():
             return jsonify(error="auth_required"), 401
+        if session.get("rol") != "admin":
+            return jsonify(error="admin_required"), 403
         return f(*args, **kwargs)
     return wrapper
 
@@ -124,10 +148,23 @@ def require_admin(f):
 def verify_password(username, password):
     """Verifier the daemon's HTTP Basic Auth requests are checked against.
 
-    Same admin credentials as the session login. The daemon and
-    the browser user are conceptually the same admin, just talking
-    to the app over different protocols.
+    Per the multi-user design (multi-user-plan.md §3.4): the daemon
+    authenticates against any admin account in users.json. A regular
+    (non-admin) user — even one that happens to have the ``roosters``
+    tab — cannot use this path; the daemon conceptually belongs to
+    the admin role.
+
+    The legacy env-var admin (``SCHOOLBELL_WEB_USER`` /
+    ``SCHOOLBELL_WEB_PWHASH`` / ``SCHOOLBELL_WEB_PASS``) is honoured
+    as an emergency fallback so a freshly-installed Pi still works
+    before the bootstrap has run, and so an admin who deletes
+    ``users.json`` for rescue can still get back in.
     """
+    user = users_mod.verify_user(username, password)
+    if user is not None and users_mod.is_admin(user):
+        return True
+
+    # Env-var fallback: only the configured admin name reaches here.
     if username != ADMIN_USER:
         return False
     if ADMIN_HASH:

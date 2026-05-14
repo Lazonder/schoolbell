@@ -41,6 +41,11 @@ os.environ["SCHOOLBELL_SECURE_COOKIES"] = "0"
 # Import after env is set up.
 import webinterface  # noqa: E402
 
+# Multi-user user store. Tests need to redirect its USERS_PATH alongside
+# webinterface.DATA_DIR so the before_request bootstrap doesn't write
+# to the developer's real data/users.json on the host machine.
+from core import users as core_users  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -86,6 +91,14 @@ def client(tmp_path, monkeypatch):
         webinterface,
         "DAEMON_HEARTBEAT_PATH",
         str(data_dir / "daemon_heartbeat.json"),
+    )
+    # core.users keeps its own path constant (it deliberately doesn't
+    # import webinterface to avoid a circular dependency, see
+    # core/users.py header). Redirect it to the same tmp dir so the
+    # before_request bootstrap writes to data_dir/users.json instead
+    # of the real one on disk.
+    monkeypatch.setattr(
+        core_users, "USERS_PATH", str(data_dir / "users.json")
     )
 
     return webinterface.app.test_client()

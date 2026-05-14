@@ -336,6 +336,60 @@ def update_user(
         save(data)
 
 
+def bootstrap_from_env(
+    admin_user: Optional[str], admin_hash: Optional[str]
+) -> None:
+    """Seed users.json from the legacy env-var admin, once.
+
+    Pre-multi-user installs only had ``SCHOOLBELL_WEB_USER`` and
+    ``SCHOOLBELL_WEB_PWHASH`` in ``/etc/schoolbell/web.env``. After the
+    multi-user feature lands, the canonical source of truth is
+    ``users.json``. This helper bridges the two: on every app start it
+    checks whether the store is empty and, if so, inserts a single
+    admin record built from the env values.
+
+    Idempotent. Once ``users.json`` contains any user, subsequent
+    calls do nothing — even if the env vars change. From that point
+    the admin can rename themselves, change their password, or add
+    more users through the UI without ever touching ``web.env``
+    again.
+
+    Notes:
+
+    - The password ``hash`` is inserted verbatim; we never see the
+      plaintext (and it might not exist in the env anyway — only the
+      daemon's env file keeps it for HTTP Basic Auth).
+    - If either argument is empty, this is a no-op. A fresh install
+      without env vars set just shows the login page failing until
+      someone seeds an admin (matching the old install.sh contract).
+    - A malformed username silently bails out rather than crashing
+      the application on startup; a misconfigured env shouldn't take
+      the whole web app down.
+    """
+    if not admin_user or not admin_hash:
+        return
+    # Fast path: skip the lock when the file already has data. This
+    # runs on every request via the before_request hook, so the
+    # absence of a lock here saves a syscall per request.
+    if _read():
+        return
+    with _locked_users() as (data, save):
+        # Re-check inside the lock: another worker might have
+        # bootstrapped between our fast-path read and the lock.
+        if data:
+            return
+        username = admin_user.strip().lower()
+        if not USERNAME_RE.match(username):
+            return
+        data[username] = {
+            "pwhash": admin_hash,
+            "rol": ADMIN,
+            "tabs": ["*"],
+            "aangemaakt": datetime.now(timezone.utc).isoformat(),
+        }
+        save(data)
+
+
 def delete_user(username: str) -> None:
     """Remove a user from the store.
 
