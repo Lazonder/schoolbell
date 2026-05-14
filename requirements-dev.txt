@@ -3,7 +3,7 @@
 # Then enable the git hook with:  pre-commit install
 -r requirements.txt
 
-pytest>=8.0,<9.0
+pytest>=8.4.2,<10.0
 
 # Pre-commit framework + linter/formatter. Versions kept loose; the
 # exact ruff revision is pinned in .pre-commit-config.yaml to make
