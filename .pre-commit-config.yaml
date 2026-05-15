@@ -31,7 +31,17 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: python3 -m pytest tests/ -q
+        # Use the project venv's Python explicitly rather than bare
+        # 'python3'. Pre-commit runs hooks from the project root, so
+        # 'venv/bin/python' resolves correctly regardless of whether
+        # the user has activated their shell venv. Previously a bare
+        # 'python3 -m pytest' would fall back to the system Python
+        # whenever the venv wasn't on PATH, producing the cryptic
+        # "No module named pytest" failure mid-commit.
+        # Assumes the venv lives at ./venv/ (the convention install.sh
+        # creates); contributors using a different directory should
+        # symlink or adjust this path locally.
+        entry: venv/bin/python -m pytest tests/ -q
         language: system
         # Run once per commit, not once per changed file: pytest already
         # discovers what to test on its own.
