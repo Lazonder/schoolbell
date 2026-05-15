@@ -29,7 +29,7 @@ minuten eerder afgaat — handig voor "nog twee minuten"-signalen.
 schoolvakanties ophalen van rijksoverheid.nl. De weken die binnen een
 vakantie vallen worden dan automatisch op stil gezet.
 
-**Publieke aftelling**: bezoek `http://<pi-ip>/now` vanuit elke
+**Publieke aftelling**: bezoek `https://<pi-ip>/now` vanuit elke
 browser op school. Je ziet dan een grote weergave "Volgende bel:
 Lunchpauze / 3:42" die zichzelf bijwerkt. Geen inloggen nodig.
 
@@ -48,9 +48,9 @@ via een kleine interne API.
 
 ```
 Jouw browser
-   ↓ via het schoolnetwerk
-Nginx (een webserver) op poort 80
-   ↓
+   ↓ via het schoolnetwerk (HTTPS)
+Nginx (een webserver) op poort 443
+   ↓ (poort 80 stuurt automatisch door naar 443)
 De Schoolbel-webapp (Flask)
    ↓ vertelt de daemon wat te bellen
 Schoolbel-daemon → speaker
@@ -84,7 +84,12 @@ maakt een willekeurig admin-wachtwoord aan, en start de bel-daemon.
 Het laat het wachtwoord **één keer** in een kader zien aan het
 einde — schrijf het op.
 
-Als het klaar is, open je een browser op `http://<ip-van-je-pi>/`.
+Als het klaar is, open je een browser op
+`https://<ip-van-je-pi>/` (of `https://schoolbell.local/`). De
+eerste keer per apparaat krijg je een "verbinding niet privé"-
+waarschuwing — dat hoort bij een self-signed certificaat binnen
+het schoolnetwerk. Klik op *Geavanceerd → toch doorgaan*. Zie de
+admin-guide voor meer uitleg.
 
 Voor volledige installatie-details, foutopsporing, en het
 herstellen van een verloren wachtwoord, zie de
@@ -108,7 +113,7 @@ nodig.
 
 ## Roadmap
 
-Geplande uitbreidingen: HTTPS en wachtwoord-reset via e-mail. Zie
+Geplande uitbreidingen: wachtwoord-reset via e-mail. Zie
 [docs/roadmap.nl.md](docs/roadmap.nl.md) voor de volledige lijst
 met scope en motivatie per onderdeel. Multi-user ondersteuning
 met per-tab-rechten is er al — zie

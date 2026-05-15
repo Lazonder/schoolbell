@@ -29,7 +29,7 @@ the main one — handy for "two minutes left" cues.
 holidays from rijksoverheid.nl with one click. The weeks that fall
 inside a holiday are then automatically silenced.
 
-**Public countdown**: visit `http://<pi-ip>/now` from any browser
+**Public countdown**: visit `https://<pi-ip>/now` from any browser
 in the school. You'll see a big "Next bell: Lunch break / 3:42"
 display that updates by itself. Nothing to log into.
 
@@ -48,9 +48,9 @@ through a small internal API.
 
 ```
 Your browser
-   ↓ over the school network
-Nginx (a web server) on port 80
-   ↓
+   ↓ over the school network (HTTPS)
+Nginx (a web server) on port 443
+   ↓ (port 80 redirects to 443 automatically)
 The Schoolbell web app (Flask)
    ↓ tells the daemon what to ring
 Schoolbell daemon → speaker
@@ -83,7 +83,11 @@ The script does everything: installs Python, sets up the web server,
 creates a random admin password, and starts the bell daemon. It
 prints the password **once** in a box at the end — write it down.
 
-When it's done, open a browser to `http://<your-pi's-ip>/`.
+When it's done, open a browser to `https://<your-pi's-ip>/`
+(or `https://schoolbell.local/`). The first visit per device will
+show a "connection is not private" warning — that's expected for a
+self-signed certificate inside a school LAN. Click *Advanced →
+proceed*. See the admin guide for details.
 
 For full installation details, troubleshooting, and how to recover
 a lost password, see the [Admin guide](docs/admin-guide.md).
@@ -105,7 +109,7 @@ editor.
 
 ## Roadmap
 
-Planned additions: HTTPS and password reset by e-mail. See
+Planned additions: password reset by e-mail. See
 [docs/roadmap.md](docs/roadmap.md) for the full list with scope and
 motivation per item. Multi-user support with per-tab permissions
 is already in — see

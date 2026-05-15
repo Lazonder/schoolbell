@@ -21,38 +21,6 @@ de README of admin-guide.
 
 ---
 
-## HTTPS
-
-**Status:** Gepland
-
-Nu draait Nginx alleen op poort 80 (plain HTTP). Voor een schoolnetwerk
-binnen één gebouw is dat hanteerbaar, maar:
-
-- Login-cookies kunnen meegelezen worden door wie het netwerk
-  passief afluistert.
-- Moderne browsers tonen "Niet veilig" in de adresbalk, wat het
-  onnodig onprofessioneel laat lijken.
-- `SCHOOLBELL_SECURE_COOKIES` staat nu op `0` omdat anders de login
-  breekt — een waarschuwingsteken in de configuratie.
-
-**Scope (ruwe schets):**
-
-- Nginx-config uitbreiden met een `listen 443 ssl`-server-block.
-- Twee paden ondersteunen:
-  - **Self-signed certificaat** voor LAN-only installs (snel,
-    geen DNS nodig, browser-waarschuwing acceptabel binnen school).
-  - **Let's Encrypt** via `certbot` voor wie de Pi via een
-    DNS-naam bereikbaar maakt.
-- `install.sh` vragen of HTTPS aangezet moet worden, en zo ja welk
-  pad.
-- 80 → 443 redirect-server-block.
-- `SCHOOLBELL_SECURE_COOKIES=1` als default in `web.env` zodra HTTPS
-  draait.
-- Documenteren in admin-guide: certificaat-vernieuwing, troubleshoot
-  als certbot faalt.
-
----
-
 ## Wachtwoord-reset via e-mail
 
 **Status:** Gepland

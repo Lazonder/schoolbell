@@ -21,38 +21,6 @@ or admin guide.
 
 ---
 
-## HTTPS
-
-**Status:** Planned
-
-Right now Nginx only listens on port 80 (plain HTTP). For a school
-network inside a single building that's manageable, but:
-
-- Login cookies can be read by anyone passively sniffing the
-  network.
-- Modern browsers show "Not secure" in the address bar, which makes
-  the app look needlessly unprofessional.
-- `SCHOOLBELL_SECURE_COOKIES` is set to `0` because login would
-  break otherwise — a warning sign in the configuration.
-
-**Scope (rough sketch):**
-
-- Extend the Nginx config with a `listen 443 ssl` server block.
-- Support two paths:
-  - **Self-signed certificate** for LAN-only installs (fast, no
-    DNS needed, browser warning acceptable inside a school).
-  - **Let's Encrypt** via `certbot` for installs that expose the
-    Pi under a DNS name.
-- Make `install.sh` ask whether HTTPS should be enabled, and if so
-  which path.
-- Add an 80 → 443 redirect server block.
-- Default `SCHOOLBELL_SECURE_COOKIES=1` in `web.env` once HTTPS is
-  live.
-- Document in the admin guide: certificate renewal, troubleshooting
-  when certbot fails.
-
----
-
 ## Password reset by e-mail
 
 **Status:** Planned
