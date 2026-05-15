@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 10:23+0200\n"
+"POT-Creation-Date: 2026-05-14 21:30+0200\n"
 "PO-Revision-Date: 2026-05-10 16:35+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: webinterface.py:262
+#: webinterface.py:278
 msgid "Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."
 msgstr ""
 "Téléversement trop volumineux (vérifiez la limite configurée dans "
@@ -33,16 +33,16 @@ msgstr "Horaire invalide pour %(datum)s : '%(waarde)s' n'existe pas. Ignoré."
 msgid "Agenda opgeslagen."
 msgstr "Calendrier enregistré."
 
-#: blueprints/agenda.py:240 blueprints/agenda.py:378
+#: blueprints/agenda.py:246 blueprints/agenda.py:384
 msgid "Vakantie-scraping is uitgeschakeld in Voorkeuren."
 msgstr "La récupération des vacances est désactivée dans Paramètres."
 
-#: blueprints/agenda.py:246
+#: blueprints/agenda.py:252
 #, python-format
 msgid "Importeren mislukt: %(err)s"
 msgstr "Échec de l'import : %(err)s"
 
-#: blueprints/agenda.py:250
+#: blueprints/agenda.py:256
 #, python-format
 msgid ""
 "Geen vakantiebestand gevonden (%(path)s). Klik 'Verversen van "
@@ -51,7 +51,7 @@ msgstr ""
 "Aucun fichier de vacances trouvé (%(path)s). Cliquez sur « Actualiser "
 "depuis rijksoverheid.nl » pour le récupérer."
 
-#: blueprints/agenda.py:259
+#: blueprints/agenda.py:265
 msgid ""
 "Vakantiebestand bevat geen 'schooljaren'. Klik 'Verversen van "
 "rijksoverheid.nl' om opnieuw op te halen."
@@ -59,7 +59,7 @@ msgstr ""
 "Le fichier de vacances ne contient pas « schooljaren ». Cliquez sur « "
 "Actualiser depuis rijksoverheid.nl » pour le récupérer à nouveau."
 
-#: blueprints/agenda.py:307
+#: blueprints/agenda.py:313
 #, python-format
 msgid ""
 "Geen schooljaren in het bestand bevatten regio '%(regio)s'. Aanwezige "
@@ -68,7 +68,7 @@ msgstr ""
 "Aucune année scolaire du fichier ne contient la région « %(regio)s ». "
 "Années scolaires présentes : %(schooljaren)s."
 
-#: blueprints/agenda.py:314
+#: blueprints/agenda.py:320
 #, python-format
 msgid ""
 "Geen weken om te markeren voor regio %(regio)s. Controleer het "
@@ -77,7 +77,7 @@ msgstr ""
 "Aucune semaine à marquer pour la région %(regio)s. Vérifiez le fichier de"
 " vacances (%(count)s entrées invalides)."
 
-#: blueprints/agenda.py:338
+#: blueprints/agenda.py:344
 #, python-format
 msgid ""
 "%(weken)s week(weken) gemarkeerd als 'Bel uit' (regio %(regio)s, uit "
@@ -86,17 +86,17 @@ msgstr ""
 "%(weken)s semaine(s) marquée(s) comme « Cloche désactivée » (région "
 "%(regio)s, depuis %(aantal)s année(s) scolaire(s) : %(schooljaren)s)."
 
-#: blueprints/agenda.py:347
+#: blueprints/agenda.py:353
 #, python-format
 msgid " en %(count)s meer"
 msgstr " et %(count)s de plus"
 
-#: blueprints/agenda.py:348
+#: blueprints/agenda.py:354
 #, python-format
 msgid " Overgeslagen: %(voorb)s%(meer)s."
 msgstr " Ignorées : %(voorb)s%(meer)s."
 
-#: blueprints/agenda.py:397
+#: blueprints/agenda.py:403
 #, python-format
 msgid ""
 "Bestaand vakantiebestand kon niet gelezen worden (%(err)s); wordt "
@@ -105,80 +105,121 @@ msgstr ""
 "Le fichier de vacances existant n'a pas pu être lu (%(err)s) ; il sera "
 "écrasé."
 
-#: blueprints/agenda.py:412
+#: blueprints/agenda.py:418
 #, python-format
 msgid "Verversen mislukt voor alle %(n)d schooljaren. Eerste fout: %(err)s"
 msgstr ""
 "Actualisation échouée pour les %(n)d années scolaires. Première erreur : "
 "%(err)s"
 
-#: blueprints/auth.py:59
+#: blueprints/auth.py:102
 msgid "Onjuiste inloggegevens."
 msgstr "Identifiants invalides."
 
-#: blueprints/geluiden.py:95
+#: blueprints/gebruikers.py:79
+#, python-format
+msgid "Gebruiker '%(u)s' aangemaakt."
+msgstr "Utilisateur « %(u)s » créé."
+
+#: blueprints/gebruikers.py:81
+#, python-format
+msgid "Fout bij aanmaken: %(err)s"
+msgstr "Erreur lors de la création : %(err)s"
+
+#: blueprints/gebruikers.py:100
+#, python-format
+msgid "Wijzigingen voor '%(u)s' opgeslagen."
+msgstr "Modifications de « %(u)s » enregistrées."
+
+#: blueprints/gebruikers.py:102
+#, python-format
+msgid "Fout bij wijzigen: %(err)s"
+msgstr "Erreur lors de la modification : %(err)s"
+
+#: blueprints/gebruikers.py:121
+#, python-format
+msgid "Wachtwoord voor '%(u)s' bijgewerkt."
+msgstr "Mot de passe de « %(u)s » mis à jour."
+
+#: blueprints/gebruikers.py:123
+#, python-format
+msgid "Fout: %(err)s"
+msgstr "Erreur : %(err)s"
+
+#: blueprints/gebruikers.py:142
+#, python-format
+msgid "Gebruiker '%(u)s' verwijderd."
+msgstr "Utilisateur « %(u)s » supprimé."
+
+#: blueprints/gebruikers.py:144
+#, python-format
+msgid "Fout bij verwijderen: %(err)s"
+msgstr "Erreur lors de la suppression : %(err)s"
+
+#: blueprints/geluiden.py:100
 msgid "Geen bestand ontvangen."
 msgstr "Aucun fichier reçu."
 
-#: blueprints/geluiden.py:100
+#: blueprints/geluiden.py:105
 msgid "Geen bestand geselecteerd."
 msgstr "Aucun fichier sélectionné."
 
-#: blueprints/geluiden.py:106
+#: blueprints/geluiden.py:111
 #, python-format
 msgid "Alleen bestanden met deze extensies zijn toegestaan: %(exts)s."
 msgstr "Seuls les fichiers avec ces extensions sont autorisés : %(exts)s."
 
-#: blueprints/geluiden.py:111 blueprints/roosters.py:72
+#: blueprints/geluiden.py:116 blueprints/geluiden.py:125
+#: blueprints/roosters.py:72
 msgid "Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."
 msgstr ""
 "Nom invalide. Utilisez 1 à 35 caractères : lettres, chiffres, espace, _ "
 "ou -."
 
-#: blueprints/geluiden.py:116
+#: blueprints/geluiden.py:129
 msgid "Er bestaat al een audiobestand met deze naam. Kies een andere naam."
 msgstr "Un fichier audio avec ce nom existe déjà. Choisissez un autre nom."
 
-#: blueprints/geluiden.py:121 blueprints/geluiden.py:135
+#: blueprints/geluiden.py:134 blueprints/geluiden.py:148
 #, python-format
 msgid "Bestand is groter dan de ingestelde limiet van %(mb)s MB."
 msgstr "Le fichier dépasse la limite configurée de %(mb)s Mo."
 
-#: blueprints/geluiden.py:141
+#: blueprints/geluiden.py:154
 #, python-format
 msgid "Kon bestand niet opslaan: %(err)s"
 msgstr "Impossible d'enregistrer le fichier : %(err)s"
 
-#: blueprints/geluiden.py:163
+#: blueprints/geluiden.py:176
 #, python-format
 msgid "Bestand afgewezen: %(reason)s"
 msgstr "Fichier refusé : %(reason)s"
 
-#: blueprints/geluiden.py:172
+#: blueprints/geluiden.py:185
 #, python-format
 msgid "Upload geslaagd: %(filename)s"
 msgstr "Téléversement réussi : %(filename)s"
 
-#: blueprints/geluiden.py:189 blueprints/geluiden.py:214
+#: blueprints/geluiden.py:205 blueprints/geluiden.py:231
 msgid "Bestand niet gevonden."
 msgstr "Fichier introuvable."
 
-#: blueprints/geluiden.py:196
+#: blueprints/geluiden.py:212
 #, python-format
 msgid "Test gestart: %(name)s"
 msgstr "Test démarré : %(name)s"
 
-#: blueprints/geluiden.py:202
+#: blueprints/geluiden.py:218
 #, python-format
 msgid "Afspelen mislukt: %(err)s"
 msgstr "Lecture échouée : %(err)s"
 
-#: blueprints/geluiden.py:231 blueprints/roosters.py:125
+#: blueprints/geluiden.py:248 blueprints/roosters.py:127
 #, python-format
 msgid " en %(n)d meer"
 msgstr " et %(n)d de plus"
 
-#: blueprints/geluiden.py:233
+#: blueprints/geluiden.py:250
 #, python-format
 msgid ""
 "Geluid '%(name)s' wordt nog gebruikt door: %(voorb)s%(meer)s. Verwijder "
@@ -187,12 +228,12 @@ msgstr ""
 "Le son « %(name)s » est encore utilisé par : %(voorb)s%(meer)s. Supprimez"
 " ou remplacez ces moments avant de supprimer le fichier."
 
-#: blueprints/geluiden.py:242
+#: blueprints/geluiden.py:259
 #, python-format
 msgid "Verwijderd: %(name)s"
 msgstr "Supprimé : %(name)s"
 
-#: blueprints/geluiden.py:244
+#: blueprints/geluiden.py:261
 #, python-format
 msgid "Kon niet verwijderen: %(err)s"
 msgstr "Suppression impossible : %(err)s"
@@ -210,22 +251,22 @@ msgstr "Un horaire avec ce nom existe déjà."
 msgid "Rooster '%(naam)s' aangemaakt."
 msgstr "Horaire « %(naam)s » créé."
 
-#: blueprints/roosters.py:100 blueprints/roosters.py:191
-#: blueprints/roosters.py:220
+#: blueprints/roosters.py:100 blueprints/roosters.py:193
+#: blueprints/roosters.py:222
 msgid "Onbekend rooster."
 msgstr "Horaire inconnu."
 
-#: blueprints/roosters.py:122
+#: blueprints/roosters.py:124
 #, python-format
 msgid "Standaardweek (%(dagen)s)"
 msgstr "Semaine type (%(dagen)s)"
 
-#: blueprints/roosters.py:126
+#: blueprints/roosters.py:128
 #, python-format
 msgid "Agenda (%(voorb)s%(meer)s)"
 msgstr "Calendrier (%(voorb)s%(meer)s)"
 
-#: blueprints/roosters.py:128
+#: blueprints/roosters.py:130
 #, python-format
 msgid ""
 "Rooster '%(rooster)s' is nog in gebruik bij: %(delen)s. Haal deze "
@@ -234,61 +275,82 @@ msgstr ""
 "L'horaire « %(rooster)s » est encore utilisé par : %(delen)s. Supprimez "
 "ces références avant de supprimer l'horaire."
 
-#: blueprints/roosters.py:138
+#: blueprints/roosters.py:140
 #, python-format
 msgid "Rooster '%(rooster)s' verwijderd."
 msgstr "Horaire « %(rooster)s » supprimé."
 
-#: blueprints/roosters.py:155
+#: blueprints/roosters.py:157
 msgid "Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."
 msgstr "L'heure doit être au format HH:MM (par ex. 8:05 ou 08:05)."
 
-#: blueprints/roosters.py:158
+#: blueprints/roosters.py:160
 msgid "Naam is verplicht."
 msgstr "Le nom est obligatoire."
 
-#: blueprints/roosters.py:161
+#: blueprints/roosters.py:163
 msgid "Kies een geluidsbestand."
 msgstr "Choisissez un fichier audio."
 
-#: blueprints/roosters.py:175
+#: blueprints/roosters.py:177
 msgid "Waarschuwing: minuten moeten een getal zijn."
 msgstr "Avertissement : les minutes doivent être un nombre."
 
-#: blueprints/roosters.py:178
+#: blueprints/roosters.py:180
 msgid "Waarschuwing: minuten moeten tussen 0 en 60 liggen."
 msgstr "Avertissement : les minutes doivent être entre 0 et 60."
 
-#: blueprints/roosters.py:181
+#: blueprints/roosters.py:183
 msgid "Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."
 msgstr ""
 "Choisissez un son pour la cloche d'avertissement, ou réglez « minutes "
 "avant » sur 0."
 
-#: blueprints/roosters.py:210
+#: blueprints/roosters.py:212
 #, python-format
 msgid "Moment toegevoegd aan '%(rooster)s'."
 msgstr "Moment ajouté à « %(rooster)s »."
 
-#: blueprints/roosters.py:228
+#: blueprints/roosters.py:230
 #, python-format
 msgid "Moment '%(naam)s' verwijderd uit '%(rooster)s'."
 msgstr "Moment « %(naam)s » supprimé de « %(rooster)s »."
 
-#: blueprints/roosters.py:230
+#: blueprints/roosters.py:232
 msgid "Onbekende regel."
 msgstr "Ligne inconnue."
 
-#: blueprints/roosters.py:249
+#: blueprints/roosters.py:251
 #, python-format
 msgid "'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s."
 msgstr "« %(keuze)s » n'existe pas comme horaire ; ignoré pour %(dag)s."
 
-#: blueprints/roosters.py:254
+#: blueprints/roosters.py:256
 msgid "Standaardweek opgeslagen."
 msgstr "Semaine type enregistrée."
 
-#: templates/agenda.html:2 templates/agenda.html:55 templates/base.html:72
+#: templates/403.html:2 templates/403.html:8
+msgid "Geen toegang"
+msgstr "Accès refusé"
+
+#: templates/403.html:10
+msgid ""
+"Je account heeft geen toegang tot deze pagina. Vraag een admin om je "
+"tabbladen aan te passen."
+msgstr ""
+"Votre compte n'a pas accès à cette page. Demandez à un administrateur "
+"d'ajuster vos onglets."
+
+#: templates/403.html:18
+#, python-format
+msgid "Je bent ingelogd als <strong>%(u)s</strong>."
+msgstr "Vous êtes connecté en tant que <strong>%(u)s</strong>."
+
+#: templates/403.html:22
+msgid "Terug naar overzicht"
+msgstr "Retour à l'accueil"
+
+#: templates/agenda.html:2 templates/agenda.html:55 templates/base.html:84
 msgid "Agenda"
 msgstr "Calendrier"
 
@@ -421,73 +483,193 @@ msgstr "Désact."
 msgid "Schoolbel"
 msgstr "Cloche d'école"
 
-#: templates/base.html:67
+#: templates/base.html:73
 msgid "IVKO Schoolbel"
 msgstr "Cloche d'école IVKO"
 
-#: templates/base.html:73 templates/roosters.html:2 templates/roosters.html:7
+#: templates/base.html:87 templates/roosters.html:2 templates/roosters.html:7
 #: templates/roosters.html:142
 msgid "Roosters"
 msgstr "Horaires"
 
-#: templates/base.html:74 templates/standaardweek.html:2
+#: templates/base.html:90 templates/standaardweek.html:2
 #: templates/standaardweek.html:8
 msgid "Standaardweek"
 msgstr "Semaine type"
 
-#: templates/base.html:75 templates/geluiden.html:2 templates/geluiden.html:7
+#: templates/base.html:93 templates/geluiden.html:2 templates/geluiden.html:7
 msgid "Geluiden"
 msgstr "Sons"
 
-#: templates/base.html:76 templates/logs.html:2 templates/logs.html:8
+#: templates/base.html:96 templates/logs.html:2 templates/logs.html:8
 msgid "Logboek"
 msgstr "Journal"
 
-#: templates/base.html:77 templates/settings.html:2 templates/settings.html:8
+#: templates/base.html:99 templates/settings.html:2 templates/settings.html:8
 msgid "Voorkeuren"
 msgstr "Paramètres"
 
-#: templates/base.html:85
+#: templates/base.html:105 templates/gebruikers.html:2
+#: templates/gebruikers.html:8
+msgid "Gebruikers"
+msgstr "Utilisateurs"
+
+#: templates/base.html:114
 msgid "Daemon actief"
 msgstr "Daemon actif"
 
-#: templates/base.html:87
+#: templates/base.html:116
 msgid "Daemon: geen heartbeat"
 msgstr "Daemon : pas de heartbeat"
 
-#: templates/base.html:89
+#: templates/base.html:118
 #, python-format
 msgid "Daemon: %(age)ss stil"
 msgstr "Daemon : %(age)s s sans signe"
 
-#: templates/base.html:92
+#: templates/base.html:121
 #, python-format
 msgid "(laatste poll: %(t)s UTC)"
 msgstr "(dernier sondage : %(t)s UTC)"
 
-#: templates/base.html:94
+#: templates/base.html:123
 msgid "Daemon"
 msgstr "Daemon"
 
-#: templates/base.html:101
+#: templates/base.html:133
+#, python-format
+msgid "Rol: %(r)s"
+msgstr "Rôle : %(r)s"
+
+#: templates/base.html:139
 msgid "Uitloggen"
 msgstr "Déconnexion"
 
-#: templates/base.html:132
+#: templates/base.html:170
 msgid "IVKO · Schoolbel"
 msgstr "IVKO · Cloche d'école"
 
-#: templates/base.html:151
+#: templates/base.html:189
 msgid "Weet je het zeker?"
 msgstr "Êtes-vous sûr ?"
 
-#: templates/base.html:155
+#: templates/base.html:193
 msgid "Annuleren"
 msgstr "Annuler"
 
-#: templates/base.html:158
+#: templates/base.html:196
 msgid "Bevestigen"
 msgstr "Confirmer"
+
+#: templates/gebruikers.html:10
+msgid ""
+"Beheer wie kan inloggen en welke tabbladen elke gebruiker mag zien. "
+"Alleen admins zien deze pagina."
+msgstr ""
+"Gérez qui peut se connecter et quels onglets chaque utilisateur peut "
+"voir. Seuls les administrateurs voient cette page."
+
+#: templates/gebruikers.html:17
+msgid "Bestaande gebruikers"
+msgstr "Utilisateurs existants"
+
+#: templates/gebruikers.html:22 templates/gebruikers.html:137
+#: templates/login.html:29
+msgid "Gebruikersnaam"
+msgstr "Nom d'utilisateur"
+
+#: templates/gebruikers.html:23 templates/gebruikers.html:57
+#: templates/gebruikers.html:166
+msgid "Rol"
+msgstr "Rôle"
+
+#: templates/gebruikers.html:24 templates/gebruikers.html:71
+#: templates/gebruikers.html:178
+msgid "Tabbladen"
+msgstr "Onglets"
+
+#: templates/gebruikers.html:25
+msgid "Acties"
+msgstr "Actions"
+
+#: templates/gebruikers.html:34
+msgid "jij"
+msgstr "vous"
+
+#: templates/gebruikers.html:40
+msgid "alle"
+msgstr "tous"
+
+#: templates/gebruikers.html:50
+msgid "Bewerken"
+msgstr "Modifier"
+
+#: templates/gebruikers.html:61 templates/gebruikers.html:169
+msgid "Gebruiker"
+msgstr "Utilisateur"
+
+#: templates/gebruikers.html:66 templates/gebruikers.html:173
+msgid "Admin"
+msgstr "Administrateur"
+
+#: templates/gebruikers.html:80
+msgid ""
+"Admins krijgen automatisch toegang tot alle tabbladen; deze vinkjes "
+"worden dan genegeerd."
+msgstr ""
+"Les administrateurs ont automatiquement accès à tous les onglets ; ces "
+"cases à cocher sont alors ignorées."
+
+#: templates/gebruikers.html:84 templates/settings.html:152
+#: templates/standaardweek.html:48
+msgid "Opslaan"
+msgstr "Enregistrer"
+
+#: templates/gebruikers.html:92 templates/gebruikers.html:152
+#: templates/login.html:39
+msgid "Wachtwoord"
+msgstr "Mot de passe"
+
+#: templates/gebruikers.html:98
+msgid "Nieuw wachtwoord"
+msgstr "Nouveau mot de passe"
+
+#: templates/gebruikers.html:102
+msgid "Reset"
+msgstr "Réinitialiser"
+
+#: templates/gebruikers.html:113
+#, python-format
+msgid "Gebruiker %(u)s verwijderen?"
+msgstr "Supprimer l'utilisateur %(u)s ?"
+
+#: templates/gebruikers.html:114 templates/gebruikers.html:118
+#: templates/geluiden.html:42 templates/geluiden.html:47
+#: templates/roosters.html:51 templates/roosters.html:131
+msgid "Verwijderen"
+msgstr "Supprimer"
+
+#: templates/gebruikers.html:131
+msgid "Nieuwe gebruiker"
+msgstr "Nouvel utilisateur"
+
+#: templates/gebruikers.html:147
+msgid "Kleine letters, cijfers, _ en -. 2 tot 32 tekens."
+msgstr "Minuscules, chiffres, _ et -. De 2 à 32 caractères."
+
+#: templates/gebruikers.html:161
+msgid "Minstens 8 tekens."
+msgstr "Au moins 8 caractères."
+
+#: templates/gebruikers.html:186
+msgid "Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles)."
+msgstr ""
+"Pour les administrateurs, ces cases sont ignorées (les administrateurs "
+"obtiennent toujours tout)."
+
+#: templates/gebruikers.html:192 templates/roosters.html:165
+msgid "Aanmaken"
+msgstr "Créer"
 
 #: templates/geluiden.html:11
 msgid "Beschikbare geluiden"
@@ -514,11 +696,6 @@ msgstr "Jouer via la sonorisation de l'école"
 #, python-format
 msgid "Bestand &quot;%(name)s&quot; verwijderen?"
 msgstr "Supprimer le fichier &quot;%(name)s&quot; ?"
-
-#: templates/geluiden.html:42 templates/geluiden.html:47
-#: templates/roosters.html:51 templates/roosters.html:131
-msgid "Verwijderen"
-msgstr "Supprimer"
 
 #: templates/geluiden.html:56
 msgid "Geen audiobestanden gevonden."
@@ -552,14 +729,6 @@ msgstr "Connexion"
 #: templates/login.html:8
 msgid "Schoolbel — Inloggen"
 msgstr "Cloche d'école — Connexion"
-
-#: templates/login.html:29
-msgid "Gebruikersnaam"
-msgstr "Nom d'utilisateur"
-
-#: templates/login.html:39
-msgid "Wachtwoord"
-msgstr "Mot de passe"
 
 #: templates/login.html:56
 #, python-format
@@ -741,10 +910,6 @@ msgstr "Nom du nouvel horaire"
 msgid "Start als kopie van het eerste rooster"
 msgstr "Démarrer comme copie du premier horaire"
 
-#: templates/roosters.html:165
-msgid "Aanmaken"
-msgstr "Créer"
-
 #: templates/roosters.html:172
 msgid ""
 "Na wijzigingen: herlaad de daemon met\n"
@@ -923,10 +1088,6 @@ msgstr ""
 "Région que le bouton <em>Importer les vacances</em> du Calendrier\n"
 "        utilise pour choisir les dates depuis <code class=\"sb-code-"
 "mono\">data/vakanties.json</code>."
-
-#: templates/settings.html:152 templates/standaardweek.html:48
-msgid "Opslaan"
-msgstr "Enregistrer"
 
 #: templates/settings.html:160
 msgid "Status vakantie-scrape"

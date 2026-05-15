@@ -124,7 +124,16 @@
         </span>
       {% endif %}
 
-      <!-- Logout -->
+      <!-- Logged-in user indicator + logout -->
+      {# Multi-user UX: show who's currently signed in so an admin
+         managing several accounts doesn't lose track. The indicator
+         only renders when there's a session — on /login we'd have
+         nothing useful to display. #}
+      {% if session.get('user') %}
+        <span class="sb-current-user" title="{{ _('Rol: %(r)s', r=session.get('rol','')) }}">
+          {{ session.get('user') }}
+        </span>
+      {% endif %}
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="sb-btn">{{ _('Uitloggen') }}</button>

@@ -117,6 +117,14 @@ On the first `install.sh` run, two env files are created. Both have
   * `SCHOOLBELL_WEB_PASS` — the password in plaintext (the daemon
     needs to log in to the web API; a hash is not enough there)
 
+Since the multi-user feature landed, these env values are mainly a
+**seed** for the user store: on first start, the values are
+copied into `data/users.json` and from then on that file is the
+source of truth (see [User management](#user-management)). Editing
+`web.env` after the seed has run no longer affects login — change
+the admin password through the UI instead. The daemon still reads
+`daemon.env` on every poll for its HTTP Basic Auth header.
+
 ### Forgot the password?
 
 The password is shown only once in install output. Recover it on the
@@ -161,15 +169,102 @@ The installer defaults to `0`. To change: edit
 
 ---
 
+## User management
+
+Schoolbell supports multiple named accounts, each with its own
+password and a list of tabs they're allowed to see. Accounts live in
+`data/users.json`. Every entry has:
+
+* `pwhash` — werkzeug-scrypt hash of the password
+* `rol` — `"admin"` or `"gebruiker"` (regular user)
+* `tabs` — list of tab keys, or `["*"]` for admins
+* `aangemaakt` — UTC ISO timestamp
+
+Admins implicitly get access to every tab, regardless of what their
+`tabs` list says — the explicit list is still kept so a demoted
+admin returns to a sensible state. Regular users only reach the
+tabs explicitly granted.
+
+### Bootstrap on first start
+
+If `data/users.json` doesn't exist, the web app seeds it on the
+next request from `SCHOOLBELL_WEB_USER` and `SCHOOLBELL_WEB_PWHASH`
+(see [Credentials & password](#credentials--password)). The result
+is a single admin account that matches what was in `web.env`.
+
+After the seed has run, the env file is no longer read for login —
+change credentials through the UI from then on.
+
+### Managing accounts (UI)
+
+Admins see a **Gebruikers** tab in the navigation bar. Click it to
+reach `/gebruikers`, where you can:
+
+* Create a new account (username + password + role + tab checkboxes).
+* Change someone's role and tabs.
+* Reset a user's password (under "Wachtwoord" per row).
+* Delete an account (button is hidden for the row representing
+  yourself, so you can't accidentally lock yourself out).
+
+Tab keys correspond to the navigation items: `agenda`, `roosters`,
+`standaardweek`, `geluiden`, `logs`, `settings`. `gebruikers` is
+implicitly granted to admins only and is **not** something you can
+hand to a regular user via the UI.
+
+### Validation rules
+
+Enforced in `core/users.py`:
+
+* Username: lowercase letters, digits, `_`, `-`; length 2..32.
+* Password: minimum 8 characters.
+* Last-admin protection: the user store refuses to delete or
+  demote the only remaining admin account, so the management UI
+  always stays reachable.
+
+A failed POST surfaces as a flash message on `/gebruikers`; the
+underlying user store is never partially updated.
+
+### Daemon authentication
+
+The daemon's HTTP Basic Auth verifier (`/api/effectief-rooster`)
+accepts any **admin** account in `users.json`. A regular user with
+the `roosters` tab cannot impersonate the daemon — that's by
+design, the daemon conceptually belongs to the admin role.
+
+`SCHOOLBELL_WEB_USER` / `SCHOOLBELL_WEB_PWHASH` /
+`SCHOOLBELL_WEB_PASS` in `/etc/schoolbell/daemon.env` remain the
+daemon's source of credentials. As long as the same username +
+hash combo exists as an admin in `users.json`, everything works.
+
+### Locked out? (recovery)
+
+If `data/users.json` somehow disappears, gets corrupted, or every
+admin lost their password:
+
+1. Stop the web service: `sudo systemctl stop schoolbell-web.service`
+2. Delete (or rename) `data/users.json` so the bootstrap re-runs.
+3. Make sure `SCHOOLBELL_WEB_USER` and `SCHOOLBELL_WEB_PWHASH` in
+   `/etc/schoolbell/web.env` point at the admin you want to
+   re-seed. Generate a fresh hash if needed (see [Change the
+   password](#change-the-password)).
+4. Start the service: `sudo systemctl start schoolbell-web.service`
+5. Log in with that account, fix things via the UI.
+
+---
+
 ## Security
 
 * Nginx currently runs **plain HTTP** (port 80). HTTPS is planned —
   see [roadmap.md](roadmap.md). Until then, only run on a trusted
   LAN/VPN.
-* Session-based login with CSRF protection.
-* Basic Auth for the daemon → web-API path (over localhost).
+* Session-based login with CSRF protection. Per-tab access control
+  via `@tab_required` decorators; user-management page guarded by
+  `@admin_page_required`. See [User management](#user-management).
+* Basic Auth for the daemon → web-API path (over localhost), gated
+  on the admin role.
 * Admin password is randomly generated on install and stored as a
-  werkzeug-scrypt hash.
+  werkzeug-scrypt hash. Multi-user accounts use the same hash
+  algorithm.
 * Session secret is randomly generated on install (64 hex bytes).
 * Upload size limit and extension whitelist are configured in
   `config.json`.

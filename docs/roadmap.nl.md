@@ -53,39 +53,13 @@ binnen één gebouw is dat hanteerbaar, maar:
 
 ---
 
-## Multi-user systeem met per-tab rechten
-
-**Status:** In uitwerking
-
-Op dit moment is er één admin-account (uit env-vars). Voor scholen
-met meerdere personeelsleden die het belschema beheren is dat te
-beperkt: ofwel je deelt één wachtwoord (geen audit), ofwel iedereen
-moet voor elke wijziging langs één persoon.
-
-**Doel:** meerdere benoemde accounts, elk met een eigen
-wachtwoord, en per account de mogelijkheid om alleen bepaalde tabs
-te zien/bewerken (bv. een conciërge die alleen Geluiden mag beheren,
-of een stagiair die alleen Agenda mag bekijken).
-
-**Het volledige implementatieplan staat in
-[multi-user-plan.md](multi-user-plan.md).** Daarin staat per stap
-wat er moet gebeuren in `core/users.py`, `core/auth.py`, de
-blueprints en de templates.
-
-**Bewust buiten scope van de eerste iteratie:**
-
-- Geen wachtwoord-reset zonder admin (zie volgende item).
-- Geen automatische lockout na X mislukte pogingen — wel wordt elke
-  mislukte login gelogd.
-- Sessie-invalidatie bij rechtenwijziging gebeurt pas na re-login.
-
----
-
 ## Wachtwoord-reset via e-mail
 
-**Status:** Gepland (na multi-user)
+**Status:** Gepland
 
-Volgt logisch ná het multi-user systeem. Zolang er één admin is, is
+Bouwt voort op het multi-user systeem (inmiddels uitgerold; zie de
+sectie [User management](admin-guide.md#user-management) in de
+admin-guide). Zolang er één admin is, is
 "env-var fallback + herstart" een acceptabele rescue. Met meerdere
 benoemde accounts wordt het onhandig als gewone gebruikers voor elke
 vergeten wachtwoord langs de admin moeten.

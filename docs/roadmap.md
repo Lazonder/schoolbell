@@ -53,41 +53,14 @@ network inside a single building that's manageable, but:
 
 ---
 
-## Multi-user system with per-tab permissions
-
-**Status:** In design
-
-Today there is one admin account (from env vars). For schools where
-multiple staff members manage the bell schedule that's too limited:
-either everyone shares a single password (no audit trail), or every
-change has to go through one person.
-
-**Goal:** multiple named accounts, each with its own password, and
-the ability per account to see/edit only certain tabs (e.g. a
-caretaker who only manages Sounds, or an intern who can only view
-the Agenda).
-
-**The full implementation plan lives in
-[multi-user-plan.md](multi-user-plan.md).** It walks through, step
-by step, what changes in `core/users.py`, `core/auth.py`, the
-blueprints, and the templates. (That document is in Dutch — it's an
-internal implementation plan rather than user-facing documentation.)
-
-**Intentionally out of scope for the first iteration:**
-
-- No password reset without an admin (see next item).
-- No automatic lockout after X failed attempts — but every failed
-  login is logged.
-- Session invalidation after a permission change only happens after
-  the user logs in again.
-
----
-
 ## Password reset by e-mail
 
-**Status:** Planned (after multi-user)
+**Status:** Planned
 
-This follows naturally after the multi-user system. With a single
+This follows naturally on top of the multi-user system (now
+released; see the
+[User management section](admin-guide.md#user-management) of the
+admin guide). With a single
 admin, "env-var fallback + restart" is an acceptable rescue. With
 several named accounts it becomes awkward if regular users have to
 queue up at the admin every time they forget a password.

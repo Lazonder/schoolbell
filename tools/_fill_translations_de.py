@@ -328,6 +328,59 @@ TRANSLATIONS: dict[str, str] = {
     "Vrijdag": "Freitag",
     "Zaterdag": "Samstag",
     "Zondag": "Sonntag",
+
+    # --- Multi-user (gebruikers page, header, 403) ---
+    # Flash messages — blueprints/gebruikers.py
+    "Gebruiker '%(u)s' aangemaakt.": "Benutzer '%(u)s' erstellt.",
+    "Fout bij aanmaken: %(err)s": "Fehler beim Erstellen: %(err)s",
+    "Wijzigingen voor '%(u)s' opgeslagen.":
+        "Änderungen für '%(u)s' gespeichert.",
+    "Fout bij wijzigen: %(err)s": "Fehler beim Bearbeiten: %(err)s",
+    "Wachtwoord voor '%(u)s' bijgewerkt.":
+        "Passwort für '%(u)s' aktualisiert.",
+    "Fout: %(err)s": "Fehler: %(err)s",
+    "Gebruiker '%(u)s' verwijderd.": "Benutzer '%(u)s' gelöscht.",
+    "Fout bij verwijderen: %(err)s": "Fehler beim Löschen: %(err)s",
+
+    # 403 page
+    "Geen toegang": "Kein Zugriff",
+    "Je account heeft geen toegang tot deze pagina. Vraag een admin om je tabbladen aan te passen.":
+        "Dein Konto hat keinen Zugriff auf diese Seite. Bitte einen "
+        "Administrator, deine Tabs anzupassen.",
+    "Je bent ingelogd als <strong>%(u)s</strong>.":
+        "Du bist als <strong>%(u)s</strong> angemeldet.",
+    "Terug naar overzicht": "Zurück zur Übersicht",
+
+    # Header indicator + nav-link
+    "Gebruikers": "Benutzer",
+    "Rol: %(r)s": "Rolle: %(r)s",
+
+    # gebruikers.html — page
+    "Beheer wie kan inloggen en welke tabbladen elke gebruiker mag zien. Alleen admins zien deze pagina.":
+        "Verwalte, wer sich anmelden kann und welche Tabs jeder Benutzer "
+        "sehen darf. Nur Administratoren sehen diese Seite.",
+    "Bestaande gebruikers": "Bestehende Benutzer",
+    "Rol": "Rolle",
+    "Tabbladen": "Tabs",
+    "Acties": "Aktionen",
+    "jij": "du",
+    "alle": "alle",
+    "Bewerken": "Bearbeiten",
+    "Gebruiker": "Benutzer",
+    "Admin": "Administrator",
+    "Admins krijgen automatisch toegang tot alle tabbladen; deze vinkjes worden dan genegeerd.":
+        "Administratoren erhalten automatisch Zugriff auf alle Tabs; "
+        "diese Kontrollkästchen werden dann ignoriert.",
+    "Nieuw wachtwoord": "Neues Passwort",
+    "Reset": "Zurücksetzen",
+    "Gebruiker %(u)s verwijderen?": "Benutzer %(u)s löschen?",
+    "Nieuwe gebruiker": "Neuer Benutzer",
+    "Kleine letters, cijfers, _ en -. 2 tot 32 tekens.":
+        "Kleinbuchstaben, Ziffern, _ und -. 2 bis 32 Zeichen.",
+    "Minstens 8 tekens.": "Mindestens 8 Zeichen.",
+    "Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles).":
+        "Bei Administratoren werden diese Kontrollkästchen ignoriert "
+        "(Administratoren erhalten immer alles).",
 }
 
 
@@ -342,6 +395,11 @@ def main() -> None:
             continue
         if m.id in TRANSLATIONS:
             m.string = TRANSLATIONS[m.id]
+            # Clear any leftover "fuzzy" marker from pybabel's
+            # guess-from-similar logic — see the en counterpart for
+            # why this matters.
+            if "fuzzy" in m.flags:
+                m.flags.discard("fuzzy")
         else:
             missing.append(m.id)
 

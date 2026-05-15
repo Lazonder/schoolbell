@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Geen toegang') }}{% endblock %}
+
+{% block content %}
+
+<header class="sb-page-header">
+  <div>
+    <h1>{{ _('Geen toegang') }}</h1>
+    <p class="sb-help">
+      {{ _('Je account heeft geen toegang tot deze pagina. Vraag een admin om je tabbladen aan te passen.') }}
+    </p>
+  </div>
+</header>
+
+<div class="sb-card">
+  <p>
+    {% if session.get('user') %}
+      {{ _('Je bent ingelogd als <strong>%(u)s</strong>.', u=session.get('user'))|safe }}
+    {% endif %}
+  </p>
+  <p>
+    <a class="sb-btn" href="{{ url_for('monitoring.home') }}">{{ _('Terug naar overzicht') }}</a>
+  </p>
+</div>
+
+{% endblock %}

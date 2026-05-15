@@ -278,6 +278,18 @@ def too_large(_e):
     flash(_("Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."))
     return redirect(url_for("geluiden.geluiden"))
 
+
+@app.errorhandler(403)
+def forbidden(_e):
+    # Replaces Flask's default plain-text 403 page with a templated
+    # one that fits the rest of the UI. Triggered by abort(403) in
+    # tab_required / admin_page_required when the visitor is logged
+    # in but lacks the required tab/role. Anonymous visitors are
+    # redirected to /login by those decorators, so this handler only
+    # fires for authenticated users hitting a wall.
+    from flask import render_template
+    return render_template("403.html"), 403
+
 def ensure_dirs():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)

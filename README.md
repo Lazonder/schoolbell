@@ -105,10 +105,11 @@ editor.
 
 ## Roadmap
 
-Planned additions: HTTPS, a multi-user system with per-tab
-permissions, and password reset by e-mail. See
+Planned additions: HTTPS and password reset by e-mail. See
 [docs/roadmap.md](docs/roadmap.md) for the full list with scope and
-motivation per item.
+motivation per item. Multi-user support with per-tab permissions
+is already in — see
+[docs/admin-guide.md#user-management](docs/admin-guide.md#user-management).
 
 ---
 

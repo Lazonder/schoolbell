@@ -324,6 +324,63 @@ TRANSLATIONS: dict[str, str] = {
     "Vrijdag": "Vendredi",
     "Zaterdag": "Samedi",
     "Zondag": "Dimanche",
+
+    # --- Multi-user (gebruikers page, header, 403) ---
+    # Flash messages — blueprints/gebruikers.py
+    "Gebruiker '%(u)s' aangemaakt.": "Utilisateur « %(u)s » créé.",
+    "Fout bij aanmaken: %(err)s":
+        "Erreur lors de la création : %(err)s",
+    "Wijzigingen voor '%(u)s' opgeslagen.":
+        "Modifications de « %(u)s » enregistrées.",
+    "Fout bij wijzigen: %(err)s":
+        "Erreur lors de la modification : %(err)s",
+    "Wachtwoord voor '%(u)s' bijgewerkt.":
+        "Mot de passe de « %(u)s » mis à jour.",
+    "Fout: %(err)s": "Erreur : %(err)s",
+    "Gebruiker '%(u)s' verwijderd.":
+        "Utilisateur « %(u)s » supprimé.",
+    "Fout bij verwijderen: %(err)s":
+        "Erreur lors de la suppression : %(err)s",
+
+    # 403 page
+    "Geen toegang": "Accès refusé",
+    "Je account heeft geen toegang tot deze pagina. Vraag een admin om je tabbladen aan te passen.":
+        "Votre compte n'a pas accès à cette page. Demandez à un "
+        "administrateur d'ajuster vos onglets.",
+    "Je bent ingelogd als <strong>%(u)s</strong>.":
+        "Vous êtes connecté en tant que <strong>%(u)s</strong>.",
+    "Terug naar overzicht": "Retour à l'accueil",
+
+    # Header indicator + nav-link
+    "Gebruikers": "Utilisateurs",
+    "Rol: %(r)s": "Rôle : %(r)s",
+
+    # gebruikers.html — page
+    "Beheer wie kan inloggen en welke tabbladen elke gebruiker mag zien. Alleen admins zien deze pagina.":
+        "Gérez qui peut se connecter et quels onglets chaque utilisateur "
+        "peut voir. Seuls les administrateurs voient cette page.",
+    "Bestaande gebruikers": "Utilisateurs existants",
+    "Rol": "Rôle",
+    "Tabbladen": "Onglets",
+    "Acties": "Actions",
+    "jij": "vous",
+    "alle": "tous",
+    "Bewerken": "Modifier",
+    "Gebruiker": "Utilisateur",
+    "Admin": "Administrateur",
+    "Admins krijgen automatisch toegang tot alle tabbladen; deze vinkjes worden dan genegeerd.":
+        "Les administrateurs ont automatiquement accès à tous les "
+        "onglets ; ces cases à cocher sont alors ignorées.",
+    "Nieuw wachtwoord": "Nouveau mot de passe",
+    "Reset": "Réinitialiser",
+    "Gebruiker %(u)s verwijderen?": "Supprimer l'utilisateur %(u)s ?",
+    "Nieuwe gebruiker": "Nouvel utilisateur",
+    "Kleine letters, cijfers, _ en -. 2 tot 32 tekens.":
+        "Minuscules, chiffres, _ et -. De 2 à 32 caractères.",
+    "Minstens 8 tekens.": "Au moins 8 caractères.",
+    "Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles).":
+        "Pour les administrateurs, ces cases sont ignorées (les "
+        "administrateurs obtiennent toujours tout).",
 }
 
 
@@ -338,6 +395,11 @@ def main() -> None:
             continue
         if m.id in TRANSLATIONS:
             m.string = TRANSLATIONS[m.id]
+            # Clear any leftover "fuzzy" marker from pybabel's
+            # guess-from-similar logic — see the en counterpart for
+            # why this matters.
+            if "fuzzy" in m.flags:
+                m.flags.discard("fuzzy")
         else:
             missing.append(m.id)
 

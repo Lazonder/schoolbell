@@ -321,6 +321,53 @@ TRANSLATIONS: dict[str, str] = {
     "Vrijdag": "Friday",
     "Zaterdag": "Saturday",
     "Zondag": "Sunday",
+
+    # --- Multi-user (gebruikers page, header, 403) ---
+    # Flash messages — blueprints/gebruikers.py
+    "Gebruiker '%(u)s' aangemaakt.": "User '%(u)s' created.",
+    "Fout bij aanmaken: %(err)s": "Error creating user: %(err)s",
+    "Wijzigingen voor '%(u)s' opgeslagen.": "Changes for '%(u)s' saved.",
+    "Fout bij wijzigen: %(err)s": "Error updating user: %(err)s",
+    "Wachtwoord voor '%(u)s' bijgewerkt.": "Password for '%(u)s' updated.",
+    "Fout: %(err)s": "Error: %(err)s",
+    "Gebruiker '%(u)s' verwijderd.": "User '%(u)s' deleted.",
+    "Fout bij verwijderen: %(err)s": "Error deleting user: %(err)s",
+
+    # 403 page
+    "Geen toegang": "No access",
+    "Je account heeft geen toegang tot deze pagina. Vraag een admin om je tabbladen aan te passen.":
+        "Your account doesn't have access to this page. Ask an admin to adjust your tabs.",
+    "Je bent ingelogd als <strong>%(u)s</strong>.":
+        "You're signed in as <strong>%(u)s</strong>.",
+    "Terug naar overzicht": "Back to overview",
+
+    # Header indicator + nav-link
+    "Gebruikers": "Users",
+    "Rol: %(r)s": "Role: %(r)s",
+
+    # gebruikers.html — page
+    "Beheer wie kan inloggen en welke tabbladen elke gebruiker mag zien. Alleen admins zien deze pagina.":
+        "Manage who can sign in and which tabs each user is allowed to see. Only admins see this page.",
+    "Bestaande gebruikers": "Existing users",
+    "Rol": "Role",
+    "Tabbladen": "Tabs",
+    "Acties": "Actions",
+    "jij": "you",
+    "alle": "all",
+    "Bewerken": "Edit",
+    "Gebruiker": "User",
+    "Admin": "Admin",
+    "Admins krijgen automatisch toegang tot alle tabbladen; deze vinkjes worden dan genegeerd.":
+        "Admins automatically get access to all tabs; these checkboxes are then ignored.",
+    "Nieuw wachtwoord": "New password",
+    "Reset": "Reset",
+    "Gebruiker %(u)s verwijderen?": "Delete user %(u)s?",
+    "Nieuwe gebruiker": "New user",
+    "Kleine letters, cijfers, _ en -. 2 tot 32 tekens.":
+        "Lowercase letters, digits, _ and -. 2 to 32 characters.",
+    "Minstens 8 tekens.": "At least 8 characters.",
+    "Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles).":
+        "These checkboxes are ignored for admins (admins always get everything).",
 }
 
 
@@ -335,6 +382,14 @@ def main() -> None:
             continue
         if m.id in TRANSLATIONS:
             m.string = TRANSLATIONS[m.id]
+            # pybabel's `update` step can mark entries as "fuzzy"
+            # when it guesses a new string from a similar old one
+            # (e.g. "Gebruiker '...' aangemaakt." was guessed from
+            # "Rooster '...' aangemaakt."). Once we provide an
+            # explicit translation here, clear the flag so the
+            # entry is treated as a confirmed match.
+            if "fuzzy" in m.flags:
+                m.flags.discard("fuzzy")
         else:
             missing.append(m.id)
 
