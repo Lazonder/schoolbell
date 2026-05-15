@@ -102,6 +102,69 @@ working — `Settings.load()` filters unknown keys and merges defaults.
 
 ---
 
+## Updating an existing install
+
+After pulling new code on a running Pi, two things may need a nudge
+before changes take effect.
+
+### 1. Recompile translations (if any `.po` changed)
+
+Schoolbell loads compiled `.mo` files at startup; only the `.po`
+source is in git (see `.gitignore`). If the pull touched any
+translation, regenerate the `.mo` files first:
+
+```bash
+cd /home/pi/schoolbell
+./venv/bin/python -m babel.messages.frontend compile -d translations
+```
+
+Skipping this is silent but visible: every translated string falls
+back to its Dutch source. If your UI suddenly looks Dutch again
+after an update, this is why.
+
+### 2. Restart the affected service(s)
+
+Gunicorn caches the imported Flask app, so Python code changes need
+a service restart to take effect. (Templates would reload
+automatically only when `SCHOOLBELL_DEBUG=1`, which is off in
+production.)
+
+```bash
+sudo systemctl restart schoolbell-web.service
+```
+
+Restart the daemon too if `schoolbelldaemon.py` changed or if you
+updated `daemon.env`:
+
+```bash
+sudo systemctl restart schoolbell-daemon.service
+```
+
+The daemon also accepts a SIGHUP to reload `config.json` without a
+full restart — handy when only the polling interval or volume
+changed:
+
+```bash
+sudo systemctl kill -s HUP schoolbell-daemon.service
+```
+
+### The lazy alternative
+
+Re-running `sudo ./install.sh` does both steps (and a few more) and
+is safe: the script never overwrites existing credentials, env
+files, or runtime data. Use this when you don't want to think about
+what specifically changed:
+
+```bash
+cd /home/pi/schoolbell
+git pull
+sudo ./install.sh
+```
+
+The script is explicitly designed to be safe to re-run.
+
+---
+
 ## Credentials & password
 
 On the first `install.sh` run, two env files are created. Both have
