@@ -78,10 +78,10 @@ sudo -u "${APP_USER}" bash -lc "
 
 # Compile translation catalogs. The .po files in translations/ are
 # the human-readable source; Flask-Babel needs the binary .mo
-# version at runtime. We commit the .mo files too, but recompiling
-# here is cheap and guarantees a fresh build whenever .po changes
-# (e.g. after pulling new strings from upstream). Skipped silently
-# if the translations folder doesn't exist — older checkouts that
+# version at runtime. .mo files are no longer committed (see
+# .gitignore), so this step is REQUIRED — without it the app falls
+# back to the source language for every string. Skipped silently if
+# the translations folder doesn't exist — older checkouts that
 # predate i18n keep working.
 if [[ -d "${APP_DIR}/translations" ]]; then
   echo "== 2b) Compile translation catalogs =="

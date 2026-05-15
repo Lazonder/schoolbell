@@ -127,11 +127,18 @@ pip install -r requirements-dev.txt
 
 ### Compile translations
 
-The app loads `.mo` files at startup. Compile them once:
+The app loads `.mo` files at startup, but only `.po` (source) files
+are tracked in git. After cloning — and again after pulling
+upstream changes that touch any `.po` — run:
 
 ```bash
 pybabel compile -d translations
 ```
+
+Forget this step and every translated string falls back to its
+Dutch source. (The `install.sh` script does this automatically on a
+fresh Pi install; the manual step above is only for development
+checkouts on your own machine.)
 
 ### Run the dev server
 
