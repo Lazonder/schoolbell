@@ -279,9 +279,12 @@ server {
 }
 
 server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    http2 on;
+    # `http2` op de listen-regel ipv als losse directive: dat is de
+    # vorm die werkt op nginx 1.22 (Debian bookworm / Raspberry Pi OS).
+    # De losse `http2 on;` directive bestaat pas vanaf nginx 1.25.1
+    # (juni 2023) en geeft op oudere installs een unknown-directive.
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
     server_name _;
 
     ssl_certificate     /etc/schoolbell/certs/cert.pem;
