@@ -212,9 +212,6 @@ TRANSLATIONS: dict[str, str] = {
     "Naam nieuw rooster": "Name of new schedule",
     "Start als kopie van het eerste rooster": "Start as a copy of the first schedule",
     "Aanmaken": "Create",
-    "Na wijzigingen: herlaad de daemon met\n  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-daemon.service</code>.":
-        "After changes: reload the daemon with\n  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-daemon.service</code>.",
-
     # Geluiden page
     "Beschikbare geluiden": "Available sounds",
     "Voorbeeluister in browser": "Preview in browser",

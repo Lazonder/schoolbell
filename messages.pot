@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-19 22:31+0200\n"
+"POT-Creation-Date: 2026-05-19 22:39+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -854,13 +854,6 @@ msgstr ""
 
 #: templates/roosters.html:240
 msgid "Start als kopie van het eerste rooster"
-msgstr ""
-
-#: templates/roosters.html:251
-msgid ""
-"Na wijzigingen: herlaad de daemon met\n"
-"  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-"
-"daemon.service</code>."
 msgstr ""
 
 #: templates/settings.html:10
