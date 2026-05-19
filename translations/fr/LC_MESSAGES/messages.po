@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-14 21:30+0200\n"
+"POT-Creation-Date: 2026-05-19 22:31+0200\n"
 "PO-Revision-Date: 2026-05-10 16:35+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -16,7 +16,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 
 #: webinterface.py:278
 msgid "Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."
@@ -170,7 +170,7 @@ msgid "Alleen bestanden met deze extensies zijn toegestaan: %(exts)s."
 msgstr "Seuls les fichiers avec ces extensions sont autorisés : %(exts)s."
 
 #: blueprints/geluiden.py:116 blueprints/geluiden.py:125
-#: blueprints/roosters.py:72
+#: blueprints/roosters.py:88
 msgid "Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."
 msgstr ""
 "Nom invalide. Utilisez 1 à 35 caractères : lettres, chiffres, espace, _ "
@@ -214,7 +214,7 @@ msgstr "Test démarré : %(name)s"
 msgid "Afspelen mislukt: %(err)s"
 msgstr "Lecture échouée : %(err)s"
 
-#: blueprints/geluiden.py:248 blueprints/roosters.py:127
+#: blueprints/geluiden.py:248 blueprints/roosters.py:143
 #, python-format
 msgid " en %(n)d meer"
 msgstr " et %(n)d de plus"
@@ -238,35 +238,35 @@ msgstr "Supprimé : %(name)s"
 msgid "Kon niet verwijderen: %(err)s"
 msgstr "Suppression impossible : %(err)s"
 
-#: blueprints/roosters.py:62
+#: blueprints/roosters.py:78
 msgid "Naam van rooster is verplicht."
 msgstr "Le nom de l'horaire est obligatoire."
 
-#: blueprints/roosters.py:77
+#: blueprints/roosters.py:93
 msgid "Er bestaat al een rooster met deze naam."
 msgstr "Un horaire avec ce nom existe déjà."
 
-#: blueprints/roosters.py:90
+#: blueprints/roosters.py:106
 #, python-format
 msgid "Rooster '%(naam)s' aangemaakt."
 msgstr "Horaire « %(naam)s » créé."
 
-#: blueprints/roosters.py:100 blueprints/roosters.py:193
-#: blueprints/roosters.py:222
+#: blueprints/roosters.py:116 blueprints/roosters.py:209
+#: blueprints/roosters.py:292 blueprints/roosters.py:328
 msgid "Onbekend rooster."
 msgstr "Horaire inconnu."
 
-#: blueprints/roosters.py:124
+#: blueprints/roosters.py:140
 #, python-format
 msgid "Standaardweek (%(dagen)s)"
 msgstr "Semaine type (%(dagen)s)"
 
-#: blueprints/roosters.py:128
+#: blueprints/roosters.py:144
 #, python-format
 msgid "Agenda (%(voorb)s%(meer)s)"
 msgstr "Calendrier (%(voorb)s%(meer)s)"
 
-#: blueprints/roosters.py:130
+#: blueprints/roosters.py:146
 #, python-format
 msgid ""
 "Rooster '%(rooster)s' is nog in gebruik bij: %(delen)s. Haal deze "
@@ -275,57 +275,62 @@ msgstr ""
 "L'horaire « %(rooster)s » est encore utilisé par : %(delen)s. Supprimez "
 "ces références avant de supprimer l'horaire."
 
-#: blueprints/roosters.py:140
+#: blueprints/roosters.py:156
 #, python-format
 msgid "Rooster '%(rooster)s' verwijderd."
 msgstr "Horaire « %(rooster)s » supprimé."
 
-#: blueprints/roosters.py:157
+#: blueprints/roosters.py:173 blueprints/roosters.py:260
 msgid "Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."
 msgstr "L'heure doit être au format HH:MM (par ex. 8:05 ou 08:05)."
 
-#: blueprints/roosters.py:160
+#: blueprints/roosters.py:176 blueprints/roosters.py:263
 msgid "Naam is verplicht."
 msgstr "Le nom est obligatoire."
 
-#: blueprints/roosters.py:163
+#: blueprints/roosters.py:179 blueprints/roosters.py:266
 msgid "Kies een geluidsbestand."
 msgstr "Choisissez un fichier audio."
 
-#: blueprints/roosters.py:177
+#: blueprints/roosters.py:193 blueprints/roosters.py:276
 msgid "Waarschuwing: minuten moeten een getal zijn."
 msgstr "Avertissement : les minutes doivent être un nombre."
 
-#: blueprints/roosters.py:180
+#: blueprints/roosters.py:196 blueprints/roosters.py:279
 msgid "Waarschuwing: minuten moeten tussen 0 en 60 liggen."
 msgstr "Avertissement : les minutes doivent être entre 0 et 60."
 
-#: blueprints/roosters.py:183
+#: blueprints/roosters.py:199 blueprints/roosters.py:282
 msgid "Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."
 msgstr ""
 "Choisissez un son pour la cloche d'avertissement, ou réglez « minutes "
 "avant » sur 0."
 
-#: blueprints/roosters.py:212
+#: blueprints/roosters.py:228
 #, python-format
 msgid "Moment toegevoegd aan '%(rooster)s'."
 msgstr "Moment ajouté à « %(rooster)s »."
 
-#: blueprints/roosters.py:230
+#: blueprints/roosters.py:296 blueprints/roosters.py:338
+msgid "Onbekende regel."
+msgstr "Ligne inconnue."
+
+#: blueprints/roosters.py:318
+#, python-format
+msgid "Moment '%(naam)s' bijgewerkt in '%(rooster)s'."
+msgstr "Moment « %(naam)s » mis à jour dans « %(rooster)s »."
+
+#: blueprints/roosters.py:336
 #, python-format
 msgid "Moment '%(naam)s' verwijderd uit '%(rooster)s'."
 msgstr "Moment « %(naam)s » supprimé de « %(rooster)s »."
 
-#: blueprints/roosters.py:232
-msgid "Onbekende regel."
-msgstr "Ligne inconnue."
-
-#: blueprints/roosters.py:251
+#: blueprints/roosters.py:357
 #, python-format
 msgid "'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s."
 msgstr "« %(keuze)s » n'existe pas comme horaire ; ignoré pour %(dag)s."
 
-#: blueprints/roosters.py:256
+#: blueprints/roosters.py:362
 msgid "Standaardweek opgeslagen."
 msgstr "Semaine type enregistrée."
 
@@ -488,7 +493,7 @@ msgid "IVKO Schoolbel"
 msgstr "Cloche d'école IVKO"
 
 #: templates/base.html:87 templates/roosters.html:2 templates/roosters.html:7
-#: templates/roosters.html:142
+#: templates/roosters.html:221
 msgid "Roosters"
 msgstr "Horaires"
 
@@ -553,7 +558,7 @@ msgstr "IVKO · Cloche d'école"
 msgid "Weet je het zeker?"
 msgstr "Êtes-vous sûr ?"
 
-#: templates/base.html:193
+#: templates/base.html:193 templates/roosters.html:91
 msgid "Annuleren"
 msgstr "Annuler"
 
@@ -620,8 +625,8 @@ msgstr ""
 "Les administrateurs ont automatiquement accès à tous les onglets ; ces "
 "cases à cocher sont alors ignorées."
 
-#: templates/gebruikers.html:84 templates/settings.html:152
-#: templates/standaardweek.html:48
+#: templates/gebruikers.html:84 templates/roosters.html:87
+#: templates/settings.html:152 templates/standaardweek.html:48
 msgid "Opslaan"
 msgstr "Enregistrer"
 
@@ -645,7 +650,7 @@ msgstr "Supprimer l'utilisateur %(u)s ?"
 
 #: templates/gebruikers.html:114 templates/gebruikers.html:118
 #: templates/geluiden.html:42 templates/geluiden.html:47
-#: templates/roosters.html:51 templates/roosters.html:131
+#: templates/roosters.html:129 templates/roosters.html:210
 msgid "Verwijderen"
 msgstr "Supprimer"
 
@@ -667,7 +672,7 @@ msgstr ""
 "Pour les administrateurs, ces cases sont ignorées (les administrateurs "
 "obtiennent toujours tout)."
 
-#: templates/gebruikers.html:192 templates/roosters.html:165
+#: templates/gebruikers.html:192 templates/roosters.html:244
 msgid "Aanmaken"
 msgstr "Créer"
 
@@ -835,53 +840,57 @@ msgstr "à"
 msgid "Waarschuwing"
 msgstr "Avertissement"
 
-#: templates/roosters.html:41
+#: templates/roosters.html:52 templates/roosters.html:164
+msgid "Naam (verplicht)"
+msgstr "Nom (obligatoire)"
+
+#: templates/roosters.html:61 templates/roosters.html:172
+msgid "— Kies geluid —"
+msgstr "— Choisir un son —"
+
+#: templates/roosters.html:69 templates/roosters.html:184
+msgid "Waarschuwing:"
+msgstr "Avertissement :"
+
+#: templates/roosters.html:77 templates/roosters.html:192
+msgid "Minuten vóór de bel een waarschuwing afspelen (0 = uit)"
+msgstr "Minutes avant la cloche pour jouer un avertissement (0 = désactivé)"
+
+#: templates/roosters.html:79 templates/roosters.html:193
+msgid "min. eerder met"
+msgstr "min. avant avec"
+
+#: templates/roosters.html:81 templates/roosters.html:195
+msgid "— geen waarschuwing —"
+msgstr "— pas d'avertissement —"
+
+#: templates/roosters.html:109
 #, python-format
 msgid "%(warn_min)s min eerder · %(warn_bestand)s"
 msgstr "%(warn_min)s min avant · %(warn_bestand)s"
 
-#: templates/roosters.html:50
+#: templates/roosters.html:123
+msgid "Bewerk dit moment"
+msgstr "Modifier ce moment"
+
+#: templates/roosters.html:128
 #, python-format
 msgid "Moment %(tijd)s (%(naam)s) verwijderen?"
 msgstr "Supprimer le moment %(tijd)s (%(naam)s) ?"
 
-#: templates/roosters.html:55
+#: templates/roosters.html:133
 msgid "Verwijder dit moment"
 msgstr "Supprimer ce moment"
 
-#: templates/roosters.html:65
+#: templates/roosters.html:144
 msgid "Geen momenten"
 msgstr "Aucun moment"
 
-#: templates/roosters.html:85
-msgid "Naam (verplicht)"
-msgstr "Nom (obligatoire)"
-
-#: templates/roosters.html:93
-msgid "— Kies geluid —"
-msgstr "— Choisir un son —"
-
-#: templates/roosters.html:105
-msgid "Waarschuwing:"
-msgstr "Avertissement :"
-
-#: templates/roosters.html:113
-msgid "Minuten vóór de bel een waarschuwing afspelen (0 = uit)"
-msgstr "Minutes avant la cloche pour jouer un avertissement (0 = désactivé)"
-
-#: templates/roosters.html:114
-msgid "min. eerder met"
-msgstr "min. avant avec"
-
-#: templates/roosters.html:116
-msgid "— geen waarschuwing —"
-msgstr "— pas d'avertissement —"
-
-#: templates/roosters.html:122
+#: templates/roosters.html:201
 msgid "Moment toevoegen"
 msgstr "Ajouter un moment"
 
-#: templates/roosters.html:130
+#: templates/roosters.html:209
 #, python-format
 msgid ""
 "Rooster &quot;%(naam)s&quot; verwijderen? Dit verwijdert ook alle "
@@ -890,27 +899,27 @@ msgstr ""
 "Supprimer l'horaire &quot;%(naam)s&quot; ? Cela supprimera aussi tous les"
 " moments de cet horaire."
 
-#: templates/roosters.html:134
+#: templates/roosters.html:213
 msgid "Rooster verwijderen"
 msgstr "Supprimer l'horaire"
 
-#: templates/roosters.html:143
+#: templates/roosters.html:222
 msgid "Er zijn nog geen roosters. Maak de eerste aan."
 msgstr "Aucun horaire pour l'instant. Créez le premier."
 
-#: templates/roosters.html:149
+#: templates/roosters.html:228
 msgid "Nieuw rooster"
 msgstr "Nouvel horaire"
 
-#: templates/roosters.html:156
+#: templates/roosters.html:235
 msgid "Naam nieuw rooster"
 msgstr "Nom du nouvel horaire"
 
-#: templates/roosters.html:161
+#: templates/roosters.html:240
 msgid "Start als kopie van het eerste rooster"
 msgstr "Démarrer comme copie du premier horaire"
 
-#: templates/roosters.html:172
+#: templates/roosters.html:251
 msgid ""
 "Na wijzigingen: herlaad de daemon met\n"
 "  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-"

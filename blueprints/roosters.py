@@ -8,6 +8,7 @@ or for a single date by the agenda. This file holds:
   POST  /roosters/add                          — create a new rooster
   POST  /roosters/<r>/delete                   — delete a rooster
   POST  /roosters/<r>/add-moment               — add a moment row
+  POST  /roosters/<r>/edit-moment/<index>      — replace a moment row
   POST  /roosters/<r>/delete-moment/<index>    — remove a moment row
   GET   /standaardweek                         — assign a rooster per
                                                   weekday
@@ -44,12 +45,27 @@ def roosters():
     wi.ensure_dirs()
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
     geluiden = wi.list_audio()
+
+    # Inline-edit mode: the ✎ button on a row links back here with
+    # ?edit_r=<naam>&edit_i=<index>. We pass these straight to the
+    # template, which then renders that one row as a form instead of
+    # the usual read-only cells. We don't validate the values here;
+    # the template just compares against the loop variables, and a
+    # bogus combination simply means no row matches → no edit form.
+    edit_r = request.args.get("edit_r") or ""
+    try:
+        edit_i = int(request.args.get("edit_i", ""))
+    except (TypeError, ValueError):
+        edit_i = -1
+
     return render_template(
         "roosters.html",
         tab="roosters",
         csrf_token=wi.get_csrf_token(),
         roosters=roosters,
         geluiden=geluiden,
+        edit_r=edit_r,
+        edit_i=edit_i,
     )
 
 
@@ -210,6 +226,96 @@ def add_moment(rooster):
         },
     )
     flash(_("Moment toegevoegd aan '%(rooster)s'.", rooster=rooster))
+    return redirect(url_for("roosters.roosters"))
+
+
+@roosters_bp.route("/roosters/<rooster>/edit-moment/<int:index>", methods=["POST"])
+@wi.tab_required("roosters")
+def edit_moment(rooster, index):
+    """Replace one moment in <rooster> by the values from the form.
+
+    The form fields are the same as in ``add_moment``: ``tijd``, ``naam``,
+    ``bestand`` and the optional ``warn_min`` / ``warn_bestand`` pair.
+    Validation is identical too — anything caught here flashes a message
+    and bounces back to the rooster page (re-opened in edit mode so the
+    user keeps their context). After saving we re-normalize and re-sort,
+    so a changed ``tijd`` may shuffle the moment to a different index.
+    """
+    wi.ensure_dirs()
+
+    # Same validation as add_moment. Done outside the lock so other
+    # writers aren't blocked while we sanity-check the form.
+    tijd_raw = request.form.get("tijd", "")
+    tijd = normalize_time(tijd_raw)
+    naam = (request.form.get("naam") or "").strip()
+    bestand = (request.form.get("bestand") or "").strip()
+
+    # On any validation error we redirect back into edit mode for this
+    # row, so the user doesn't lose what they were doing.
+    edit_redirect = redirect(
+        url_for("roosters.roosters", edit_r=rooster, edit_i=index) + "#edit"
+    )
+
+    if not tijd:
+        flash(_("Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."))
+        return edit_redirect
+    if not naam:
+        flash(_("Naam is verplicht."))
+        return edit_redirect
+    if not bestand:
+        flash(_("Kies een geluidsbestand."))
+        return edit_redirect
+
+    warn_min_raw = (request.form.get("warn_min") or "").strip()
+    warn_bestand = (request.form.get("warn_bestand") or "").strip()
+    warn_min: int = 0
+    if warn_min_raw:
+        try:
+            warn_min = int(warn_min_raw)
+        except ValueError:
+            flash(_("Waarschuwing: minuten moeten een getal zijn."))
+            return edit_redirect
+        if not (0 <= warn_min <= 60):
+            flash(_("Waarschuwing: minuten moeten tussen 0 en 60 liggen."))
+            return edit_redirect
+    if warn_min > 0 and not warn_bestand:
+        flash(_("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."))
+        return edit_redirect
+
+    new_moment = {"tijd": tijd, "naam": naam, "bestand": bestand}
+    if warn_min > 0 and warn_bestand:
+        new_moment["warn_min"] = warn_min
+        new_moment["warn_bestand"] = warn_bestand
+
+    with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
+        if rooster not in roosters:
+            flash(_("Onbekend rooster."))
+            return redirect(url_for("roosters.roosters"))
+        moments = roosters[rooster]
+        if not (0 <= index < len(moments)):
+            flash(_("Onbekende regel."))
+            return redirect(url_for("roosters.roosters"))
+
+        old_moment = moments[index]
+        moments[index] = new_moment
+        roosters[rooster] = normalize_and_sort_moments(moments)
+        save(roosters)
+
+    wi.log_event(
+        "ui",
+        {
+            "action": "edit_moment",
+            "rooster": rooster,
+            "oud_tijd": old_moment.get("tijd", ""),
+            "oud_naam": old_moment.get("naam", ""),
+            "tijd": tijd,
+            "naam": naam,
+            "bestand": bestand,
+            "warn_min": warn_min if warn_min > 0 else None,
+            "warn_bestand": warn_bestand if warn_min > 0 else None,
+        },
+    )
+    flash(_("Moment '%(naam)s' bijgewerkt in '%(rooster)s'.", naam=naam, rooster=rooster))
     return redirect(url_for("roosters.roosters"))
 
 

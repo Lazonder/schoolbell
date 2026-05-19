@@ -267,8 +267,30 @@ form.inline {
 }
 
 .sb-table .col-acties {
-  width: 3.5rem;
+  /* Bevat nu twee icoonknoppen (✎ bewerken en ✕ verwijderen). De ruimte
+     is iets ruimer dan strikt nodig zodat de knoppen niet aan de cel-
+     rand kleven, en zodat een eventuele derde knop ooit past zonder
+     dat de tabel opnieuw indeelt. */
+  width: 6rem;
   text-align: right;
+  white-space: nowrap;
+}
+
+/* Geef de twee icoonknoppen wat ademruimte ten opzichte van elkaar.
+   Zonder gap stoten ze tegen elkaar omdat ze inline-flex zijn en
+   geen margin meekrijgen van .sb-btn zelf. */
+.sb-table .col-acties .sb-btn + .sb-btn,
+.sb-table .col-acties .sb-btn + form.inline,
+.sb-table .col-acties form.inline + .sb-btn {
+  margin-left: 4px;
+}
+
+/* Inline edit-rij krijgt een subtiele highlight zodat de gebruiker
+   meteen ziet welke regel hij aan het bewerken is. De kleur is een
+   lichtere variant van de hover-state, zodat hij in beide thema's
+   leesbaar blijft. */
+.sb-edit-row > td {
+  background: var(--sb-color-row-hover);
 }
 
 /* Form layout for adding moments */

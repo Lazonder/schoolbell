@@ -27,37 +27,116 @@
           <tbody>
             {% if moments %}
               {% for m in moments|sort(attribute='tijd') %}
-                <tr>
-                  <td class="col-tijd">
-                    <code class="sb-code-mono">
-                      {{ m.tijd }}
-                    </code>
-                  </td>
-                  <td>{{ m.naam }}</td>
-                  <td>{{ m.bestand }}</td>
-                  <td>
-                    {% if m.warn_min and m.warn_bestand %}
-                      <span class="sb-help">
-                        {% trans warn_min=m.warn_min, warn_bestand=m.warn_bestand %}{{ warn_min }} min eerder · {{ warn_bestand }}{% endtrans %}
-                      </span>
-                    {% else %}
-                      <span class="sb-help"><em>—</em></span>
-                    {% endif %}
-                  </td>
-                  <td class="col-acties">
-                    <form class="inline" method="post"
-                          action="{{ url_for('roosters.delete_moment', rooster=naam, index=loop.index0) }}"
-                          data-confirm="{% trans tijd=m.tijd, naam=m.naam %}Moment {{ tijd }} ({{ naam }}) verwijderen?{% endtrans %}"
-                          data-confirm-button="{{ _('Verwijderen') }}">
-                      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                      <button type="submit"
-                              class="sb-btn sb-btn--danger sb-btn--icon"
-                              title="{{ _('Verwijder dit moment') }}">
-                        ✕
-                      </button>
-                    </form>
-                  </td>
-                </tr>
+                {% if edit_r == naam and edit_i == loop.index0 %}
+                  {# Inline edit row: replace the whole row with one
+                     wide cell containing the edit form. The form has
+                     the same shape as the "Moment toevoegen"-form so
+                     the layout is consistent. Fields are pre-filled
+                     with the current values of this moment. #}
+                  <tr id="edit" class="sb-edit-row">
+                    <td colspan="5">
+                      <form method="post"
+                            action="{{ url_for('roosters.edit_moment', rooster=naam, index=loop.index0) }}"
+                            class="add-form">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+                        <div class="line1">
+                          <input name="tijd"
+                                 class="sb-input"
+                                 placeholder="HH:MM"
+                                 required
+                                 pattern="^(?:[01]\d|2[0-3]):[0-5]\d$"
+                                 value="{{ m.tijd }}">
+                          <input name="naam"
+                                 class="sb-input"
+                                 placeholder="{{ _('Naam (verplicht)') }}"
+                                 required
+                                 value="{{ m.naam }}">
+                        </div>
+
+                        <div class="line2">
+                          <select name="bestand"
+                                  class="sb-select"
+                                  required>
+                            <option value="">{{ _('— Kies geluid —') }}</option>
+                            {% for g in geluiden %}
+                              <option value="{{ g }}" {% if g == m.bestand %}selected{% endif %}>{{ g }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+
+                        <div class="line3 sb-warn-row">
+                          <span class="sb-help">{{ _('Waarschuwing:') }}</span>
+                          <input name="warn_min"
+                                 class="sb-input sb-warn-min"
+                                 type="number"
+                                 min="0"
+                                 max="60"
+                                 step="1"
+                                 placeholder="0"
+                                 title="{{ _('Minuten vóór de bel een waarschuwing afspelen (0 = uit)') }}"
+                                 value="{{ m.warn_min if m.warn_min else '' }}">
+                          <span class="sb-help">{{ _('min. eerder met') }}</span>
+                          <select name="warn_bestand" class="sb-select sb-warn-bestand">
+                            <option value="">{{ _('— geen waarschuwing —') }}</option>
+                            {% for g in geluiden %}
+                              <option value="{{ g }}" {% if g == m.warn_bestand %}selected{% endif %}>{{ g }}</option>
+                            {% endfor %}
+                          </select>
+                          <button type="submit" class="sb-btn sb-btn--success">
+                            {{ _('Opslaan') }}
+                          </button>
+                          <a href="{{ url_for('roosters.roosters') }}"
+                             class="sb-btn sb-btn--ghost">
+                            {{ _('Annuleren') }}
+                          </a>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td class="col-tijd">
+                      <code class="sb-code-mono">
+                        {{ m.tijd }}
+                      </code>
+                    </td>
+                    <td>{{ m.naam }}</td>
+                    <td>{{ m.bestand }}</td>
+                    <td>
+                      {% if m.warn_min and m.warn_bestand %}
+                        <span class="sb-help">
+                          {% trans warn_min=m.warn_min, warn_bestand=m.warn_bestand %}{{ warn_min }} min eerder · {{ warn_bestand }}{% endtrans %}
+                        </span>
+                      {% else %}
+                        <span class="sb-help"><em>—</em></span>
+                      {% endif %}
+                    </td>
+                    <td class="col-acties">
+                      {# Bewerk-knop: gewone <a>-link, geen formulier — het
+                         is alleen navigatie. De pagina laadt opnieuw met
+                         ?edit_r=...&edit_i=... waardoor deze rij dan als
+                         inline formulier verschijnt. De #edit-anker scrolt
+                         de geopende edit-rij in beeld. #}
+                      <a href="{{ url_for('roosters.roosters', edit_r=naam, edit_i=loop.index0) }}#edit"
+                         class="sb-btn sb-btn--ghost sb-btn--icon"
+                         title="{{ _('Bewerk dit moment') }}">
+                        ✎
+                      </a>
+                      <form class="inline" method="post"
+                            action="{{ url_for('roosters.delete_moment', rooster=naam, index=loop.index0) }}"
+                            data-confirm="{% trans tijd=m.tijd, naam=m.naam %}Moment {{ tijd }} ({{ naam }}) verwijderen?{% endtrans %}"
+                            data-confirm-button="{{ _('Verwijderen') }}">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button type="submit"
+                                class="sb-btn sb-btn--danger sb-btn--icon"
+                                title="{{ _('Verwijder dit moment') }}">
+                          ✕
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endif %}
               {% endfor %}
             {% else %}
               <tr>

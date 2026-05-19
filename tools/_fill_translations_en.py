@@ -118,6 +118,8 @@ TRANSLATIONS: dict[str, str] = {
         "Moment added to '%(rooster)s'.",
     "Moment '%(naam)s' verwijderd uit '%(rooster)s'.":
         "Moment '%(naam)s' deleted from '%(rooster)s'.",
+    "Moment '%(naam)s' bijgewerkt in '%(rooster)s'.":
+        "Moment '%(naam)s' updated in '%(rooster)s'.",
     "Onbekende regel.":
         "Unknown row.",
     "'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s.":
@@ -191,6 +193,7 @@ TRANSLATIONS: dict[str, str] = {
     "Moment %(tijd)s (%(naam)s) verwijderen?":
         "Delete moment %(tijd)s (%(naam)s)?",
     "Verwijder dit moment": "Delete this moment",
+    "Bewerk dit moment": "Edit this moment",
     "Geen momenten": "No moments",
     "Naam (verplicht)": "Name (required)",
     "— Kies geluid —": "— Pick sound —",

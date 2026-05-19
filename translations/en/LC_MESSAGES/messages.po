@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-14 21:30+0200\n"
+"POT-Creation-Date: 2026-05-19 22:31+0200\n"
 "PO-Revision-Date: 2026-05-10 10:23+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -16,7 +16,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 
 #: webinterface.py:278
 msgid "Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."
@@ -164,7 +164,7 @@ msgid "Alleen bestanden met deze extensies zijn toegestaan: %(exts)s."
 msgstr "Only files with these extensions are allowed: %(exts)s."
 
 #: blueprints/geluiden.py:116 blueprints/geluiden.py:125
-#: blueprints/roosters.py:72
+#: blueprints/roosters.py:88
 msgid "Ongeldige naam. Gebruik 1–35 tekens: letters, cijfers, spatie, _ of -."
 msgstr "Invalid name. Use 1–35 characters: letters, digits, space, _ or -."
 
@@ -206,7 +206,7 @@ msgstr "Test started: %(name)s"
 msgid "Afspelen mislukt: %(err)s"
 msgstr "Playback failed: %(err)s"
 
-#: blueprints/geluiden.py:248 blueprints/roosters.py:127
+#: blueprints/geluiden.py:248 blueprints/roosters.py:143
 #, python-format
 msgid " en %(n)d meer"
 msgstr " and %(n)d more"
@@ -230,35 +230,35 @@ msgstr "Deleted: %(name)s"
 msgid "Kon niet verwijderen: %(err)s"
 msgstr "Could not delete: %(err)s"
 
-#: blueprints/roosters.py:62
+#: blueprints/roosters.py:78
 msgid "Naam van rooster is verplicht."
 msgstr "Schedule name is required."
 
-#: blueprints/roosters.py:77
+#: blueprints/roosters.py:93
 msgid "Er bestaat al een rooster met deze naam."
 msgstr "A schedule with this name already exists."
 
-#: blueprints/roosters.py:90
+#: blueprints/roosters.py:106
 #, python-format
 msgid "Rooster '%(naam)s' aangemaakt."
 msgstr "Schedule '%(naam)s' created."
 
-#: blueprints/roosters.py:100 blueprints/roosters.py:193
-#: blueprints/roosters.py:222
+#: blueprints/roosters.py:116 blueprints/roosters.py:209
+#: blueprints/roosters.py:292 blueprints/roosters.py:328
 msgid "Onbekend rooster."
 msgstr "Unknown schedule."
 
-#: blueprints/roosters.py:124
+#: blueprints/roosters.py:140
 #, python-format
 msgid "Standaardweek (%(dagen)s)"
 msgstr "Default week (%(dagen)s)"
 
-#: blueprints/roosters.py:128
+#: blueprints/roosters.py:144
 #, python-format
 msgid "Agenda (%(voorb)s%(meer)s)"
 msgstr "Calendar (%(voorb)s%(meer)s)"
 
-#: blueprints/roosters.py:130
+#: blueprints/roosters.py:146
 #, python-format
 msgid ""
 "Rooster '%(rooster)s' is nog in gebruik bij: %(delen)s. Haal deze "
@@ -267,55 +267,60 @@ msgstr ""
 "Schedule '%(rooster)s' is still in use by: %(delen)s. Remove those "
 "references first before deleting the schedule."
 
-#: blueprints/roosters.py:140
+#: blueprints/roosters.py:156
 #, python-format
 msgid "Rooster '%(rooster)s' verwijderd."
 msgstr "Schedule '%(rooster)s' deleted."
 
-#: blueprints/roosters.py:157
+#: blueprints/roosters.py:173 blueprints/roosters.py:260
 msgid "Tijd moet in formaat UU:MM (bijv. 8:05 of 08:05)."
 msgstr "Time must be in format HH:MM (e.g. 8:05 or 08:05)."
 
-#: blueprints/roosters.py:160
+#: blueprints/roosters.py:176 blueprints/roosters.py:263
 msgid "Naam is verplicht."
 msgstr "Name is required."
 
-#: blueprints/roosters.py:163
+#: blueprints/roosters.py:179 blueprints/roosters.py:266
 msgid "Kies een geluidsbestand."
 msgstr "Pick an audio file."
 
-#: blueprints/roosters.py:177
+#: blueprints/roosters.py:193 blueprints/roosters.py:276
 msgid "Waarschuwing: minuten moeten een getal zijn."
 msgstr "Warning: minutes must be a number."
 
-#: blueprints/roosters.py:180
+#: blueprints/roosters.py:196 blueprints/roosters.py:279
 msgid "Waarschuwing: minuten moeten tussen 0 en 60 liggen."
 msgstr "Warning: minutes must be between 0 and 60."
 
-#: blueprints/roosters.py:183
+#: blueprints/roosters.py:199 blueprints/roosters.py:282
 msgid "Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."
 msgstr "Pick a sound for the warning bell, or set 'minutes earlier' to 0."
 
-#: blueprints/roosters.py:212
+#: blueprints/roosters.py:228
 #, python-format
 msgid "Moment toegevoegd aan '%(rooster)s'."
 msgstr "Moment added to '%(rooster)s'."
 
-#: blueprints/roosters.py:230
+#: blueprints/roosters.py:296 blueprints/roosters.py:338
+msgid "Onbekende regel."
+msgstr "Unknown row."
+
+#: blueprints/roosters.py:318
+#, python-format
+msgid "Moment '%(naam)s' bijgewerkt in '%(rooster)s'."
+msgstr "Moment '%(naam)s' updated in '%(rooster)s'."
+
+#: blueprints/roosters.py:336
 #, python-format
 msgid "Moment '%(naam)s' verwijderd uit '%(rooster)s'."
 msgstr "Moment '%(naam)s' deleted from '%(rooster)s'."
 
-#: blueprints/roosters.py:232
-msgid "Onbekende regel."
-msgstr "Unknown row."
-
-#: blueprints/roosters.py:251
+#: blueprints/roosters.py:357
 #, python-format
 msgid "'%(keuze)s' bestaat niet als rooster; overslaan voor %(dag)s."
 msgstr "'%(keuze)s' does not exist as a schedule; skipping for %(dag)s."
 
-#: blueprints/roosters.py:256
+#: blueprints/roosters.py:362
 msgid "Standaardweek opgeslagen."
 msgstr "Default week saved."
 
@@ -473,7 +478,7 @@ msgid "IVKO Schoolbel"
 msgstr "IVKO School bell"
 
 #: templates/base.html:87 templates/roosters.html:2 templates/roosters.html:7
-#: templates/roosters.html:142
+#: templates/roosters.html:221
 msgid "Roosters"
 msgstr "Schedules"
 
@@ -538,7 +543,7 @@ msgstr "IVKO · School bell"
 msgid "Weet je het zeker?"
 msgstr "Are you sure?"
 
-#: templates/base.html:193
+#: templates/base.html:193 templates/roosters.html:91
 msgid "Annuleren"
 msgstr "Cancel"
 
@@ -605,8 +610,8 @@ msgstr ""
 "Admins automatically get access to all tabs; these checkboxes are then "
 "ignored."
 
-#: templates/gebruikers.html:84 templates/settings.html:152
-#: templates/standaardweek.html:48
+#: templates/gebruikers.html:84 templates/roosters.html:87
+#: templates/settings.html:152 templates/standaardweek.html:48
 msgid "Opslaan"
 msgstr "Save"
 
@@ -630,7 +635,7 @@ msgstr "Delete user %(u)s?"
 
 #: templates/gebruikers.html:114 templates/gebruikers.html:118
 #: templates/geluiden.html:42 templates/geluiden.html:47
-#: templates/roosters.html:51 templates/roosters.html:131
+#: templates/roosters.html:129 templates/roosters.html:210
 msgid "Verwijderen"
 msgstr "Delete"
 
@@ -650,7 +655,7 @@ msgstr "At least 8 characters."
 msgid "Voor admins worden deze vinkjes genegeerd (admins krijgen altijd alles)."
 msgstr "These checkboxes are ignored for admins (admins always get everything)."
 
-#: templates/gebruikers.html:192 templates/roosters.html:165
+#: templates/gebruikers.html:192 templates/roosters.html:244
 msgid "Aanmaken"
 msgstr "Create"
 
@@ -818,53 +823,57 @@ msgstr "at"
 msgid "Waarschuwing"
 msgstr "Warning"
 
-#: templates/roosters.html:41
+#: templates/roosters.html:52 templates/roosters.html:164
+msgid "Naam (verplicht)"
+msgstr "Name (required)"
+
+#: templates/roosters.html:61 templates/roosters.html:172
+msgid "— Kies geluid —"
+msgstr "— Pick sound —"
+
+#: templates/roosters.html:69 templates/roosters.html:184
+msgid "Waarschuwing:"
+msgstr "Warning:"
+
+#: templates/roosters.html:77 templates/roosters.html:192
+msgid "Minuten vóór de bel een waarschuwing afspelen (0 = uit)"
+msgstr "Minutes before the bell to play a warning (0 = off)"
+
+#: templates/roosters.html:79 templates/roosters.html:193
+msgid "min. eerder met"
+msgstr "min. earlier with"
+
+#: templates/roosters.html:81 templates/roosters.html:195
+msgid "— geen waarschuwing —"
+msgstr "— no warning —"
+
+#: templates/roosters.html:109
 #, python-format
 msgid "%(warn_min)s min eerder · %(warn_bestand)s"
 msgstr "%(warn_min)s min earlier · %(warn_bestand)s"
 
-#: templates/roosters.html:50
+#: templates/roosters.html:123
+msgid "Bewerk dit moment"
+msgstr "Edit this moment"
+
+#: templates/roosters.html:128
 #, python-format
 msgid "Moment %(tijd)s (%(naam)s) verwijderen?"
 msgstr "Delete moment %(tijd)s (%(naam)s)?"
 
-#: templates/roosters.html:55
+#: templates/roosters.html:133
 msgid "Verwijder dit moment"
 msgstr "Delete this moment"
 
-#: templates/roosters.html:65
+#: templates/roosters.html:144
 msgid "Geen momenten"
 msgstr "No moments"
 
-#: templates/roosters.html:85
-msgid "Naam (verplicht)"
-msgstr "Name (required)"
-
-#: templates/roosters.html:93
-msgid "— Kies geluid —"
-msgstr "— Pick sound —"
-
-#: templates/roosters.html:105
-msgid "Waarschuwing:"
-msgstr "Warning:"
-
-#: templates/roosters.html:113
-msgid "Minuten vóór de bel een waarschuwing afspelen (0 = uit)"
-msgstr "Minutes before the bell to play a warning (0 = off)"
-
-#: templates/roosters.html:114
-msgid "min. eerder met"
-msgstr "min. earlier with"
-
-#: templates/roosters.html:116
-msgid "— geen waarschuwing —"
-msgstr "— no warning —"
-
-#: templates/roosters.html:122
+#: templates/roosters.html:201
 msgid "Moment toevoegen"
 msgstr "Add moment"
 
-#: templates/roosters.html:130
+#: templates/roosters.html:209
 #, python-format
 msgid ""
 "Rooster &quot;%(naam)s&quot; verwijderen? Dit verwijdert ook alle "
@@ -873,27 +882,27 @@ msgstr ""
 "Delete schedule &quot;%(naam)s&quot;? This also deletes all moments in "
 "this schedule."
 
-#: templates/roosters.html:134
+#: templates/roosters.html:213
 msgid "Rooster verwijderen"
 msgstr "Delete schedule"
 
-#: templates/roosters.html:143
+#: templates/roosters.html:222
 msgid "Er zijn nog geen roosters. Maak de eerste aan."
 msgstr "There are no schedules yet. Create the first one."
 
-#: templates/roosters.html:149
+#: templates/roosters.html:228
 msgid "Nieuw rooster"
 msgstr "New schedule"
 
-#: templates/roosters.html:156
+#: templates/roosters.html:235
 msgid "Naam nieuw rooster"
 msgstr "Name of new schedule"
 
-#: templates/roosters.html:161
+#: templates/roosters.html:240
 msgid "Start als kopie van het eerste rooster"
 msgstr "Start as a copy of the first schedule"
 
-#: templates/roosters.html:172
+#: templates/roosters.html:251
 msgid ""
 "Na wijzigingen: herlaad de daemon met\n"
 "  <code class=\"sb-code-mono\">sudo systemctl kill -s HUP schoolbell-"
