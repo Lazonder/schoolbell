@@ -178,52 +178,6 @@ body{
    Layout for the schedules page
    ========================================================= */
 
-/* Roosters naast elkaar. Bewust een multi-column layout en geen CSS
-   grid: in een grid is elke rij even hoog als de langste kaart erin,
-   dus een kort rooster laat een groot gat onder zich vallen wanneer
-   het rooster ernaast veel langer is. Met multi-column pakt elke
-   kaart strak onder de vorige in dezelfde kolom. De kolommen zijn
-   minstens 360px breed — dezelfde ondergrens die de oude grid via
-   minmax() gebruikte. */
-.grid-roosters {
-  display: block;
-  column-width: 360px;
-  column-gap: var(--sb-gap);
-}
-
-
-/* Extend card style for schedules (optional) */
-.card.rooster {
-  min-width: 360px;
-}
-
-/* Form layout for adding moments */
-.add-form {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sb-gap);
-  margin-top: var(--sb-gap);
-}
-
-.add-form .line1 {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: var(--sb-gap);
-  align-items: center;
-}
-
-.add-form .line2 {
-  display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: var(--sb-gap);
-  align-items: center;
-}
-
-/* Keep inline forms neatly horizontal */
-form.inline {
-  display: inline;
-}
-
 /* Page header at the top of a page */
 .sb-page-header {
   display: flex;
