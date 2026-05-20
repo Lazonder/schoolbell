@@ -120,19 +120,51 @@ body{
 .sb-card + .sb-card{ margin-top: 16px; }
 
 /* 5) Buttons */
-.sb-btn{
-  display:inline-flex; align-items:center; gap:8px;
-  border:1px solid transparent; border-radius: 12px;
-  padding: 10px 14px; font-weight: 600; cursor: pointer;
-  background: var(--sb-color-primary); color:#fff;
+.sb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: var(--sb-color-primary);
+  color: #fff;
+  text-decoration: none;
 }
-.sb-btn:hover{ background: var(--sb-color-primary-600); }
-.sb-btn--ghost{
-  background: transparent; color: var(--sb-color-primary);
+
+.sb-btn:hover {
+  background: var(--sb-color-primary-600);
+}
+
+/* Icon-only buttons (e.g. ✕) */
+.sb-btn--icon {
+  padding-inline: 8px;
+}
+
+/* Variants */
+.sb-btn--ghost {
+  background: transparent;
+  color: var(--sb-color-primary);
   border-color: var(--sb-color-primary);
 }
-.sb-btn--danger{ background: var(--sb-color-danger); }
-.sb-btn--success{ background: var(--sb-color-success); }
+
+.sb-btn--danger {
+  background: var(--sb-color-danger);
+  border-color: var(--sb-color-danger);
+}
+
+.sb-btn--danger:hover {
+  background: #b02d28;
+}
+
+.sb-btn--success {
+  background: var(--sb-color-success);
+  border-color: var(--sb-color-success);
+}
 
 /* 6) Tables */
 .sb-table{
@@ -151,10 +183,23 @@ body{
 /* 7) Forms */
 .sb-field{ display:grid; gap:6px; margin-bottom:12px; }
 .sb-label{ font-size:.95rem; color: var(--sb-color-muted); }
-.sb-input, .sb-select{
-  width:100%; border:1px solid var(--sb-color-border);
-  border-radius:12px; padding:10px 12px;
-  background: var(--sb-color-bg); color: var(--sb-color-text);
+.sb-input,
+.sb-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--sb-color-border);
+  background: var(--sb-color-bg);
+  color: var(--sb-color-text);
+  font: inherit;
+  line-height: 1.3;
+}
+
+.sb-input:focus,
+.sb-select:focus {
+  outline: 2px solid var(--sb-color-primary);
+  outline-offset: 1px;
+  border-color: var(--sb-color-primary);
 }
 .sb-help{ font-size:.85rem; color: var(--sb-color-muted); }
 
@@ -314,73 +359,6 @@ body{
 /* Inline forms for small actions (like delete) */
 form.inline {
   display: inline;
-}
-
-/* Base button */
-.sb-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  padding: 8px 14px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  background: var(--sb-color-primary);
-  color: #fff;
-  text-decoration: none;
-}
-
-.sb-btn:hover {
-  background: var(--sb-color-primary-600);
-}
-
-/* Icon-only buttons (e.g. ✕) */
-.sb-btn--icon {
-  padding-inline: 8px;
-}
-
-/* Variants */
-.sb-btn--ghost {
-  background: transparent;
-  color: var(--sb-color-primary);
-  border-color: var(--sb-color-primary);
-}
-
-.sb-btn--danger {
-  background: var(--sb-color-danger);
-  border-color: var(--sb-color-danger);
-}
-
-.sb-btn--danger:hover {
-  background: #b02d28;
-}
-
-.sb-btn--success {
-  background: var(--sb-color-success);
-  border-color: var(--sb-color-success);
-}
-
-/* Inputs & selects */
-.sb-input,
-.sb-select {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--sb-color-border);
-  background: var(--sb-color-bg);
-  color: var(--sb-color-text);
-  font: inherit;
-  line-height: 1.3;
-}
-
-.sb-input:focus,
-.sb-select:focus {
-  outline: 2px solid var(--sb-color-primary);
-  outline-offset: 1px;
-  border-color: var(--sb-color-primary);
 }
 
 /* =========================================
