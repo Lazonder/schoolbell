@@ -178,12 +178,17 @@ body{
    Layout for the schedules page
    ========================================================= */
 
-/* Grid that places schedules side by side */
+/* Roosters naast elkaar. Bewust een multi-column layout en geen CSS
+   grid: in een grid is elke rij even hoog als de langste kaart erin,
+   dus een kort rooster laat een groot gat onder zich vallen wanneer
+   het rooster ernaast veel langer is. Met multi-column pakt elke
+   kaart strak onder de vorige in dezelfde kolom. De kolommen zijn
+   minstens 360px breed — dezelfde ondergrens die de oude grid via
+   minmax() gebruikte. */
 .grid-roosters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--sb-gap);
-  align-items: start;
+  display: block;
+  column-width: 360px;
+  column-gap: var(--sb-gap);
 }
 
 
@@ -248,17 +253,34 @@ form.inline {
   font-size: 0.95em;
 }
 
-/* Grid that places schedules side by side */
+/* Roosters naast elkaar. Bewust een multi-column layout en geen CSS
+   grid: in een grid is elke rij even hoog als de langste kaart erin,
+   dus een kort rooster laat een groot gat onder zich vallen wanneer
+   het rooster ernaast veel langer is. Met multi-column pakt elke
+   kaart strak onder de vorige in dezelfde kolom. De kolommen zijn
+   minstens 360px breed — dezelfde ondergrens die de oude grid via
+   minmax() gebruikte. */
 .grid-roosters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--sb-gap);
-  align-items: start;
+  display: block;
+  column-width: 360px;
+  column-gap: var(--sb-gap);
 }
 
-/* Schedule cards can have a min width if needed */
+/* Roosterkaarten: de breedte wordt door de kolom bepaald, dus geen
+   min-width. In de multi-column layout moet elke kaart in één stuk
+   blijven (nooit over een kolomgrens gesplitst) en draagt hij zijn
+   eigen onderlinge ruimte, want kolom-layouts hebben geen row-gap.
+   margin-top wordt op 0 gezet om de algemene '.sb-card + .sb-card'-
+   regel te neutraliseren; die zou anders de eerste kaart van een
+   volgende kolom omlaag duwen en uit lijn brengen met de eerste. */
 .card.rooster {
-  min-width: 0; /* let the grid decide the width */
+  min-width: 0;
+}
+
+.grid-roosters > .card.rooster {
+  break-inside: avoid;
+  margin-top: 0;
+  margin-bottom: var(--sb-gap);
 }
 
 /* Column widths in the schedule table */
