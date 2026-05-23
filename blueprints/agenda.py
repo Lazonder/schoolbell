@@ -71,6 +71,13 @@ def _load_vakanties_file() -> tuple[Optional[dict], Optional[str]]:
 @agenda_bp.route("/agenda", methods=["GET", "POST"])
 @wi.tab_required("agenda")
 def agenda():
+    """Show the agenda page and handle bulk saves.
+
+    On GET: render the page with a calendar grid showing which bell
+    schedule is active for each day and which weeks are off.
+    On POST (action=bulk_save): save the changes the admin made to
+    day overrides and week-off checkboxes, then redirect back.
+    """
     wi.ensure_dirs()
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
     dagplanning = wi.load_json(wi.DAGPLANNING_PATH, default_dagplanning_obj())

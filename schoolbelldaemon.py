@@ -76,6 +76,12 @@ if os.getenv("SCHOOLBELL_API_VERIFY_TLS", "1").strip().lower() in ("0", "false",
 # --- Hot-reload flag ---
 _reload_settings = False
 def _on_sighup(signum, frame):
+    """Handle the SIGHUP signal from the operating system.
+
+    SIGHUP is a signal that an admin can send to ask the daemon to
+    reload its settings without restarting. We just set a flag here;
+    the main loop checks the flag and does the actual reload.
+    """
     global _reload_settings
     _reload_settings = True
     print("[SIGHUP] Reload settings requested.")
@@ -83,6 +89,12 @@ def _on_sighup(signum, frame):
 signal.signal(signal.SIGHUP, _on_sighup)
 
 def _on_sigterm(signum, frame):
+    """Handle a stop request from the operating system.
+
+    Called when the system sends SIGTERM (normal shutdown) or when the
+    user presses Ctrl-C (SIGINT). We stop any audio that is playing and
+    set the stop flag so the main loop exits cleanly.
+    """
     print("[SIGTERM] Stop requested, daemon shutting down...")
     stop_event.set()
     try:
@@ -120,6 +132,12 @@ def _write_heartbeat() -> None:
 
 # --- Logging of bell events (UI reads this in Logs) ---
 def log_bell_event(data: dict):
+    """Write a bell event to the shared log file (events.jsonl).
+
+    Called after every bell attempt, whether it succeeded or failed.
+    The log file is shared with the web interface so the admin can
+    see past bell events in the Logboek page.
+    """
     rec = {"ts": datetime.now(timezone.utc).isoformat(),
            "type": "bell", "data": data}
     try:
@@ -131,6 +149,13 @@ def log_bell_event(data: dict):
 
 # === Audio initialization / volume ===
 def init_audio():
+    """Set up the pygame audio system so the Pi can play sound files.
+
+    This must be called once before any bell can ring. If something
+    goes wrong (for example, no audio device is found), we print a
+    warning but do not crash — the daemon keeps running and will try
+    to play audio anyway when a bell moment arrives.
+    """
     try:
         pygame.mixer.init()
         print("[INFO] pygame.mixer init ok")
@@ -175,6 +200,11 @@ def speel_bel(bestand: str, naam: str = "", tijd: str = ""):
 
 # === Schedule / reschedule ===
 def cancel_all_jobs():
+    """Remove all currently scheduled bell jobs.
+
+    Called before loading a new day's schedule so old jobs do not
+    keep firing after the schedule changes.
+    """
     schedule.clear('bells')
     print("[INFO] All bell jobs cancelled.")
 
@@ -255,6 +285,11 @@ def apply_day_schedule(momenten: list[dict]):
 
 # === Helper functions for poller ===
 def _local_next_midnight(now: datetime) -> datetime:
+    """Return the datetime for midnight at the very start of tomorrow.
+
+    Used to decide how long the daemon should sleep: never past midnight,
+    because a new day might have a different bell schedule.
+    """
     tomorrow = now.date() + timedelta(days=1)
     return datetime.combine(tomorrow, dtime(0, 0, 0))
 
@@ -465,6 +500,16 @@ def _maybe_refresh_vakanties() -> None:
 
 # === Poll loop (with dynamic interval + SIGHUP reload) ===
 def schedule_poller_loop():
+    """The main loop that keeps the daemon running.
+
+    On every iteration it:
+    1. Writes a heartbeat timestamp so the web interface knows it is alive.
+    2. Reloads settings if the admin asked for it (via SIGHUP).
+    3. Checks whether the vacation data needs refreshing.
+    4. Fetches today's bell schedule from the web API.
+    5. Updates the scheduled jobs if the schedule changed.
+    6. Sleeps until the next check (but never past midnight).
+    """
     global settings, _reload_settings
     last_sig = None
 
@@ -528,6 +573,12 @@ def schedule_poller_loop():
 
 # === Main ===
 def main():
+    """Start the schoolbell daemon.
+
+    Sets up the audio system, starts the poller in a background thread,
+    and then keeps running the schedule (firing bell jobs at the right
+    times) until the daemon is stopped.
+    """
     print("[BOOT] Schoolbell daemon starting...")
     os.makedirs(AUDIO_DIR, exist_ok=True)
     init_audio()

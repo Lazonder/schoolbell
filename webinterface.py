@@ -196,6 +196,13 @@ def get_daemon_heartbeat() -> dict:
 # everywhere without each route having to remember to pass it.
 @app.context_processor
 def _inject_template_globals():
+    """Add useful variables to every HTML template automatically.
+
+    Flask calls this function before rendering any page. Whatever we
+    return here becomes available in every template without the route
+    handler having to pass it manually. For example, ``{{ now().year }}``
+    in a template works because ``now`` is added here.
+    """
     # Expose flask_babel.get_locale to templates so <html lang="..."> can
     # render the active locale code. Flask-Babel auto-exposes gettext,
     # ngettext, and the _() alias, but not get_locale.
@@ -260,6 +267,14 @@ def _inject_template_globals():
 
 @app.before_request
 def csrf_protect():
+    """Reject form submissions that are missing a valid security token.
+
+    This protection is called a CSRF check. It makes sure that a form
+    POST actually came from our own page and not from a malicious
+    website that tricks a logged-in user into clicking a button.
+    Every form in the app includes a hidden ``_csrf`` field with a
+    secret token. This function checks that the token matches.
+    """
     # Only check POST requests.
     if request.method != "POST":
         return
@@ -275,12 +290,24 @@ def csrf_protect():
 
 @app.errorhandler(413)
 def too_large(_e):
+    """Show a friendly error message when an uploaded file is too large.
+
+    Flask automatically calls this handler when a request body exceeds
+    ``MAX_CONTENT_LENGTH``. We flash a message and send the user back
+    to the audio-files page.
+    """
     flash(_("Upload te groot (controleer de ingestelde limiet bij Voorkeuren)."))
     return redirect(url_for("geluiden.geluiden"))
 
 
 @app.errorhandler(403)
 def forbidden(_e):
+    """Show a styled '403 Forbidden' page instead of Flask's plain text one.
+
+    A 403 response means the user is logged in but not allowed to visit
+    the page they requested. For example, a user without the 'roosters'
+    tab gets a 403 when they try to open /roosters.
+    """
     # Replaces Flask's default plain-text 403 page with a templated
     # one that fits the rest of the UI. Triggered by abort(403) in
     # tab_required / admin_page_required when the visitor is logged
@@ -291,10 +318,21 @@ def forbidden(_e):
     return render_template("403.html"), 403
 
 def ensure_dirs():
+    """Create the data and audio folders if they do not exist yet.
+
+    ``exist_ok=True`` means Python will not crash if the folder is
+    already there — it just does nothing in that case.
+    """
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)
 
 def load_json(path, default):
+    """Read a JSON file and return its contents as a Python object.
+
+    If the file does not exist or cannot be parsed, return ``default``
+    instead of crashing. That way the app still works on a fresh install
+    where the data files have not been created yet.
+    """
     try:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
@@ -304,6 +342,13 @@ def load_json(path, default):
     return default
 
 def save_json(path, obj):
+    """Save a Python object to a JSON file in a safe way.
+
+    We first write to a temporary file (``path.tmp``), make sure the
+    data is fully on disk, and then rename it over the real file.
+    This means the original file is never half-written: you always end
+    up with either the old version or the complete new version.
+    """
     tmp = f"{path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
@@ -463,9 +508,22 @@ def next_bell_for_now(now: datetime) -> dict | None:
 
 
 def _ts_now_iso():
+    """Return the current date and time as a text string in UTC.
+
+    Example result: ``'2025-10-18T14:30:00.123456+00:00'``.
+    UTC means the time is not adjusted for a local timezone, so the
+    log timestamps are always comparable regardless of where the Pi is.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 def log_event(ev_type: str, data: dict):
+    """Write one event to the shared log file (events.jsonl).
+
+    ``ev_type`` is a short category like ``"bell"`` or ``"ui"``.
+    ``data`` is a dict with any extra details about what happened.
+    Each event is stored as one JSON line so the file is easy to read
+    back one line at a time.
+    """
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
         rec = {"ts": _ts_now_iso(), "type": ev_type, "data": data}
@@ -518,6 +576,13 @@ def read_events(limit=200, max_bytes=256_000):
         return []
 
 def compute_upcoming(limit=20):
+    """Return a list of the next upcoming bell moments.
+
+    Looks forward up to 14 days and collects all scheduled bell times.
+    Skips days that are in a 'week off' and days without an active
+    rooster. Returns at most ``limit`` results, sorted by date and time.
+    Used by the Logboek page to show what is coming up next.
+    """
     roosters = load_json(ROOSTERS_PATH, default_roosters_obj())
     dagplanning = load_json(DAGPLANNING_PATH, default_dagplanning_obj())
     standaardweek = load_json(STANDAARDWEEK_PATH, default_standaardweek_obj())
@@ -614,6 +679,13 @@ from core import users as _users  # noqa: E402
 
 @app.before_request
 def _bootstrap_users():
+    """Seed the user store from environment variables on the very first request.
+
+    On a fresh install, no ``users.json`` file exists yet. This function
+    checks whether the file is empty and, if so, creates the first admin
+    account from the ``SCHOOLBELL_WEB_USER`` and ``SCHOOLBELL_WEB_PWHASH``
+    environment variables. After that it does nothing (fast no-op).
+    """
     _users.bootstrap_from_env(ADMIN_USER, ADMIN_HASH)
 
 

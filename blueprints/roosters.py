@@ -42,6 +42,12 @@ roosters_bp = Blueprint("roosters", __name__)
 @roosters_bp.route("/roosters", methods=["GET"])
 @wi.tab_required("roosters")
 def roosters():
+    """Show the roosters overview page.
+
+    Lists all existing roosters with their bell moments. If the URL
+    contains ``?edit_r=`` and ``?edit_i=``, the matching moment row
+    is shown as an editable form instead of read-only text.
+    """
     wi.ensure_dirs()
     roosters = wi.load_json(wi.ROOSTERS_PATH, default_roosters_obj())
     geluiden = wi.list_audio()
@@ -72,6 +78,13 @@ def roosters():
 @roosters_bp.route("/roosters/add", methods=["POST"])
 @wi.tab_required("roosters")
 def add_rooster():
+    """Create a new rooster with the given name.
+
+    Validates the name against the allowed character set. If the
+    checkbox 'kopieer van eerste' is checked, the new rooster starts
+    with a copy of the first existing rooster's moments instead of
+    an empty list.
+    """
     wi.ensure_dirs()
     naam = (request.form.get("naam") or "").strip()
     if not naam:
@@ -110,6 +123,13 @@ def add_rooster():
 @roosters_bp.route("/roosters/<rooster>/delete", methods=["POST"])
 @wi.tab_required("roosters")
 def delete_rooster(rooster):
+    """Delete a rooster, but only if nothing else still uses it.
+
+    Before deleting, checks whether the rooster appears in the
+    standaardweek or in any day override in the agenda. If it does,
+    the deletion is blocked and the admin sees a message explaining
+    which places still reference it.
+    """
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
@@ -160,6 +180,12 @@ def delete_rooster(rooster):
 @roosters_bp.route("/roosters/<rooster>/add-moment", methods=["POST"])
 @wi.tab_required("roosters")
 def add_moment(rooster):
+    """Add a new bell moment to a rooster.
+
+    Reads the time, name, and audio file from the form. Optionally
+    also reads a warning bell (a sound that plays N minutes before
+    the main bell). Validates all fields before saving.
+    """
     wi.ensure_dirs()
 
     # Validate form input outside the lock. No need to block other
@@ -322,6 +348,11 @@ def edit_moment(rooster, index):
 @roosters_bp.route("/roosters/<rooster>/delete-moment/<int:index>", methods=["POST"])
 @wi.tab_required("roosters")
 def delete_moment(rooster, index):
+    """Remove one bell moment from a rooster.
+
+    ``index`` is the position of the moment in the list (0 = first).
+    If the index is out of range, a warning is shown and nothing is deleted.
+    """
     wi.ensure_dirs()
     with wi.locked_json(wi.ROOSTERS_PATH, default_roosters_obj()) as (roosters, save):
         if rooster not in roosters:
@@ -343,6 +374,12 @@ def delete_moment(rooster, index):
 @roosters_bp.route("/standaardweek", methods=["GET", "POST"])
 @wi.tab_required("standaardweek")
 def standaardweek():
+    """Show or save the standard week settings.
+
+    On GET: render the page where the admin can choose which rooster
+    plays on each weekday (Monday through Sunday).
+    On POST: save the chosen roosters for each day, then redirect back.
+    """
     wi.ensure_dirs()
 
     if request.method == "POST":

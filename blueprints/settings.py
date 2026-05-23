@@ -183,6 +183,11 @@ def _build_vakanties_status() -> dict:
 @settings_bp.get("/settings")
 @wi.tab_required("settings")
 def settings_page():
+    """Show the Voorkeuren (settings) page.
+
+    Renders the settings form and includes the current vacation-data
+    status so the admin can see when the data was last refreshed.
+    """
     return render_template(
         "settings.html",
         tab="settings",
@@ -200,12 +205,23 @@ def settings_page():
 @settings_bp.route("/api/settings", methods=["GET"])
 @wi.tab_required("settings")
 def api_settings_get():
+    """Return all current settings as a JSON object.
+
+    Used by the settings page JavaScript to pre-fill the form fields
+    without a full page reload.
+    """
     return jsonify(asdict(Settings.load()))
 
 
 @settings_bp.route("/api/settings", methods=["POST"])
 @wi.tab_required("settings")
 def api_settings_post():
+    """Update settings from a JSON request body.
+
+    Validates each field and saves only if everything is correct.
+    Returns the new settings as JSON on success, or a 400 error
+    with an explanation if a value is invalid.
+    """
     if not request.is_json:
         abort(400, "JSON expected")
     payload = request.get_json() or {}

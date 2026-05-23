@@ -45,6 +45,13 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    """Show the login form and handle a login attempt.
+
+    On GET: render the login page with an empty form.
+    On POST: check the username and password. If they are correct,
+    store the user info in the session and redirect to the next page.
+    If they are wrong, show an error message and stay on the login page.
+    """
     if ui_logged_in():
         return redirect(url_for("agenda.agenda"))
 
@@ -112,6 +119,13 @@ def login():
 
 @auth_bp.route("/logout", methods=["POST", "GET"])
 def logout():
+    """Log the current user out by clearing their session.
+
+    Supports both POST (the nav-bar button with a CSRF token) and GET
+    (an admin typing /logout into the address bar). Either way the
+    result is the same: the session is wiped and the user is sent back
+    to the login page.
+    """
     # session.clear() instead of just pop("user"): this also discards the
     # CSRF token and session.permanent flag. On the next login, everything
     # is rebuilt fresh.

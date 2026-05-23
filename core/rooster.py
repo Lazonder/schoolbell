@@ -55,6 +55,13 @@ def normalize_time(t: str) -> str:
 
 
 def normalize_and_sort_moments(moments):
+    """Clean up and sort a list of bell moments.
+
+    Goes through every moment in the list. Skips any moment that has
+    an invalid time, an empty name, or no audio file. Normalizes the
+    time to ``HH:MM`` format. Puts the valid moments in time order
+    (earliest first). Returns the cleaned, sorted list.
+    """
     cleaned = []
     for m in moments:
         tijd_norm = normalize_time(m.get("tijd") or "")

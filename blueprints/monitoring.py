@@ -97,6 +97,12 @@ def home():
 @monitoring_bp.route("/logs", methods=["GET"])
 @wi.tab_required("logs")
 def logs_page():
+    """Show the Logboek page with recent events and upcoming bells.
+
+    Reads the last 200 events from the log file and splits them into
+    bell events (the daemon played a sound) and UI events (an admin
+    changed something). Also shows the next 20 scheduled bell moments.
+    """
     wi.ensure_dirs()
     upcoming = wi.compute_upcoming(20)
     evs = list(reversed(wi.read_events(200)))
@@ -200,6 +206,12 @@ def healthz():
 
 @monitoring_bp.route("/now", methods=["GET"])
 def now_page():
+    """Show the public 'next bell' countdown page.
+
+    This page is designed to be shown on a TV screen in the staff room.
+    No login is required. The page uses JavaScript to poll /api/now
+    every few seconds and update the countdown display.
+    """
     return render_template("now.html")
 
 

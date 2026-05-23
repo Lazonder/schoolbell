@@ -94,6 +94,11 @@ class Vakantie:
     eind: date
 
     def to_json_obj(self) -> dict:
+        """Convert this vacation period to a plain dict for JSON storage.
+
+        Returns a dict with the vacation name and the start/end dates
+        as ISO strings (``'YYYY-MM-DD'``), ready to be saved to a file.
+        """
         return {
             "naam": self.naam,
             "start": self.start.isoformat(),
@@ -579,6 +584,13 @@ def write_atomically(path: str | os.PathLike, data: dict) -> None:
 # -- CLI -----------------------------------------------------------------------
 
 def _cli(argv: list[str] | None = None) -> int:
+    """Entry point when this file is run from the command line.
+
+    Parses the arguments (which school years to fetch, where to write
+    the output), calls the fetcher, and prints a short summary to the
+    terminal. Returns an exit code: 0 = all OK, 2 = nothing fetched,
+    4 = partial failure (some years succeeded, some failed).
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Fetch and parse Dutch school vacation data from "

@@ -67,6 +67,12 @@ def serve_audio(filename):
 @geluiden_bp.route("/geluiden", methods=["GET"])
 @wi.tab_required("geluiden")
 def geluiden():
+    """Show the audio files page.
+
+    Lists all sound files that have been uploaded. Also passes the
+    allowed file extensions and the upload size limit to the template
+    so the form can show the right hints to the user.
+    """
     wi.ensure_dirs()
     files = wi.list_audio()
 
@@ -89,6 +95,13 @@ def geluiden():
 @geluiden_bp.route("/geluiden/upload", methods=["POST"])
 @wi.tab_required("geluiden")
 def geluiden_upload():
+    """Handle the upload of a new audio file.
+
+    Checks that the file has an allowed extension, a safe name, and is
+    within the configured size limit. Then tries to load it with pygame
+    to verify the audio is actually playable. If all checks pass, the
+    file is saved to the audio folder.
+    """
     wi.ensure_dirs()
 
     s = Settings.load()
@@ -222,6 +235,12 @@ def geluiden_play():
 @geluiden_bp.route("/geluiden/delete", methods=["POST"])
 @wi.tab_required("geluiden")
 def geluiden_delete():
+    """Delete an audio file from the server.
+
+    First checks whether any rooster still uses the file. If so,
+    deletion is blocked and the admin sees which rooster moments still
+    reference it. Otherwise the file is removed and the action is logged.
+    """
     wi.ensure_dirs()
     name = (request.form.get("filename") or "").strip()
     # Same safety check as in geluiden_play: only accept plain
