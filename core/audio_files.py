@@ -35,8 +35,6 @@ def safe_audio_filename(base_no_ext: str, ext: str) -> str:
     base_no_ext = base_no_ext.strip()
     if not NAME_RE.match(base_no_ext):
         return ""
-    if not (1 <= len(base_no_ext) <= 35):
-        return ""
     return f"{base_no_ext}{ext}"
 
 

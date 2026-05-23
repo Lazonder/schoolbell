@@ -57,8 +57,7 @@ def _load_vakanties_file() -> tuple[Optional[dict], Optional[str]]:
         # JSONDecodeError shows as 'JSONDecodeError: ...' which is
         # readable enough for an admin flash; OSError catches
         # permission and disk errors uniformly.
-        import json as _json
-        if isinstance(e, _json.JSONDecodeError):
+        if isinstance(e, json.JSONDecodeError):
             return None, f"vakantiebestand is geen geldige JSON: {e}"
         return None, f"vakantiebestand kon niet worden gelezen: {e}"
 

@@ -307,6 +307,8 @@ def save_json(path, obj):
     tmp = f"{path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, path)
 
 @contextmanager
@@ -537,7 +539,7 @@ def compute_upcoming(limit=20):
             moments = roosters.get(rname, []) if rname else []
             for m in moments:
                 try:
-                    hh, mm = map(int, (m.get("tijd") or "00:00").split(":"))
+                    hh, mm = map(int, (m.get("tijd") or "00:00").split(":")[:2])
                 except Exception:
                     continue
                 dt = datetime(day.year, day.month, day.day, hh, mm)
