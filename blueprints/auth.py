@@ -47,10 +47,11 @@ auth_bp = Blueprint("auth", __name__)
 
 # ---- Login rate limiting ---------------------------------------------
 #
-# Simple in-memory throttle against password brute-forcing. Per client
-# IP we remember the timestamps of recent *failed* attempts; once
-# LOGIN_MAX_FAILURES within LOGIN_WINDOW_SEC are on record, further
-# attempts are refused until the window slides past.
+# Simple in-memory throttle against password brute-forcing (a script
+# that tries thousands of passwords one after another until one
+# works). Per client IP we remember the timestamps of recent *failed*
+# attempts; once LOGIN_MAX_FAILURES within LOGIN_WINDOW_SEC are on
+# record, further attempts are refused until the window slides past.
 #
 # Deliberately unsophisticated:
 # - In-memory means each Gunicorn worker keeps its own counter, so an

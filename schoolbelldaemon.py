@@ -87,6 +87,11 @@ _reload_settings = False
 def _config_mtime() -> float | None:
     """Modification time of config.json, or None when it's missing.
 
+    The 'mtime' is a timestamp the filesystem keeps for every file:
+    when was this file last changed? Comparing it is a very cheap
+    way to ask "did anyone save new settings?" without reading and
+    parsing the whole file every two seconds.
+
     Used by the poll loop to detect that the webinterface saved new
     settings. settings_store.save() writes atomically via tmp +
     os.replace, and a replace always bumps the file's mtime, so
@@ -232,14 +237,21 @@ def speel_bel(bestand: str, naam: str = "", tijd: str = ""):
 
 # === Schedule / reschedule ===
 
-# The `schedule` library is not thread-safe: its job list is a plain
-# Python list. The poller thread rebuilds the jobs (clear + every())
-# while the main thread iterates them in run_pending(). Mutating a
-# list that another thread is iterating can raise or skip/double-run
-# jobs. Every touch of the `schedule` module therefore goes through
-# this lock. RLock (re-entrant) because apply_day_schedule holds it
-# for the whole rebuild while cancel_all_jobs/plan_job_at (which also
-# lock) run inside it — a plain Lock would deadlock on itself there.
+# This daemon runs two threads (two tasks executing at the same time
+# within one program): the main thread fires the bell jobs, and the
+# poller thread fetches the schedule and rebuilds the job list. The
+# `schedule` library was not written for that: its job list is a
+# plain Python list, and changing a list while another thread is
+# walking through it can crash or skip/double-run jobs.
+#
+# The fix is a lock: a "talking stick" that only one thread can hold
+# at a time. Every touch of the `schedule` module first takes this
+# lock, so the two threads can never work on the job list at the
+# same moment. It's an RLock ("re-entrant lock" — the thread that
+# already holds it may take it again without blocking itself),
+# because apply_day_schedule holds it for the whole rebuild while
+# calling cancel_all_jobs/plan_job_at, which each take it too. With
+# a plain Lock the thread would wait forever on itself there.
 _schedule_lock = threading.RLock()
 
 

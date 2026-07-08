@@ -125,14 +125,20 @@ def _validate_audio_file(path: str) -> tuple[bool, str]:
 #
 # The 'Stop' button on the geluiden page must be able to silence
 # audio that is playing in a *different process*: Gunicorn runs
-# multiple workers (each with its own pygame mixer) and scheduled
-# bells play in the daemon. A stop request can land on any of them.
-# The shared state is a tiny flag file: requesting a stop bumps its
-# mtime; every process that plays audio watches the mtime and stops
-# its own mixer when the flag is newer than the moment its playback
-# started. The file is never deleted — a stale flag is simply older
-# than any new playback and therefore ignored. That avoids all
-# delete/recreate races between consumers.
+# multiple workers (separate copies of the web app, each with its
+# own pygame mixer) and scheduled bells play in the daemon. A stop
+# request can land on any of them, so no process can simply stop
+# its own audio and be done.
+#
+# The shared state is a tiny flag file. Requesting a stop 'touches'
+# the file, which bumps its mtime (the last-changed timestamp the
+# filesystem keeps for every file). Every process that plays audio
+# keeps an eye on that mtime and stops its own mixer when the flag
+# is newer than the moment its playback started — i.e. "someone
+# pressed Stop *after* my sound began". The file is never deleted:
+# an old flag is simply older than any new playback and therefore
+# ignored. That sidesteps the tricky situation where two processes
+# both try to delete the same file at the same time.
 
 # How often the web worker's watcher thread polls the flag while a
 # test sound is playing. 0.2 s keeps the button feeling instant

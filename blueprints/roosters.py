@@ -48,10 +48,12 @@ def _bestand_bestaat(name: str) -> bool:
     safe_audio_path, but the moment forms accepted any string for
     ``bestand``/``warn_bestand``. The dropdown in the UI only offers
     real files, so a mismatch here means either a hand-crafted POST
-    (possibly a path-traversal attempt — the daemon joins this value
-    onto AUDIO_DIR) or a file that was deleted between page render
-    and submit. Both should be rejected with a clear message instead
-    of saved as a bell that can never ring.
+    or a file that was deleted between page render and submit. The
+    hand-crafted case matters for safety: the daemon glues this
+    value onto the audio folder's path, and a name like ``../../x``
+    (path traversal: each ``..`` means "one folder up") would point
+    outside that folder. Both cases should be rejected with a clear
+    message instead of saved as a bell that can never ring.
     """
     p = safe_audio_path(name, wi.AUDIO_DIR)
     return p is not None and os.path.isfile(p)

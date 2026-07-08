@@ -261,12 +261,14 @@ def api_effectief_rooster():
     weken_uit = wi.load_json(wi.WEEKDISABLE_PATH, default_weken_uit_obj())
 
     next_check_str = _next_local_midnight(datetime.now()).isoformat()
-    # 'private', not 'public': this endpoint sits behind Basic Auth.
-    # RFC 9111 lets shared caches store authenticated responses when
-    # the response says 'public' — a proxy between daemon and web
-    # could then serve the schedule to clients that never presented
-    # credentials. 'private' keeps the 5-minute caching for the
-    # client itself and forbids shared caches.
+    # 'private', not 'public': this endpoint requires a login (Basic
+    # Auth). A 'shared cache' is a machine between client and server
+    # (e.g. a school proxy) that stores responses and replays them to
+    # later visitors to save traffic. The HTTP rules (RFC 9111) say
+    # such caches may store a logged-in response when it's marked
+    # 'public' — meaning the proxy could hand our schedule to clients
+    # that never logged in at all. 'private' keeps the 5-minute
+    # caching for the client itself and forbids shared caches.
     headers = {"Cache-Control": "private, max-age=300",
                "X-Next-Check": next_check_str}
 

@@ -106,19 +106,23 @@ def _load_or_create_secret_key() -> str:
       2. A persistent random key in data/secret_key, generated on
          first use with 0600 permissions.
 
-    Why not a hardcoded fallback: the secret signs the session
-    cookie. With a known value ("dev-secret") anyone who can reach
-    the site can forge a cookie with user/rol=admin and skip login
-    entirely. A manual deployment that forgets the env var must not
-    silently run in that state.
+    Why not a hardcoded fallback: the secret is the key Flask uses
+    to put a tamper-proof signature on the session cookie (the
+    little file in your browser that proves you're logged in). If
+    the key is a known, public value like "dev-secret", anyone can
+    craft their own cookie that says user=admin, sign it with that
+    key, and skip the login page entirely. A manual deployment that
+    forgets the env var must not silently run in that state.
 
     Why a *file* instead of a random value per process: Gunicorn
     runs multiple workers. If each generated its own in-memory key,
     a login handled by worker A would be an invalid cookie for
     worker B, and users would be bounced to /login at random. The
-    file makes all workers (and restarts) agree. O_EXCL handles the
-    race where two workers create it at the same moment: the loser
-    reads back what the winner wrote.
+    file makes all workers (and restarts) agree. O_EXCL (the
+    "create only if it doesn't exist yet" flag) handles the case
+    where two workers try to create the file at the same moment:
+    exactly one succeeds, and the loser reads back what the winner
+    wrote.
     """
     env = os.environ.get("SCHOOLBELL_SECRET", "").strip()
     if env:
@@ -344,9 +348,12 @@ def csrf_protect():
     sess_token = session.get("csrf", "")
     form_token = request.form.get("_csrf") or request.headers.get("X-CSRF-Token", "")
     # compare_digest instead of != : a plain string comparison stops
-    # at the first differing character, which in theory leaks token
-    # prefixes through response timing. Constant-time comparison is
-    # the standard fix and costs nothing.
+    # at the first character that differs, so comparing "abc..." to
+    # "abd..." is a tiny bit faster than comparing it to "abc...".
+    # An attacker who measures response times very precisely could
+    # in theory use that to guess the token character by character.
+    # compare_digest always takes the same amount of time no matter
+    # where the difference is. Standard fix, costs nothing.
     if not sess_token or not form_token or not hmac.compare_digest(form_token, sess_token):
         return "CSRF token invalid or missing", 400
 
@@ -364,10 +371,16 @@ def _security_headers(resp):
       ('sniffing') content types, e.g. treating an uploaded file as
       HTML/JS because it happens to start with '<'.
     - X-Frame-Options: SAMEORIGIN — the app has no reason to be
-      embedded in an iframe on another site; blocks clickjacking.
-    - Referrer-Policy: same-origin — URLs here can contain rooster
-      names and ?next= paths; no need to leak those to external
-      sites if someone ever puts an outbound link in a template.
+      embedded in an iframe (a page shown inside another page) on
+      some other site. Blocks 'clickjacking': a trick where an
+      attacker's page puts our page invisibly on top of a harmless-
+      looking button, so your click lands on our page without you
+      knowing.
+    - Referrer-Policy: same-origin — when you click a link, browsers
+      normally tell the next site which page you came from. Our URLs
+      can contain rooster names and ?next= paths; no need to share
+      those with external sites if someone ever puts an outbound
+      link in a template.
 
     A Content-Security-Policy is deliberately NOT set here: the
     templates use inline <script> and <style> blocks, so a useful
@@ -805,8 +818,9 @@ def _refresh_user_permissions():
     request, and a deleted user's session dies immediately.
 
     Cost: one read of users.json per authenticated request. The file
-    is a few hundred bytes and sits in the OS page cache, so this is
-    far cheaper than the template render that follows. The session
+    is a few hundred bytes and the operating system keeps recently
+    read files in memory anyway, so this is far cheaper than the
+    template render that follows. The session
     is only written back when something actually changed, so we
     don't emit a Set-Cookie header on every response.
     """
