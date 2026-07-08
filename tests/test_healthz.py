@@ -88,6 +88,20 @@ def test_healthz_reports_audio_dir_failure(client, tmp_path, monkeypatch):
     assert "audio_dir_error" in body["checks"]
 
 
+def test_healthz_error_leaks_no_paths(client, tmp_path, monkeypatch):
+    # /healthz is reachable without login, so a failed check must not
+    # echo raw exception text (which contains filesystem paths) to
+    # the caller. Only the exception *type* may appear; the full
+    # message goes to the server log. Pins the CodeQL finding
+    # 'Information exposure through an exception'.
+    monkeypatch.setattr(webinterface, "AUDIO_DIR", str(tmp_path / "does-not-exist"))
+    r = client.get("/healthz")
+    body = r.get_json()
+    err = body["checks"]["audio_dir_error"]
+    assert err == "FileNotFoundError"
+    assert "/" not in err and str(tmp_path) not in err
+
+
 def test_healthz_response_has_all_check_keys(client):
     # Pin the documented contract: every named check is present in
     # the response so a monitoring config can pick a specific key

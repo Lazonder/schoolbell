@@ -128,9 +128,14 @@ def healthz():
     Returns 200 with a JSON status doc when the basic plumbing is
     OK, 503 when something is broken. Intentionally unauthenticated:
     monitoring agents (automatic uptime checkers that hit this URL
-    every minute or so) typically can't carry session cookies. The
-    information leaked is minimal. Error messages may include
-    filesystem paths that are already implied by the project layout.
+    every minute or so) typically can't carry session cookies.
+
+    Because anyone can call this URL, the response must not leak
+    internal details. On a failed check we therefore only return the
+    exception's *type* (e.g. "PermissionError") — enough for a
+    monitoring dashboard to categorize the problem. The full message,
+    which may contain filesystem paths, goes to the server log
+    (journalctl) where the admin can read it.
 
     Checks performed:
       - DATA_DIR exists and is writable (we briefly create + remove
@@ -158,7 +163,10 @@ def healthz():
         checks["data_dir_writable"] = True
     except Exception as e:
         checks["data_dir_writable"] = False
-        checks["data_dir_error"] = str(e)
+        # Type only — full detail (which may contain paths) goes to
+        # the server log, not to the anonymous caller.
+        checks["data_dir_error"] = type(e).__name__
+        print(f"[WARN] healthz: data dir check failed: {e}")
         overall_ok = False
 
     # 2) Audio dir readable. Bell can't ring without it; the daemon
@@ -168,7 +176,8 @@ def healthz():
         checks["audio_dir_readable"] = True
     except Exception as e:
         checks["audio_dir_readable"] = False
-        checks["audio_dir_error"] = str(e)
+        checks["audio_dir_error"] = type(e).__name__
+        print(f"[WARN] healthz: audio dir check failed: {e}")
         overall_ok = False
 
     # 3) Settings loadable. A corrupt config.json would crash routes
@@ -178,7 +187,8 @@ def healthz():
         checks["settings_loadable"] = True
     except Exception as e:
         checks["settings_loadable"] = False
-        checks["settings_error"] = str(e)
+        checks["settings_error"] = type(e).__name__
+        print(f"[WARN] healthz: settings check failed: {e}")
         overall_ok = False
 
     # 4) Daemon heartbeat: the most operationally interesting signal.
