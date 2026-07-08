@@ -56,6 +56,9 @@ certs/
 *.pem
 *.key
 
+# Persoonlijke notities (niet voor de repo)
+Opties.md
+
 # OS
 .DS_Store
 
