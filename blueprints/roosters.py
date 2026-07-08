@@ -20,10 +20,13 @@ constantly while setting up a school week. Keeping them in one
 blueprint reflects that workflow.
 """
 
+import os
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_babel import gettext as _
 
 import webinterface as wi
+from core.audio_files import safe_audio_path
 from core.rooster import (
     NAME_RE,
     default_dagplanning_obj,
@@ -36,6 +39,22 @@ from core.dates import WEEKDAYS
 
 
 roosters_bp = Blueprint("roosters", __name__)
+
+
+def _bestand_bestaat(name: str) -> bool:
+    """True when ``name`` is a safe audio filename that exists in AUDIO_DIR.
+
+    The upload/play/delete handlers already validate filenames via
+    safe_audio_path, but the moment forms accepted any string for
+    ``bestand``/``warn_bestand``. The dropdown in the UI only offers
+    real files, so a mismatch here means either a hand-crafted POST
+    (possibly a path-traversal attempt — the daemon joins this value
+    onto AUDIO_DIR) or a file that was deleted between page render
+    and submit. Both should be rejected with a clear message instead
+    of saved as a bell that can never ring.
+    """
+    p = safe_audio_path(name, wi.AUDIO_DIR)
+    return p is not None and os.path.isfile(p)
 
 
 # -- Roosters --
@@ -204,6 +223,9 @@ def add_moment(rooster):
     if not bestand:
         flash(_("Kies een geluidsbestand."))
         return redirect(url_for("roosters.roosters"))
+    if not _bestand_bestaat(bestand):
+        flash(_("Geluidsbestand '%(bestand)s' bestaat niet.", bestand=bestand))
+        return redirect(url_for("roosters.roosters"))
 
     # Optional warning fields. Empty/0 -> no warning. The form sends
     # both, the user just leaves them at defaults if they don't want
@@ -223,6 +245,9 @@ def add_moment(rooster):
             return redirect(url_for("roosters.roosters"))
     if warn_min > 0 and not warn_bestand:
         flash(_("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."))
+        return redirect(url_for("roosters.roosters"))
+    if warn_min > 0 and not _bestand_bestaat(warn_bestand):
+        flash(_("Geluidsbestand '%(bestand)s' bestaat niet.", bestand=warn_bestand))
         return redirect(url_for("roosters.roosters"))
 
     new_moment = {"tijd": tijd, "naam": naam, "bestand": bestand}
@@ -291,6 +316,9 @@ def edit_moment(rooster, index):
     if not bestand:
         flash(_("Kies een geluidsbestand."))
         return edit_redirect
+    if not _bestand_bestaat(bestand):
+        flash(_("Geluidsbestand '%(bestand)s' bestaat niet.", bestand=bestand))
+        return edit_redirect
 
     warn_min_raw = (request.form.get("warn_min") or "").strip()
     warn_bestand = (request.form.get("warn_bestand") or "").strip()
@@ -306,6 +334,9 @@ def edit_moment(rooster, index):
             return edit_redirect
     if warn_min > 0 and not warn_bestand:
         flash(_("Kies een geluid voor de waarschuwingsbel, of zet 'minuten eerder' op 0."))
+        return edit_redirect
+    if warn_min > 0 and not _bestand_bestaat(warn_bestand):
+        flash(_("Geluidsbestand '%(bestand)s' bestaat niet.", bestand=warn_bestand))
         return edit_redirect
 
     new_moment = {"tijd": tijd, "naam": naam, "bestand": bestand}

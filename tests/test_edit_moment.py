@@ -9,11 +9,16 @@ Covers:
 """
 
 import json
+import os
 
 import webinterface as wi
 
 
 def _seed_two_moments():
+    # edit-moment validates that `bestand` exists in AUDIO_DIR, so the
+    # referenced file must actually be there (content is irrelevant).
+    with open(os.path.join(wi.AUDIO_DIR, "country.mp3"), "wb") as f:
+        f.write(b"ID3")
     with open(wi.ROOSTERS_PATH, "w") as f:
         json.dump({"School": [
             {"tijd": "08:30", "naam": "Ochtend", "bestand": "country.mp3"},

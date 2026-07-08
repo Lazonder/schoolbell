@@ -11,6 +11,7 @@ Two halves:
 """
 
 import json
+import os
 
 import pytest
 
@@ -102,6 +103,12 @@ def test_normalize_coerces_string_warn_min():
 
 
 def _seed_rooster(rooster="Standaard"):
+    # add-moment validates that bestand/warn_bestand exist in
+    # AUDIO_DIR, so seed the files the tests reference (content is
+    # irrelevant — only existence is checked).
+    for name in ("bel.mp3", "ping.mp3"):
+        with open(os.path.join(webinterface.AUDIO_DIR, name), "wb") as f:
+            f.write(b"ID3")
     with open(webinterface.ROOSTERS_PATH, "w") as f:
         json.dump({rooster: []}, f)
 
@@ -174,6 +181,45 @@ def test_add_moment_warn_min_out_of_range_flashes(logged_in_client, csrf_token):
     with open(webinterface.ROOSTERS_PATH) as f:
         data = json.load(f)
     assert data["Standaard"] == []  # nothing saved
+
+
+def test_add_moment_rejects_nonexistent_bestand(logged_in_client, csrf_token):
+    # A bestand that isn't a real file in AUDIO_DIR must not be saved:
+    # it would produce a bell that never rings (or, hand-crafted, a
+    # path-traversal string the daemon would join onto AUDIO_DIR).
+    _seed_rooster()
+    r = logged_in_client.post(
+        "/roosters/Standaard/add-moment",
+        data={
+            "_csrf": csrf_token,
+            "tijd": "10:00",
+            "naam": "Pauze",
+            "bestand": "bestaat-niet.mp3",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    with open(webinterface.ROOSTERS_PATH) as f:
+        data = json.load(f)
+    assert data["Standaard"] == []
+
+
+def test_add_moment_rejects_path_traversal_bestand(logged_in_client, csrf_token):
+    _seed_rooster()
+    r = logged_in_client.post(
+        "/roosters/Standaard/add-moment",
+        data={
+            "_csrf": csrf_token,
+            "tijd": "10:00",
+            "naam": "Pauze",
+            "bestand": "../../etc/passwd",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    with open(webinterface.ROOSTERS_PATH) as f:
+        data = json.load(f)
+    assert data["Standaard"] == []
 
 
 # ---------------------------------------------------------------------------
