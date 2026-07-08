@@ -52,6 +52,23 @@ from core import users as core_users  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _reset_login_rate_limiter():
+    """Clear the in-memory login throttle between tests.
+
+    The limiter in blueprints.auth is module-global state keyed on
+    client IP. Every test client posts from the same 127.0.0.1, so
+    without this reset the failed-login attempts of unrelated tests
+    would accumulate across the suite and trip the throttle at
+    random. Tests that exercise the throttle itself build their own
+    failure count within a single test body.
+    """
+    from blueprints import auth as auth_blueprint
+    auth_blueprint._failed_logins.clear()
+    yield
+    auth_blueprint._failed_logins.clear()
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     """Anonymous Flask test client with isolated state directories.

@@ -19,6 +19,8 @@ and POST (the nav-bar form with a CSRF token); both end up doing the
 same ``session.clear()``.
 """
 
+import threading
+import time
 from urllib.parse import urlparse
 
 from flask import (
@@ -41,6 +43,69 @@ from core.auth import (
 
 
 auth_bp = Blueprint("auth", __name__)
+
+
+# ---- Login rate limiting ---------------------------------------------
+#
+# Simple in-memory throttle against password brute-forcing. Per client
+# IP we remember the timestamps of recent *failed* attempts; once
+# LOGIN_MAX_FAILURES within LOGIN_WINDOW_SEC are on record, further
+# attempts are refused until the window slides past.
+#
+# Deliberately unsophisticated:
+# - In-memory means each Gunicorn worker keeps its own counter, so an
+#   attacker effectively gets (workers x limit) tries. With 2 workers
+#   and 10 tries per 15 min that is still only ~2 guesses/minute —
+#   plenty to stop a dictionary attack on a LAN install, without a
+#   Redis dependency.
+# - Keyed on request.remote_addr, which is the real client IP because
+#   ProxyFix is configured for the Nginx X-Forwarded-For header.
+# - A successful login clears the counter for that IP, so a teacher
+#   who fat-fingers their password twice doesn't lock out the shared
+#   staff-room computer.
+LOGIN_MAX_FAILURES = 10
+LOGIN_WINDOW_SEC = 15 * 60
+
+_failed_logins: dict[str, list[float]] = {}
+_failed_logins_lock = threading.Lock()
+
+
+def _login_throttled(ip: str) -> bool:
+    """True when this IP has too many recent failed login attempts.
+
+    Also prunes expired timestamps for the IP as a side effect, so
+    the dict entry shrinks back once the window slides past.
+    """
+    now = time.monotonic()
+    with _failed_logins_lock:
+        recent = [
+            t for t in _failed_logins.get(ip, ())
+            if now - t < LOGIN_WINDOW_SEC
+        ]
+        if recent:
+            _failed_logins[ip] = recent
+        else:
+            _failed_logins.pop(ip, None)
+        return len(recent) >= LOGIN_MAX_FAILURES
+
+
+def _record_failed_login(ip: str) -> None:
+    """Remember one failed attempt; garbage-collect stale IPs."""
+    now = time.monotonic()
+    with _failed_logins_lock:
+        _failed_logins.setdefault(ip, []).append(now)
+        # Bound the dict: drop IPs whose attempts have all expired.
+        # Only bother when the map grows unusually large.
+        if len(_failed_logins) > 1000:
+            for k in list(_failed_logins):
+                if all(now - t >= LOGIN_WINDOW_SEC for t in _failed_logins[k]):
+                    del _failed_logins[k]
+
+
+def _clear_failed_logins(ip: str) -> None:
+    """Forget an IP's failures after a successful login."""
+    with _failed_logins_lock:
+        _failed_logins.pop(ip, None)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -82,6 +147,20 @@ def login():
         next_url = url_for("monitoring.home")
 
     if request.method == "POST":
+        ip = request.remote_addr or "?"
+        if _login_throttled(ip):
+            # Don't even check the password: that's the whole point.
+            # The message stays vague on purpose (no "N minutes left")
+            # so the throttle leaks as little as possible.
+            flash(_("Te veel mislukte pogingen. Probeer het later opnieuw."))
+            return render_template(
+                "login.html",
+                next_url=next_url,
+                admin_user=ADMIN_USER,
+                csrf_token=get_csrf_token(),
+                tab=None,
+            ), 429
+
         # Normalize the username to lowercase: the user store is
         # case-insensitive, so "Alice" and "alice" are the same
         # account. Trimming whitespace handles accidental space
@@ -90,6 +169,7 @@ def login():
         p = request.form.get("password") or ""
         user = users_mod.verify_user(u, p)
         if user is not None:
+            _clear_failed_logins(ip)
             # Close session fixation: discard everything that was in
             # the session before login (including the CSRF token that
             # was already generated on the login page), so any
@@ -106,6 +186,7 @@ def login():
             session["rol"] = user.get("rol", "gebruiker")
             session["tabs"] = list(user.get("tabs") or [])
             return redirect(next_url)
+        _record_failed_login(ip)
         flash(_("Onjuiste inloggegevens."))
 
     return render_template(
