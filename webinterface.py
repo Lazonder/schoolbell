@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hmac
 import os, json, fcntl, secrets, sys
 from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
@@ -329,16 +330,19 @@ def csrf_protect():
     Every form in the app includes a hidden ``_csrf`` field with a
     secret token. This function checks that the token matches.
     """
-    # Only check POST requests.
+    # Only check POST requests. (No exemption needed for the daemon's
+    # /api/effectief-rooster: that endpoint is GET-only, so it never
+    # reaches this check. The old exemption for it was dead code.)
     if request.method != "POST":
-        return
-    # Daemon endpoint uses Basic Auth from localhost, no browser -> no CSRF.
-    if request.path == "/api/effectief-rooster":
         return
     # Accept both form field (UI forms) and header (JSON API from settings.html).
     sess_token = session.get("csrf", "")
     form_token = request.form.get("_csrf") or request.headers.get("X-CSRF-Token", "")
-    if not sess_token or not form_token or form_token != sess_token:
+    # compare_digest instead of != : a plain string comparison stops
+    # at the first differing character, which in theory leaks token
+    # prefixes through response timing. Constant-time comparison is
+    # the standard fix and costs nothing.
+    if not sess_token or not form_token or not hmac.compare_digest(form_token, sess_token):
         return "CSRF token invalid or missing", 400
 
 
