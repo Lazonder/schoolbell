@@ -154,6 +154,14 @@ rechten van een ingelogde gebruiker aanpast, ziet die gebruiker dat
 pas na uitloggen. Acceptabel voor deze schaal, maar documenteren in
 het beheer-scherm ("wijziging actief na volgende login").
 
+> **Achterhaald (2026-07):** deze trade-off is teruggedraaid. De hook
+> `_refresh_user_permissions` in `webinterface.py` leest het
+> user-record nu op elke request opnieuw uit `users.json`, zodat
+> rechtwijzigingen direct gelden en een verwijderde gebruiker meteen
+> wordt uitgelogd (voorheen hield die tot 30 minuten toegang op een
+> nog geldige cookie). De file-read bleek verwaarloosbaar naast de
+> template-render.
+
 ### 3.3 Nieuwe decorators
 
 In `core/auth.py` toevoegen naast `ui_login_required`:

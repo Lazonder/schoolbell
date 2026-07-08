@@ -776,6 +776,42 @@ def _bootstrap_users():
     _users.bootstrap_from_env(ADMIN_USER, ADMIN_HASH)
 
 
+@app.before_request
+def _refresh_user_permissions():
+    """Sync the session's rol/tabs with users.json on every request.
+
+    Login used to cache rol and tabs in the session cookie, with the
+    documented trade-off that permission changes only took effect
+    after the user logged back in. The nasty edge of that trade-off:
+    a *deleted* user kept full access until their cookie expired
+    (up to 30 minutes). This hook closes both gaps — an admin's
+    change to a user's role or tabs applies on that user's very next
+    request, and a deleted user's session dies immediately.
+
+    Cost: one read of users.json per authenticated request. The file
+    is a few hundred bytes and sits in the OS page cache, so this is
+    far cheaper than the template render that follows. The session
+    is only written back when something actually changed, so we
+    don't emit a Set-Cookie header on every response.
+    """
+    username = session.get("user")
+    if not username:
+        return
+    rec = _users.get_user(username)
+    if rec is None:
+        # User was deleted (or users.json was reset): kill the
+        # session. The tab/admin decorators then treat the request
+        # as anonymous and redirect to /login.
+        session.clear()
+        return
+    rol = rec.get("rol", "gebruiker")
+    tabs = list(rec.get("tabs") or [])
+    if session.get("rol") != rol:
+        session["rol"] = rol
+    if session.get("tabs") != tabs:
+        session["tabs"] = tabs
+
+
 # ---------- Dev server ----------
 # The previous version of this block also pre-created roosters.json,
 # dagplanning.json, standaardweek.json and weken_uit.json with empty

@@ -178,11 +178,12 @@ def login():
             session.clear()
             session.permanent = True
             session["user"] = u
-            # Caching role and tab list in the session keeps every
-            # subsequent request from re-reading users.json. The
-            # trade-off: an admin who changes a user's permissions
-            # only sees the change take effect after that user logs
-            # back in (documented in multi-user-plan.md §9).
+            # rol/tabs are seeded here for the redirect that follows,
+            # but the authoritative copy lives in users.json: the
+            # _refresh_user_permissions hook in webinterface re-syncs
+            # them from the store on every request, so permission
+            # changes (and deletions) take effect immediately instead
+            # of at the next login.
             session["rol"] = user.get("rol", "gebruiker")
             session["tabs"] = list(user.get("tabs") or [])
             return redirect(next_url)
