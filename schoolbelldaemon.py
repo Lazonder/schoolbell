@@ -213,13 +213,26 @@ def speel_bel(bestand: str, naam: str = "", tijd: str = ""):
                         "bestand": bestand, "message": str(e)})
 
 # === Schedule / reschedule ===
+
+# The `schedule` library is not thread-safe: its job list is a plain
+# Python list. The poller thread rebuilds the jobs (clear + every())
+# while the main thread iterates them in run_pending(). Mutating a
+# list that another thread is iterating can raise or skip/double-run
+# jobs. Every touch of the `schedule` module therefore goes through
+# this lock. RLock (re-entrant) because apply_day_schedule holds it
+# for the whole rebuild while cancel_all_jobs/plan_job_at (which also
+# lock) run inside it — a plain Lock would deadlock on itself there.
+_schedule_lock = threading.RLock()
+
+
 def cancel_all_jobs():
     """Remove all currently scheduled bell jobs.
 
     Called before loading a new day's schedule so old jobs do not
     keep firing after the schedule changes.
     """
-    schedule.clear('bells')
+    with _schedule_lock:
+        schedule.clear('bells')
     print("[INFO] All bell jobs cancelled.")
 
 def plan_job_at(hhmm: str, audio_file: str, label: str = ""):
@@ -230,9 +243,10 @@ def plan_job_at(hhmm: str, audio_file: str, label: str = ""):
         print(f"[WARN] Invalid time format (HH:MM) for job: {hhmm} ({label})")
         return
     # Also pass name and time to speel_bel for clean logging
-    schedule.every().day.at(hhmm).do(
-        speel_bel, bestand=audio_file, naam=label, tijd=hhmm
-    ).tag('bells')
+    with _schedule_lock:
+        schedule.every().day.at(hhmm).do(
+            speel_bel, bestand=audio_file, naam=label, tijd=hhmm
+        ).tag('bells')
     lbl = f" ({label})" if label else ""
     print(f"[PLAN] {hhmm} → {audio_file}{lbl}")
 
@@ -264,35 +278,40 @@ def apply_day_schedule(momenten: list[dict]):
       - bestand: audio filename
       - warn_min: int (optional) — N minutes before to ring a warning
       - warn_bestand: str (optional) — audio file for the warning
+
+    Holds _schedule_lock for the entire rebuild so run_pending()
+    in the main thread never observes the half-rebuilt state
+    between the clear and the re-adds.
     """
-    cancel_all_jobs()
     count = 0
     warn_count = 0
-    for m in sorted(momenten, key=lambda x: x.get("tijd", "")):
-        t = (m.get("tijd") or "").strip()
-        f = (m.get("bestand") or "").strip()
-        nm = (m.get("naam") or "").strip()
-        if not (t and f):
-            continue
-        plan_job_at(t, f, label=nm)
-        count += 1
-
-        # Optional warning bell: rings warn_min minutes earlier with
-        # warn_bestand. The web side already validates 1..60 and
-        # filters out half-configured states (only one of the two
-        # set), so we just check both are present here.
-        warn_min = m.get("warn_min")
-        warn_f = (m.get("warn_bestand") or "").strip()
-        if warn_min and warn_f:
-            warn_t = _subtract_minutes(t, int(warn_min))
-            if warn_t is None:
-                print(
-                    f"[WARN] Skipping warning for {nm or t}: "
-                    f"{warn_min} min before {t} crosses midnight."
-                )
+    with _schedule_lock:
+        cancel_all_jobs()
+        for m in sorted(momenten, key=lambda x: x.get("tijd", "")):
+            t = (m.get("tijd") or "").strip()
+            f = (m.get("bestand") or "").strip()
+            nm = (m.get("naam") or "").strip()
+            if not (t and f):
                 continue
-            plan_job_at(warn_t, warn_f, label=f"{nm} (waarschuwing)")
-            warn_count += 1
+            plan_job_at(t, f, label=nm)
+            count += 1
+
+            # Optional warning bell: rings warn_min minutes earlier with
+            # warn_bestand. The web side already validates 1..60 and
+            # filters out half-configured states (only one of the two
+            # set), so we just check both are present here.
+            warn_min = m.get("warn_min")
+            warn_f = (m.get("warn_bestand") or "").strip()
+            if warn_min and warn_f:
+                warn_t = _subtract_minutes(t, int(warn_min))
+                if warn_t is None:
+                    print(
+                        f"[WARN] Skipping warning for {nm or t}: "
+                        f"{warn_min} min before {t} crosses midnight."
+                    )
+                    continue
+                plan_job_at(warn_t, warn_f, label=f"{nm} (waarschuwing)")
+                warn_count += 1
 
     suffix = f", {warn_count} warnings" if warn_count else ""
     print(f"[INFO] {count} moments scheduled for today{suffix}.")
@@ -641,9 +660,18 @@ def main():
     t = threading.Thread(target=schedule_poller_loop, name="SchedulePoller", daemon=True)
     t.start()
 
-    # Schedule loop (keeps running pending jobs)
+    # Schedule loop (keeps running pending jobs). The lock pairs with
+    # the poller thread's schedule rebuilds; the try/except is a last
+    # line of defence — an unexpected exception here would otherwise
+    # kill the bell loop while the poller thread keeps running,
+    # leaving a daemon that looks alive (heartbeat!) but never rings.
     while not stop_event.is_set():
-        schedule.run_pending()
+        try:
+            with _schedule_lock:
+                schedule.run_pending()
+        except Exception as e:
+            print(f"[ERROR] run_pending failed: {e}")
+            log_bell_event({"status": "error", "message": f"run_pending: {e}"})
         stop_event.wait(1)
 
 if __name__ == "__main__":
