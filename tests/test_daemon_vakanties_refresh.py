@@ -12,7 +12,7 @@ Trigger rule under test: refresh if last_success_at is more than
 VAKANTIES_REFRESH_INTERVAL_DAYS ago (or never / corrupt).
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import schoolbelldaemon as daemon
 
@@ -76,6 +76,44 @@ def test_refresh_picks_up_new_schooljaar_after_august():
     last = date(2026, 7, 1)
     state = {"last_success_at": f"{last.isoformat()}T03:14:00+00:00"}
     assert daemon._should_refresh_vakanties_today(today, state) is True
+
+
+# --- Attempt throttle (failed refreshes must not retry every poll) ----------
+
+
+def test_refresh_throttled_shortly_after_failed_attempt():
+    # A refresh attempt 5 minutes ago failed (no last_success_at).
+    # Without the throttle the daemon would retry on every poll
+    # iteration (every 2s by default) and hammer rijksoverheid.nl.
+    now = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+    state = {"last_attempt_at": "2026-08-01T11:55:00+00:00"}
+    assert daemon._should_refresh_vakanties_today(now.date(), state, now=now) is False
+
+
+def test_refresh_allowed_after_retry_interval_passed():
+    # Last (failed) attempt was 2 hours ago — past the 1-hour retry
+    # window, so a new attempt is allowed.
+    now = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+    state = {"last_attempt_at": "2026-08-01T10:00:00+00:00"}
+    assert daemon._should_refresh_vakanties_today(now.date(), state, now=now) is True
+
+
+def test_refresh_allowed_when_attempt_timestamp_is_corrupt():
+    # Corrupt last_attempt_at can't prove a recent attempt: allow.
+    now = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+    state = {"last_attempt_at": "not-a-date"}
+    assert daemon._should_refresh_vakanties_today(now.date(), state, now=now) is True
+
+
+def test_recent_success_wins_over_old_attempt():
+    # Success yesterday, attempt long ago: the 30-day success rule
+    # says no refresh, regardless of the attempt throttle.
+    now = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+    state = {
+        "last_success_at": "2026-07-31T03:14:00+00:00",
+        "last_attempt_at": "2026-07-31T03:14:00+00:00",
+    }
+    assert daemon._should_refresh_vakanties_today(now.date(), state, now=now) is False
 
 
 # --- State file IO ----------------------------------------------------------

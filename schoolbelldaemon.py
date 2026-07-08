@@ -346,6 +346,15 @@ def _signature(payload: dict) -> str:
 #      Aug 1 (we'll catch the new year on the next monthly cycle).
 VAKANTIES_REFRESH_INTERVAL_DAYS = 30
 
+# Minimum time between two refresh *attempts*. Without this, a failed
+# refresh (no network, rijksoverheid.nl down, fresh install without
+# connectivity) would be retried on every poll iteration — at the
+# default poll_interval_sec of 2 that means hammering the site with
+# 5 fetches every 2 seconds until it succeeds. One retry per hour is
+# plenty: the data stays valid for months, so recovery latency is
+# not critical.
+VAKANTIES_RETRY_MIN_INTERVAL_SEC = 60 * 60  # 1 hour
+
 def _load_vakanties_fetch_state() -> dict:
     """Read the small JSON state file. Missing/bad file -> empty dict."""
     try:
@@ -371,12 +380,20 @@ def _save_vakanties_fetch_state(state: dict) -> None:
     except Exception as e:
         print(f"[WARN] Could not write {VAKANTIES_FETCH_STATE_PATH}: {e}")
 
-def _should_refresh_vakanties_today(today: date, state: dict) -> bool:
+def _should_refresh_vakanties_today(today: date, state: dict, now: datetime | None = None) -> bool:
     """Should we attempt a vakanties refresh on this date?
 
-    Rule: refresh if the last successful refresh was more than
-    VAKANTIES_REFRESH_INTERVAL_DAYS ago (or never). Corrupt or
-    unparseable state is treated as 'never refreshed'.
+    Two rules, both must allow it:
+
+    1. Success recency: refresh only if the last *successful* refresh
+       was VAKANTIES_REFRESH_INTERVAL_DAYS or more ago (or never).
+       Corrupt or unparseable state is treated as 'never refreshed'.
+    2. Attempt throttle: after any attempt (success or failure), wait
+       at least VAKANTIES_RETRY_MIN_INTERVAL_SEC before trying again.
+       This keeps a failing install (no network, site down) from
+       retrying on every poll iteration.
+
+    ``now`` is injectable for tests; defaults to the current UTC time.
 
     No special-cased calendar date. The schooljaar boundary is
     handled implicitly: target_schooljaar() flips on August 1, so
@@ -385,15 +402,30 @@ def _should_refresh_vakanties_today(today: date, state: dict) -> bool:
     so we don't need a tight day-of-year anchor.
     """
     last_iso = state.get("last_success_at", "")
-    if not last_iso:
+    if last_iso:
+        try:
+            last_date = datetime.fromisoformat(last_iso.replace("Z", "+00:00")).date()
+            if (today - last_date).days < VAKANTIES_REFRESH_INTERVAL_DAYS:
+                return False
+        except ValueError:
+            # Corrupt timestamp -> treat as never refreshed. Better to
+            # try once than to silently never refresh again.
+            pass
+
+    # Attempt throttle. A corrupt/missing last_attempt_at means we
+    # can't prove a recent attempt, so allow the refresh.
+    attempt_iso = state.get("last_attempt_at", "")
+    if not attempt_iso:
         return True
     try:
-        last_date = datetime.fromisoformat(last_iso.replace("Z", "+00:00")).date()
+        last_attempt = datetime.fromisoformat(attempt_iso.replace("Z", "+00:00"))
     except ValueError:
-        # Corrupt timestamp -> treat as never refreshed. Better to
-        # try once than to silently never refresh again.
         return True
-    return (today - last_date).days >= VAKANTIES_REFRESH_INTERVAL_DAYS
+    if last_attempt.tzinfo is None:
+        last_attempt = last_attempt.replace(tzinfo=timezone.utc)
+    if now is None:
+        now = datetime.now(timezone.utc)
+    return (now - last_attempt).total_seconds() >= VAKANTIES_RETRY_MIN_INTERVAL_SEC
 
 def _maybe_refresh_vakanties() -> None:
     """If we're due for a vakanties refresh, fetch from rijksoverheid.nl
