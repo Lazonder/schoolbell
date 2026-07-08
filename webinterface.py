@@ -84,6 +84,11 @@ VAKANTIES_PATH = os.path.join(DATA_DIR, "vakanties.json")
 # iteration. The header reads it to render a green/red dot. See
 # schoolbelldaemon._write_heartbeat for the writer side.
 DAEMON_HEARTBEAT_PATH = os.path.join(DATA_DIR, "daemon_heartbeat.json")
+# Stop flag: touched by the Stop button on the geluiden page. Both the
+# web workers (test playback) and the daemon (scheduled bells) watch
+# this file's mtime and stop their own mixer when it's newer than
+# their playback start. See core/audio_files.py for the mechanism.
+STOP_FLAG_PATH = os.path.join(DATA_DIR, "stop_playback")
 
 # === Flask ===
 app = Flask(__name__)

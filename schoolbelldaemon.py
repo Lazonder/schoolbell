@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import os, sys, json, threading, signal
+import os, sys, json, threading, signal, time
 from datetime import datetime, timezone, date, time as dtime, timedelta
 import requests         # pip install requests
 import schedule         # pip install schedule
 import pygame           # pip install pygame
+from core.audio_files import _watch_stop_flag
 from settings_store import CONFIG_PATH, Settings
 
 # === Paths / constant values ===
@@ -24,6 +25,12 @@ VAKANTIES_FETCH_STATE_PATH = os.path.join(DATA_DIR, "vakanties_fetch_state.json"
 # file is intentionally lightweight (one ISO timestamp) so the write
 # cost is negligible even when poll_interval_sec is set low.
 DAEMON_HEARTBEAT_PATH = os.path.join(DATA_DIR, "daemon_heartbeat.json")
+# Stop flag: the Stop button on the geluiden page touches this file.
+# speel_bel() starts a watcher thread per playback that stops the
+# mixer when the flag's mtime is newer than the playback start —
+# same mechanism the web workers use for test sounds. See
+# core/audio_files.py for the full story.
+STOP_FLAG_PATH = os.path.join(DATA_DIR, "stop_playback")
 
 # === Settings (can be reloaded) ===
 settings = Settings.load()
@@ -204,7 +211,18 @@ def speel_bel(bestand: str, naam: str = "", tijd: str = ""):
         apply_playback_volume()
 
         pygame.mixer.music.load(pad)
+        started_at = time.time()
         pygame.mixer.music.play()
+        # Watch the stop flag for the duration of this bell so the
+        # Stop button on the geluiden page can cut off a long sound
+        # mid-ring (intercom scenario). Daemon thread; exits by
+        # itself when the sound finishes.
+        threading.Thread(
+            target=_watch_stop_flag,
+            args=(STOP_FLAG_PATH, started_at),
+            name="StopFlagWatcher",
+            daemon=True,
+        ).start()
         # Don't block; playback can continue in background.
         log_bell_event({"status": "ok", "naam": naam, "tijd": tijd, "bestand": bestand})
     except Exception as e:

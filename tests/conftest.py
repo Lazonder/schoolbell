@@ -109,6 +109,9 @@ def client(tmp_path, monkeypatch):
         "DAEMON_HEARTBEAT_PATH",
         str(data_dir / "daemon_heartbeat.json"),
     )
+    monkeypatch.setattr(
+        webinterface, "STOP_FLAG_PATH", str(data_dir / "stop_playback")
+    )
     # core.users keeps its own path constant (it deliberately doesn't
     # import webinterface to avoid a circular dependency, see
     # core/users.py header). Redirect it to the same tmp dir so the

@@ -8,6 +8,8 @@ mocks where possible.
 
 import os
 import re
+import threading
+import time
 
 from werkzeug.utils import safe_join
 
@@ -119,7 +121,67 @@ def _validate_audio_file(path: str) -> tuple[bool, str]:
         return False, f"Pygame kan dit bestand niet lezen ({e})"
 
 
-def _play_via_pygame(path: str, volume: float) -> None:
+# ---- Stop flag ------------------------------------------------------
+#
+# The 'Stop' button on the geluiden page must be able to silence
+# audio that is playing in a *different process*: Gunicorn runs
+# multiple workers (each with its own pygame mixer) and scheduled
+# bells play in the daemon. A stop request can land on any of them.
+# The shared state is a tiny flag file: requesting a stop bumps its
+# mtime; every process that plays audio watches the mtime and stops
+# its own mixer when the flag is newer than the moment its playback
+# started. The file is never deleted — a stale flag is simply older
+# than any new playback and therefore ignored. That avoids all
+# delete/recreate races between consumers.
+
+# How often the web worker's watcher thread polls the flag while a
+# test sound is playing. 0.2 s keeps the button feeling instant
+# without measurable CPU cost.
+STOP_FLAG_POLL_SEC = 0.2
+
+
+def request_stop(flag_path: str) -> None:
+    """Signal every audio-playing process to stop, by touching the flag.
+
+    Writing the file (or updating its mtime when it already exists)
+    is atomic enough for this purpose: consumers only compare the
+    mtime against their playback start time, never read the content.
+    """
+    os.makedirs(os.path.dirname(flag_path), exist_ok=True)
+    with open(flag_path, "w", encoding="utf-8") as f:
+        f.write("stop\n")
+
+
+def stop_flag_mtime(flag_path: str) -> float | None:
+    """The flag file's mtime, or None when it doesn't exist yet."""
+    try:
+        return os.stat(flag_path).st_mtime
+    except OSError:
+        return None
+
+
+def _watch_stop_flag(flag_path: str, started_at: float) -> None:
+    """Body of the watcher thread started by _play_via_pygame.
+
+    Polls while this process's music channel is busy; stops the
+    mixer as soon as the flag is touched after ``started_at``.
+    Exits silently when playback ends by itself. Any pygame error
+    (e.g. mixer torn down during interpreter shutdown) just ends
+    the watcher — it must never take the worker down.
+    """
+    import pygame
+    try:
+        while pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+            mtime = stop_flag_mtime(flag_path)
+            if mtime is not None and mtime >= started_at:
+                pygame.mixer.music.stop()
+                return
+            time.sleep(STOP_FLAG_POLL_SEC)
+    except Exception:
+        pass
+
+
+def _play_via_pygame(path: str, volume: float, stop_flag_path: str | None = None) -> None:
     """Play an audio file through the web worker's own pygame mixer.
 
     Used by the 'test bell' button on the geluiden page. The daemon
@@ -137,10 +199,24 @@ def _play_via_pygame(path: str, volume: float) -> None:
     flag. pygame already tracks state for us. mixer.init() is
     idempotent (safe to run more than once with the same result)
     in practice but get_init() avoids the work.
+
+    When ``stop_flag_path`` is given, a small daemon thread watches
+    that file for the duration of the playback and stops the mixer
+    when the Stop button touches it (see the stop-flag section
+    above). Threads are per-playback; a thread whose sound already
+    finished sees get_busy() == False and exits immediately.
     """
     import pygame  # local import: only when the button is actually used
     if not pygame.mixer.get_init():
         pygame.mixer.init()
     pygame.mixer.music.set_volume(volume)
     pygame.mixer.music.load(path)
+    started_at = time.time()
     pygame.mixer.music.play()
+    if stop_flag_path:
+        threading.Thread(
+            target=_watch_stop_flag,
+            args=(stop_flag_path, started_at),
+            name="StopFlagWatcher",
+            daemon=True,
+        ).start()

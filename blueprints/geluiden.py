@@ -36,6 +36,7 @@ import webinterface as wi
 from core.audio_files import (
     _play_via_pygame,
     _validate_audio_file,
+    request_stop,
     safe_audio_filename,
     safe_audio_path,
 )
@@ -220,7 +221,7 @@ def geluiden_play():
 
     try:
         v = max(0, min(100, int(Settings.load().volume_percent))) / 100.0
-        _play_via_pygame(path, v)
+        _play_via_pygame(path, v, stop_flag_path=wi.STOP_FLAG_PATH)
         wi.log_event("ui", {"action": "test_bell", "filename": name})
         flash(_("Test gestart: %(name)s", name=name))
     except Exception as e:
@@ -229,6 +230,24 @@ def geluiden_play():
         # can decode. Surface the error so the admin can debug.
         wi.log_event("ui", {"action": "test_bell_error", "filename": name, "error": str(e)})
         flash(_("Afspelen mislukt: %(err)s", err=e))
+    return redirect(url_for("geluiden.geluiden"))
+
+
+@geluiden_bp.route("/geluiden/stop", methods=["POST"])
+@wi.tab_required("geluiden")
+def geluiden_stop():
+    """Stop whatever audio is currently playing, everywhere.
+
+    Touches the shared stop flag. The web worker that started a test
+    sound notices within ~0.2 s (watcher thread); the daemon notices
+    a playing scheduled bell within ~1 s (its run_pending loop). If
+    nothing is playing the flag is simply ignored by everyone — the
+    button is safe to mash. Logged so the Logboek shows who cut off
+    a bell mid-ring.
+    """
+    request_stop(wi.STOP_FLAG_PATH)
+    wi.log_event("ui", {"action": "stop_playback"})
+    flash(_("Stopsignaal verstuurd."))
     return redirect(url_for("geluiden.geluiden"))
 
 

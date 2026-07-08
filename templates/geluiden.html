@@ -5,6 +5,20 @@
 
 <header class="sb-page-header">
   <h1>{{ _('Geluiden') }}</h1>
+  {# Global stop: silences a test sound in any web worker AND a
+     scheduled bell playing in the daemon. No confirm dialog on
+     purpose — when a long jingle is blaring over the intercom you
+     want one click, not two. Harmless when nothing is playing. #}
+  <form method="post"
+        action="{{ url_for('geluiden.geluiden_stop') }}"
+        class="inline">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <button type="submit"
+            class="sb-btn sb-btn--danger"
+            title="{{ _('Stop het geluid dat nu afspeelt (ook een lopende bel)') }}">
+      ⏹ {{ _('Stop afspelen') }}
+    </button>
+  </form>
 </header>
 
 <div class="sb-card sb-card--section">

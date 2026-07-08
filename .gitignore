@@ -29,6 +29,8 @@ vakanties.json
 vakanties_fetch_state.json
 daemon_heartbeat.json
 users.json
+# Stop-knop vlagbestand (runtime state, zie core/audio_files.py)
+data/stop_playback
 
 # Lock files for the JSON state above (created by fcntl.flock on
 # the sidecar files in webinterface.locked_json / settings_store.locked).
