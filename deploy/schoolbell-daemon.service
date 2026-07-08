@@ -16,6 +16,13 @@ Environment="API_BASE=http://127.0.0.1:5000"
 
 ExecStart=/home/pi/schoolbell/venv/bin/python -u /home/pi/schoolbell/schoolbelldaemon.py
 
+# `systemctl reload schoolbell-daemon` stuurt SIGHUP: de daemon
+# herlaadt dan config.json zonder herstart (en zonder een lopende
+# bel te onderbreken). Sinds de mtime-watch pikt hij wijzigingen
+# via de webinterface al vanzelf op; dit is de expliciete knop voor
+# handmatige edits aan /etc/schoolbell/config.json.
+ExecReload=/bin/kill -HUP $MAINPID
+
 Restart=always
 RestartSec=2
 

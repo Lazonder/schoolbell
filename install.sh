@@ -258,6 +258,7 @@ EnvironmentFile=${DAEMON_ENV}
 Environment="SCHOOLBELL_CONFIG=${CONFIG_DIR}/config.json"
 Environment="API_BASE=http://127.0.0.1:5000"
 ExecStart=${APP_DIR}/venv/bin/python ${APP_DIR}/schoolbelldaemon.py
+ExecReload=/bin/kill -HUP \$MAINPID
 Restart=always
 RestartSec=2
 

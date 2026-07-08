@@ -142,12 +142,13 @@ updated `daemon.env`:
 sudo systemctl restart schoolbell-daemon.service
 ```
 
-The daemon also accepts a SIGHUP to reload `config.json` without a
-full restart — handy when only the polling interval or volume
-changed:
+Settings changed through the web UI are picked up automatically:
+the daemon watches `config.json`'s modification time on every poll.
+For manual edits to `/etc/schoolbell/config.json` you can force a
+reload without a full restart (the unit maps `reload` to SIGHUP):
 
 ```bash
-sudo systemctl kill -s HUP schoolbell-daemon.service
+sudo systemctl reload schoolbell-daemon.service
 ```
 
 ### The lazy alternative

@@ -574,7 +574,17 @@ def next_bell_for_now(now: datetime) -> dict | None:
     def _pad(t: str) -> str:
         return t if len(t) == 8 else t + ":00"
 
-    upcoming = [m for m in momenten if _pad(m["tijd"]) > now_tijd]
+    # Skip moments with a missing or malformed tijd instead of
+    # crashing the public /now page on them. normalize_and_sort_moments
+    # guarantees clean data on every save through the UI, but a
+    # hand-edited roosters.json shouldn't take the page down — and
+    # compute_upcoming already tolerates the same garbage, so the two
+    # readers stay consistent.
+    valid = [
+        m for m in momenten
+        if TIME_RE.match((m.get("tijd") or "").strip())
+    ]
+    upcoming = [m for m in valid if _pad(m["tijd"]) > now_tijd]
     if not upcoming:
         return None
 
@@ -584,16 +594,17 @@ def next_bell_for_now(now: datetime) -> dict | None:
     nxt = upcoming[0]
 
     # Compute seconds_until from a real datetime to avoid hand-rolling
-    # arithmetic across the HH:MM/HH:MM:SS variants.
+    # arithmetic across the HH:MM/HH:MM:SS variants. int() can't fail:
+    # TIME_RE pinned the format above.
     h, mn, *rest = _pad(nxt["tijd"]).split(":")
     sec = int(rest[0]) if rest else 0
     bell_dt = datetime.combine(d, time(int(h), int(mn), sec))
     secs = max(0, int((bell_dt - now).total_seconds()))
 
     return {
-        "naam": nxt["naam"],
+        "naam": nxt.get("naam", ""),
         "tijd": nxt["tijd"],
-        "bestand": nxt["bestand"],
+        "bestand": nxt.get("bestand", ""),
         "seconds_until": secs,
         "datum": d.isoformat(),
     }

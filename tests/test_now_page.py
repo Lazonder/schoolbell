@@ -122,6 +122,23 @@ def test_next_bell_picks_first_upcoming(seeded):
     assert nxt["naam"] == "Kleine pauze"
 
 
+def test_next_bell_skips_malformed_moments(client):
+    # A hand-edited roosters.json with a missing or garbage tijd must
+    # not crash the public /now page: malformed moments are skipped,
+    # valid ones still surface. Missing naam/bestand fall back to "".
+    _seed_rooster(momenten=[
+        {"naam": "Geen tijd", "bestand": "bel.mp3"},              # tijd missing
+        {"tijd": "zzz", "naam": "Rommel", "bestand": "bel.mp3"},  # garbage tijd
+        {"tijd": "10:00"},                                        # naam+bestand missing
+    ])
+    fake_now = datetime.combine(date.today(), datetime.strptime("09:00", "%H:%M").time())
+    nxt = webinterface.next_bell_for_now(fake_now)
+    assert nxt is not None
+    assert nxt["tijd"] == "10:00"
+    assert nxt["naam"] == ""
+    assert nxt["bestand"] == ""
+
+
 def test_next_bell_returns_none_after_last_bell(seeded):
     # 15:00 → past the 14:00 final bell, no more today.
     fake_now = datetime.combine(date.today(), datetime.strptime("15:00", "%H:%M").time())
