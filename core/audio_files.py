@@ -61,10 +61,13 @@ def safe_audio_path(name: str, audio_dir: str) -> str | None:
        alternate separator, an absolute path, or a parent-dir
        marker. Belt-and-braces with step 1.
 
-    3. **Realpath confinement.** ``safe_join`` is a pure string
-       operation and does not follow symlinks. If somebody managed
-       to plant a symlink in ``audio_dir`` pointing elsewhere, the
-       resolved path would still be flagged here.
+    3. **Realpath confinement.** ``safe_join`` only looks at the
+       *text* of the path; it doesn't follow symlinks (special
+       shortcut files that silently point at another location on
+       disk). ``os.path.realpath`` resolves such shortcuts to the
+       place they really point to. So if somebody managed to plant
+       a symlink in ``audio_dir`` that points outside it, this
+       check still catches the escape.
 
     Returns the path on success and ``None`` otherwise. Callers are
     still responsible for checking existence with ``os.path.isfile``

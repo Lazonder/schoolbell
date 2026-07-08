@@ -123,14 +123,14 @@ def logs_page():
 
 @monitoring_bp.route("/healthz", methods=["GET"])
 def healthz():
-    """Liveness/readiness probe.
+    """Health probe: a URL a monitoring tool can poll to ask "are you OK?".
 
     Returns 200 with a JSON status doc when the basic plumbing is
     OK, 503 when something is broken. Intentionally unauthenticated:
-    monitoring agents (uptime checks, container probes, nagios-style
-    probes) typically can't carry session cookies. The information
-    leaked is minimal. Error messages may include filesystem paths
-    that are already implied by the project layout.
+    monitoring agents (automatic uptime checkers that hit this URL
+    every minute or so) typically can't carry session cookies. The
+    information leaked is minimal. Error messages may include
+    filesystem paths that are already implied by the project layout.
 
     Checks performed:
       - DATA_DIR exists and is writable (we briefly create + remove

@@ -171,11 +171,15 @@ def login():
         user = users_mod.verify_user(u, p)
         if user is not None:
             _clear_failed_logins(ip)
-            # Close session fixation: discard everything that was in
-            # the session before login (including the CSRF token that
-            # was already generated on the login page), so any
-            # injected cookie is immediately worthless. get_csrf_token()
-            # then generates a fresh token on the first next render.
+            # Close 'session fixation': an attack where someone plants
+            # a session cookie they know in your browser *before* you
+            # log in, hoping the site keeps using it afterwards — then
+            # their copy of the cookie is logged in too. Defence:
+            # discard everything that was in the session before login
+            # (including the CSRF token that was already generated on
+            # the login page), so any planted cookie is immediately
+            # worthless. get_csrf_token() then generates a fresh token
+            # on the first next render.
             session.clear()
             session.permanent = True
             session["user"] = u

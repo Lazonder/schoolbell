@@ -374,7 +374,8 @@ def bootstrap_from_env(
     checks whether the store is empty and, if so, inserts a single
     admin record built from the env values.
 
-    Idempotent. Once ``users.json`` contains any user, subsequent
+    Idempotent (running it twice has the same effect as running it
+    once). Once ``users.json`` contains any user, subsequent
     calls do nothing — even if the env vars change. From that point
     the admin can rename themselves, change their password, or add
     more users through the UI without ever touching ``web.env``

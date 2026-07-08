@@ -157,6 +157,11 @@ def _load_or_create_secret_key() -> str:
 
 
 app.secret_key = _load_or_create_secret_key()
+# Nginx sits in front of this app and forwards each request. Without
+# help, Flask would then think every visitor is 127.0.0.1 (nginx's own
+# address). ProxyFix reads the X-Forwarded-* headers nginx adds, so
+# request.remote_addr is the real visitor's IP and links use https.
+# The '1's mean: trust exactly one proxy in front of us — no more.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 # Hard limit on upload size — Flask/Werkzeug rejects larger with 413
 # before the handler runs (prevents malicious traffic from straining a Pi with
@@ -485,15 +490,19 @@ def locked_json(path, default):
     save() and the file is untouched.
 
     Implementation notes:
-    - We lock a sidecar `.lock` file rather than the data file itself.
-      save_json() replaces the data file via os.replace(), which would
-      invalidate any fd we held open against the original inode. The
-      sidecar lock decouples lock identity from data identity.
-    - fcntl.flock is advisory: it only blocks other processes/threads
-      that also call flock on the same file. That's fine here — we
-      control all writers (web routes via this helper).
-    - Locks are per-process-fd, so within Gunicorn this serializes
-      writers across both threads (in one worker) and across workers.
+    - We lock a separate `.lock` file that sits next to the data file,
+      rather than the data file itself. Reason: save_json() swaps in
+      a whole new file via os.replace(), and a lock taken on the old
+      file would quietly keep pointing at the replaced, now-orphaned
+      version. The sidecar file never gets replaced, so the lock
+      stays meaningful.
+    - fcntl.flock is 'advisory': it doesn't physically prevent
+      writing, it only blocks other code that also asks for the lock
+      first. That's fine here — all writers go through this helper,
+      so everyone asks.
+    - The lock works between threads in one worker AND between the
+      separate Gunicorn worker processes, which is exactly the mix
+      we have in production.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lock_path = path + ".lock"

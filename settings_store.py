@@ -120,8 +120,10 @@ class Settings:
 def locked():
     """Hold an exclusive lock for read-modify-write of the settings file.
 
-    Same pattern as webinterface.locked_json: a sidecar `.lock` file is
-    locked via fcntl.flock LOCK_EX for the duration of the with-block.
+    Same pattern as webinterface.locked_json: a `.lock` file next to
+    the config is locked via fcntl.flock LOCK_EX (an *exclusive* lock:
+    only one holder at a time, everyone else waits) for the duration
+    of the with-block.
     Loads inside the lock, yields the Settings instance for the caller
     to mutate, and saves on a clean exit. If the with-body raises, no
     save happens. Useful when validation rejects an incoming payload.

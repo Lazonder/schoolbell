@@ -46,7 +46,8 @@ def select_locale() -> str:
 
     Reading Settings on every request is cheap (load_json hits a
     small JSON file) and keeps this function stateless. If we ever
-    care about the I/O cost we can add a TTL cache here.
+    care about the I/O cost we can cache the value here for a few
+    seconds instead of re-reading the file every time.
     """
     try:
         taal = Settings.load().taal

@@ -113,8 +113,9 @@ class VakantiesResult:
     by_region: dict[str, list[Vakantie]] = field(default_factory=dict)
 
     def to_schooljaar_block(self, fetched_at: str) -> dict:
-        """Serialize this single year as a sub-object inside the
-        combined multi-year payload (see combined_payload below)."""
+        """Serialize (turn into a plain dict, ready for JSON) this
+        single year as a sub-object inside the combined multi-year
+        payload (see combined_payload below)."""
         return {
             "fetched_at": fetched_at,
             "regios": {
@@ -238,9 +239,10 @@ def schooljaren_to_fetch(today: date, count: int = 5) -> list[str]:
 def url_for_schooljaar(schooljaar: str) -> str:
     """Construct the rijksoverheid URL for a given schooljaar.
 
-    The URL pattern is deterministic — we don't have to scrape the index
-    page to find the link. If rijksoverheid ever changes the slug, this
-    constant breaks loudly (404) and we adjust here.
+    The URL pattern is predictable — we can build the address directly
+    instead of first scraping the index page to find the link. If
+    rijksoverheid ever changes the slug (the last, readable part of
+    the web address), this breaks loudly (404) and we adjust here.
     """
     if not re.match(r"^\d{4}-\d{4}$", schooljaar):
         raise ValueError(f"Invalid schooljaar format: {schooljaar!r}, expected 'YYYY-YYYY'")
@@ -566,6 +568,11 @@ def fetch_and_parse_multi(
 
 def write_atomically(path: str | os.PathLike, data: dict) -> None:
     """Write JSON to `path` via tmp-file + os.replace.
+
+    'Atomically' means all-or-nothing: we first write to a temporary
+    file next to the target, then swap it in with one rename. A crash
+    or power loss mid-write therefore leaves either the complete old
+    file or the complete new one — never a half-written JSON.
 
     Same pattern as save_json in webinterface.py. Lives here too so
     the daemon (which doesn't import webinterface) can use it without
