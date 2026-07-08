@@ -2,10 +2,11 @@
 
 Nederlands · [English](README.md)
 
-Een schoolbel die draait op een Raspberry Pi. Hij speelt geluiden af
-op de tijden die je instelt, heeft een webpagina waar je alles vanuit
-je browser regelt, en kan een grote aftelling tot de volgende bel
-tonen op een scherm in de docentenkamer.
+Een schoolbel die draait op een Raspberry Pi — of op elke andere
+Linux-computer, zoals een oude laptop. Hij speelt geluiden af op de
+tijden die je instelt, heeft een webpagina waar je alles vanuit je
+browser regelt, en kan een grote aftelling tot de volgende bel tonen
+op een scherm in de docentenkamer.
 
 Gebouwd voor gebruik binnen een schoolnetwerk. De interface is
 beschikbaar in het Nederlands, Engels, Duits en Frans.
@@ -24,6 +25,11 @@ datum een uitzondering maken.
 de webpagina en kiezen welk geluid bij elk moment hoort. Elk moment
 kan ook een optionele **waarschuwingsbel** hebben die een paar
 minuten eerder afgaat — handig voor "nog twee minuten"-signalen.
+
+**Stopknop**: schalt er een lange jingle op het verkeerde moment
+door de intercom? Eén klik op *Stop afspelen* (op de Geluiden-pagina)
+maakt alles direct stil — testgeluiden én een geplande bel die nog
+bezig is.
 
 **Vakanties**: de webpagina kan met één klik de officiële Nederlandse
 schoolvakanties ophalen van rijksoverheid.nl. De weken die binnen een
@@ -71,6 +77,12 @@ Wat je nodig hebt:
 * Een admin-account (`sudo`)
 * Internettoegang tijdens de installatie
 
+Geen Raspberry Pi bij de hand? Elke computer met Debian of Ubuntu
+Linux werkt op dezelfde manier — een oude laptop is prima, en heeft
+zijn eigen scherm, toetsenbord en accu al bij zich. (Windows wordt
+niet ondersteund: de app leunt op Linux-specifieke onderdelen voor
+audio en bestandsvergrendeling.)
+
 Dan:
 
 ```bash
@@ -108,6 +120,22 @@ Wil je zelf een andere taal toevoegen? Zie
 [CONTRIBUTING.md](CONTRIBUTING.md) (Engels) — voor vertaalwerk hoef
 je niet te kunnen programmeren, je hebt alleen een `.po`-editor
 nodig.
+
+---
+
+## Gebruikers en veiligheid
+
+Iedereen die de bel beheert krijgt een eigen account. Een **admin**
+mag alles, inclusief accounts aanmaken; een gewone gebruiker ziet
+alleen de tabbladen die een admin heeft toegekend (bijvoorbeeld
+alleen *Geluiden*). Wijzigingen in rechten gelden meteen bij de
+eerstvolgende klik — opnieuw inloggen is niet nodig.
+
+Er zit een basislaag beveiliging in: al het verkeer loopt over
+HTTPS, formulieren zijn beschermd tegen vervalste verzendingen
+vanaf andere websites, en wie wachtwoorden blijft gokken wordt
+automatisch een tijdje geblokkeerd. Maar: de app is ontworpen voor
+een schoolnetwerk, niet voor het open internet.
 
 ---
 

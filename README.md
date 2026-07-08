@@ -2,10 +2,11 @@
 
 [Nederlands](README.nl.md) · English
 
-A school bell that runs on a Raspberry Pi. It plays sounds at the
-times you set, has a web page where you manage everything from your
-browser, and can show a big countdown to the next bell on a screen
-in the staff room.
+A school bell that runs on a Raspberry Pi — or any other Linux
+computer, such as an old laptop. It plays sounds at the times you
+set, has a web page where you manage everything from your browser,
+and can show a big countdown to the next bell on a screen in the
+staff room.
 
 Built for use inside a school network. The interface is available
 in Dutch, English, German and French.
@@ -24,6 +25,11 @@ override one specific date.
 page and pick which one rings at each moment. Each moment can also
 have an optional **warning bell** that plays a few minutes before
 the main one — handy for "two minutes left" cues.
+
+**Stop button**: a long jingle blaring over the intercom at the
+wrong moment? One click on *Stop playback* (on the Sounds page)
+silences everything right away — test sounds and a scheduled bell
+that is still playing alike.
 
 **Holidays**: the web page can fetch the official Dutch school
 holidays from rijksoverheid.nl with one click. The weeks that fall
@@ -71,6 +77,11 @@ You need:
 * An admin (`sudo`) account
 * Internet access for the install
 
+No Raspberry Pi at hand? Any computer running Debian or Ubuntu
+Linux works the same way — an old laptop is fine, and brings its
+own screen, keyboard and battery. (Windows is not supported: the
+app relies on Linux-only features for audio and file locking.)
+
 Then:
 
 ```bash
@@ -104,6 +115,22 @@ language of the visitor's browser.
 Want to add another language? See [CONTRIBUTING.md](CONTRIBUTING.md)
 — no programming needed for translation work, just a `.po` file
 editor.
+
+---
+
+## Users and security
+
+Everyone who manages the bell gets their own account. An **admin**
+can do everything, including creating accounts; a regular user only
+sees the tabs an admin granted them (for example only *Sounds*).
+Permission changes take effect on the user's very next click — no
+need to log out and back in.
+
+Some protection is built in: all traffic runs over HTTPS, forms are
+protected against forged submissions from other websites, and
+whoever keeps guessing passwords is automatically blocked for a
+while. Still, the app is designed for a school network, not for the
+open internet.
 
 ---
 
