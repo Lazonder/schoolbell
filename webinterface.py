@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, json, fcntl
+import os, json, fcntl, secrets, sys
 from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
 from flask import Flask, request, redirect, url_for, flash, session
@@ -92,7 +92,61 @@ app = Flask(__name__)
 _debug_mode = os.environ.get("SCHOOLBELL_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
 app.config["TEMPLATES_AUTO_RELOAD"] = _debug_mode
 app.jinja_env.auto_reload = _debug_mode
-app.secret_key = os.environ.get("SCHOOLBELL_SECRET", "dev-secret")
+def _load_or_create_secret_key() -> str:
+    """Return the Flask session secret, never a hardcoded default.
+
+    Priority:
+      1. SCHOOLBELL_SECRET env var (set by install.sh in web.env).
+      2. A persistent random key in data/secret_key, generated on
+         first use with 0600 permissions.
+
+    Why not a hardcoded fallback: the secret signs the session
+    cookie. With a known value ("dev-secret") anyone who can reach
+    the site can forge a cookie with user/rol=admin and skip login
+    entirely. A manual deployment that forgets the env var must not
+    silently run in that state.
+
+    Why a *file* instead of a random value per process: Gunicorn
+    runs multiple workers. If each generated its own in-memory key,
+    a login handled by worker A would be an invalid cookie for
+    worker B, and users would be bounced to /login at random. The
+    file makes all workers (and restarts) agree. O_EXCL handles the
+    race where two workers create it at the same moment: the loser
+    reads back what the winner wrote.
+    """
+    env = os.environ.get("SCHOOLBELL_SECRET", "").strip()
+    if env:
+        return env
+
+    path = os.path.join(DATA_DIR, "secret_key")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            key = f.read().strip()
+        if key:
+            return key
+    except OSError:
+        pass
+
+    key = secrets.token_hex(32)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(key)
+    except FileExistsError:
+        # Another worker won the race — use its key.
+        with open(path, "r", encoding="utf-8") as f:
+            key = f.read().strip() or key
+    print(
+        "[WARN] SCHOOLBELL_SECRET not set; using generated key in "
+        f"{path}. Set the env var in /etc/schoolbell/web.env for "
+        "production installs.",
+        file=sys.stderr,
+    )
+    return key
+
+
+app.secret_key = _load_or_create_secret_key()
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 # Hard limit on upload size — Flask/Werkzeug rejects larger with 413
 # before the handler runs (prevents malicious traffic from straining a Pi with

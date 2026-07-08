@@ -45,6 +45,9 @@ translations/**/*.mo
 # Secrets
 .env
 *.env
+# Auto-generated Flask session secret (fallback when SCHOOLBELL_SECRET
+# is not set — see webinterface._load_or_create_secret_key)
+data/secret_key
 
 # SSL certificates and private keys
 certs/
