@@ -42,7 +42,7 @@ Tested on **Raspberry Pi OS (Debian)**. Requires `sudo` and an
 internet connection.
 
 ```bash
-git clone https://github.com/<your-account>/schoolbell.git
+git clone https://github.com/Lazonder/schoolbell.git
 cd schoolbell
 sudo ./install.sh
 ```

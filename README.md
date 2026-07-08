@@ -85,7 +85,7 @@ app relies on Linux-only features for audio and file locking.)
 Then:
 
 ```bash
-git clone https://github.com/<your-account>/schoolbell.git
+git clone https://github.com/Lazonder/schoolbell.git
 cd schoolbell
 sudo ./install.sh
 ```

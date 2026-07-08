@@ -86,7 +86,7 @@ audio en bestandsvergrendeling.)
 Dan:
 
 ```bash
-git clone https://github.com/<jouw-account>/schoolbell.git
+git clone https://github.com/Lazonder/schoolbell.git
 cd schoolbell
 sudo ./install.sh
 ```
