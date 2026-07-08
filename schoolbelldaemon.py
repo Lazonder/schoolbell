@@ -4,7 +4,7 @@ from datetime import datetime, timezone, date, time as dtime, timedelta
 import requests         # pip install requests
 import schedule         # pip install schedule
 import pygame           # pip install pygame
-from settings_store import Settings
+from settings_store import CONFIG_PATH, Settings
 
 # === Paths / constant values ===
 # Priority: SCHOOLBELL_BASE_DIR env var. Fallback: directory containing this
@@ -75,6 +75,20 @@ if os.getenv("SCHOOLBELL_API_VERIFY_TLS", "1").strip().lower() in ("0", "false",
 
 # --- Hot-reload flag ---
 _reload_settings = False
+
+
+def _config_mtime() -> float | None:
+    """Modification time of config.json, or None when it's missing.
+
+    Used by the poll loop to detect that the webinterface saved new
+    settings. settings_store.save() writes atomically via tmp +
+    os.replace, and a replace always bumps the file's mtime, so
+    'mtime changed' reliably means 'content may have changed'.
+    """
+    try:
+        return os.stat(CONFIG_PATH).st_mtime
+    except OSError:
+        return None
 def _on_sighup(signum, frame):
     """Handle the SIGHUP signal from the operating system.
 
@@ -544,6 +558,7 @@ def schedule_poller_loop():
     """
     global settings, _reload_settings
     last_sig = None
+    last_config_mtime = _config_mtime()
 
     while not stop_event.is_set():
         now = datetime.now()
@@ -554,14 +569,21 @@ def schedule_poller_loop():
         # Gives the reader a tighter 'how stale is this?' read.
         _write_heartbeat()
 
-        # 1) Reload settings if SIGHUP received
-        if _reload_settings:
+        # 1) Reload settings on SIGHUP or when config.json changed on
+        # disk. The mtime check is what makes the Voorkeuren page work
+        # end-to-end: the webinterface saves config.json, and without
+        # this the daemon would keep playing at the old volume (and
+        # old poll interval) until a manual SIGHUP or restart —
+        # something no admin ever sent.
+        config_mtime = _config_mtime()
+        if _reload_settings or config_mtime != last_config_mtime:
             try:
                 settings = Settings.load()
                 print(f"[RELOAD] Settings reloaded: poll={settings.poll_interval_sec}s, volume={settings.volume_percent}%")
                 apply_playback_volume()
             except Exception as e:
                 print("[WARN] Settings reload failed:", e)
+            last_config_mtime = config_mtime
             _reload_settings = False
 
         # 2) Vakanties refresh check (~monthly). Cheap (one disk
