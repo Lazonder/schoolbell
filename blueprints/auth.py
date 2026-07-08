@@ -198,14 +198,15 @@ def login():
     )
 
 
-@auth_bp.route("/logout", methods=["POST", "GET"])
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
     """Log the current user out by clearing their session.
 
-    Supports both POST (the nav-bar button with a CSRF token) and GET
-    (an admin typing /logout into the address bar). Either way the
-    result is the same: the session is wiped and the user is sent back
-    to the login page.
+    POST-only (the nav-bar button with a CSRF token). The old GET
+    variant meant any third-party page could log a user out with a
+    hidden <img src="/logout"> — harmless data-wise, but there's no
+    reason to allow it. Admins who used to type /logout into the
+    address bar can simply use the nav-bar button.
     """
     # session.clear() instead of just pop("user"): this also discards the
     # CSRF token and session.permanent flag. On the next login, everything

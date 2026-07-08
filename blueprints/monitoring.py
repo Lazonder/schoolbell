@@ -90,7 +90,10 @@ def home():
     if endpoint is None:
         # User can't see anything — better to log them out than to
         # leave them stuck. An admin can reassign tabs and try again.
-        return redirect(url_for("auth.logout"))
+        # Clear the session here (rather than bouncing via /logout):
+        # /logout is POST-only, so a GET redirect to it would 405.
+        session.clear()
+        return redirect(url_for("auth.login"))
     return redirect(url_for(endpoint))
 
 

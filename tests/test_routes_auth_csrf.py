@@ -193,8 +193,15 @@ def test_login_clears_old_csrf_token(client):
     )
 
 
+def test_logout_requires_post(logged_in_client):
+    # GET /logout is gone: it made logout CSRF-able via a simple
+    # <img src="/logout"> on any third-party page.
+    r = logged_in_client.get("/logout")
+    assert r.status_code == 405
+
+
 def test_logout_drops_session(logged_in_client, csrf_token):
-    # /logout is wired as POST (with a GET fallback). POST goes
+    # /logout is wired as POST-only. POST goes
     # through the same CSRF gate as every other state-changing route,
     # so we send the token. After the redirect, hitting a protected
     # route should bounce back to /login — i.e. the session was

@@ -11,7 +11,7 @@ Coverage matrix (the decorator's behaviour, pinned by these tests):
 
 Also: the bare ``/`` redirect sends each user to the first tab they
 can see — admins to /agenda, restricted users to wherever their first
-allowed tab lives, users without any tab to /logout.
+allowed tab lives, users without any tab back to /login.
 """
 
 from core import users as core_users
@@ -179,14 +179,19 @@ def test_root_logs_out_user_without_any_tab(client):
     """An empty tabs list shouldn't trap the user in a 403 loop.
 
     Edge case for misconfigured accounts: an admin created a user
-    and then explicitly granted them no tabs. The bare-site redirect
-    sends them to /logout so they can at least leave gracefully.
+    and then explicitly granted them no tabs. The bare-site route
+    clears their session and sends them to /login so they can at
+    least leave gracefully. (It used to redirect via GET /logout,
+    but that route is POST-only now.)
     """
     core_users.create_user("ghost", "passw0rd!", "gebruiker", [])
     assert _login(client, "ghost", "passw0rd!").status_code in (302, 303)
     r = client.get("/", follow_redirects=False)
     assert r.status_code in (302, 303)
-    assert r.headers["Location"].endswith("/logout")
+    assert r.headers["Location"].endswith("/login")
+    # Session really is gone: the next request is anonymous.
+    with client.session_transaction() as sess:
+        assert "user" not in sess
 
 
 # ---- mag_tab in the rendered template ------------------------------
