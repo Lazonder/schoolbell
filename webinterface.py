@@ -346,6 +346,35 @@ def csrf_protect():
         return "CSRF token invalid or missing", 400
 
 
+@app.after_request
+def _security_headers(resp):
+    """Add defensive HTTP headers to every response.
+
+    Done in Flask rather than in the Nginx config so they also apply
+    on installs that front the app differently (or not at all, when
+    running the dev server). setdefault, not assignment: a route that
+    deliberately sets its own value wins.
+
+    - X-Content-Type-Options: nosniff — stops browsers from guessing
+      ('sniffing') content types, e.g. treating an uploaded file as
+      HTML/JS because it happens to start with '<'.
+    - X-Frame-Options: SAMEORIGIN — the app has no reason to be
+      embedded in an iframe on another site; blocks clickjacking.
+    - Referrer-Policy: same-origin — URLs here can contain rooster
+      names and ?next= paths; no need to leak those to external
+      sites if someone ever puts an outbound link in a template.
+
+    A Content-Security-Policy is deliberately NOT set here: the
+    templates use inline <script> and <style> blocks, so a useful
+    CSP needs nonces or a refactor first. A CSP with 'unsafe-inline'
+    everywhere would add noise, not protection.
+    """
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    return resp
+
+
 @app.errorhandler(413)
 def too_large(_e):
     """Show a friendly error message when an uploaded file is too large.
