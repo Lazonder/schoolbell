@@ -258,7 +258,13 @@ def api_effectief_rooster():
     weken_uit = wi.load_json(wi.WEEKDISABLE_PATH, default_weken_uit_obj())
 
     next_check_str = _next_local_midnight(datetime.now()).isoformat()
-    headers = {"Cache-Control": "public, max-age=300",
+    # 'private', not 'public': this endpoint sits behind Basic Auth.
+    # RFC 9111 lets shared caches store authenticated responses when
+    # the response says 'public' — a proxy between daemon and web
+    # could then serve the schedule to clients that never presented
+    # credentials. 'private' keeps the 5-minute caching for the
+    # client itself and forbids shared caches.
+    headers = {"Cache-Control": "private, max-age=300",
                "X-Next-Check": next_check_str}
 
     wk_key = iso_week_key(d)
