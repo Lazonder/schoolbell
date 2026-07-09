@@ -147,6 +147,24 @@
       </p>
     </div>
 
+    <div class="sb-field">
+      <label class="sb-label sb-checkbox-row">
+        <input type="checkbox"
+               name="lan_toegang"
+               id="lan_toegang">
+        <span>{{ _('Bereikbaar via LAN/WiFi') }}</span>
+      </label>
+      <p class="sb-help">
+        {% trans %}Aan: de webinterface is bereikbaar voor andere apparaten op
+        het netwerk. Uit: alleen een browser op dit apparaat zelf komt
+        erbij; andere apparaten krijgen 403. De bel zelf rinkelt in
+        beide standen gewoon door. Uitschakelen kan alleen vanaf het
+        apparaat zelf — anders zou je jezelf buitensluiten.
+        Let op: dit is een slot op de deur, geen dichte deur; de
+        netwerkpoort zelf blijft open.{% endtrans %}
+      </p>
+    </div>
+
     <div class="sb-settings-actions">
       <button type="submit" class="sb-btn sb-btn--success">
         {{ _('Opslaan') }}
@@ -248,6 +266,10 @@ async function loadSettings() {
   // The huisstijl select just got its value set; reflect that in
   // the visibility of the custom-color fieldset.
   syncHuisstijlVisibility();
+  // Remember the LAN-access state as loaded, so the submit handler
+  // only asks for confirmation when the user actually turns it off
+  // (and not when it was already off).
+  window._lanToegangWasOn = !!data.lan_toegang;
 }
 
 document.getElementById("settingsForm").addEventListener("submit", async (e) => {
@@ -267,6 +289,14 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
   // sees an explicit true/false in both states.
   for (const cb of form.querySelectorAll('input[type="checkbox"]')) {
     payload[cb.name] = cb.checked;
+  }
+
+  // Turning LAN access off deserves a confirmation: from a remote
+  // browser the server refuses it anyway (lockout guard), but on the
+  // device itself it takes effect immediately for everyone else.
+  if (payload.lan_toegang === false && window._lanToegangWasOn) {
+    const ok = confirm({{ _('LAN/WiFi-toegang uitschakelen? Andere apparaten kunnen de webinterface daarna niet meer bereiken.')|tojson }});
+    if (!ok) return;
   }
 
   // CSRF token from <meta name="csrf-token">
@@ -290,6 +320,10 @@ document.getElementById("settingsForm").addEventListener("submit", async (e) => 
 
     if (r.ok) {
       status.textContent = "Opgeslagen ✔";
+      // Keep the confirmation baseline in sync with what's now saved.
+      if (payload.lan_toegang !== undefined) {
+        window._lanToegangWasOn = payload.lan_toegang;
+      }
       const root = document.documentElement;
       // Apply theme change immediately, no refresh. If mode=auto:
       // check system preference. Otherwise: use the chosen value.

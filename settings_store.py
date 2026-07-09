@@ -64,6 +64,17 @@ class Settings:
     # by hand. Default True so a fresh NL install gets the feature
     # without any extra setup.
     vakanties_scrape_enabled: bool = True
+    # Reachability of the web UI beyond this machine. True: clients
+    # elsewhere on the LAN/WiFi may use the interface (the normal
+    # install.sh setup, with nginx listening on the network). False:
+    # only loopback clients (browser on the machine itself, and the
+    # daemon polling via 127.0.0.1) get through; everyone else sees
+    # 403. Enforced per request in webinterface._lan_toegang_filter,
+    # so flipping it needs no service restart. Note: the port itself
+    # stays open — the app refuses, the socket still listens. Default
+    # True because existing installs are reachable over the LAN today;
+    # a False default would lock their admins out on upgrade.
+    lan_toegang: bool = True
     # field(default_factory=...) is the proper way to specify a mutable
     # default for a dataclass field. Previously this was a tuple, which
     # didn't match the List[str] annotation.

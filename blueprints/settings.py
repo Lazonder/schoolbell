@@ -109,20 +109,28 @@ def _apply_settings_payload(s: Settings, payload: dict) -> None:
         s.vakantieregio = vr
 
     if "vakanties_scrape_enabled" in payload:
-        # Accept proper booleans plus the common JSON/HTML form
-        # representations ('true'/'false', '1'/'0', 'on'/'off',
-        # checkbox-style 'on'/missing). The settings page uses a
-        # checkbox which sends 'on' when checked and nothing when
-        # unchecked. The JSON POST in settings.html maps that to a
-        # real bool, but be defensive in case a future form posts
-        # raw form data.
-        v = payload["vakanties_scrape_enabled"]
-        if isinstance(v, bool):
-            s.vakanties_scrape_enabled = v
-        elif isinstance(v, str):
-            s.vakanties_scrape_enabled = v.strip().lower() in ("1", "true", "yes", "on")
-        else:
-            s.vakanties_scrape_enabled = bool(v)
+        s.vakanties_scrape_enabled = _coerce_bool(payload["vakanties_scrape_enabled"])
+
+    if "lan_toegang" in payload:
+        # The can't-lock-yourself-out guard lives in api_settings_post
+        # (it needs the request context; this function is also called
+        # directly by tests, outside any request).
+        s.lan_toegang = _coerce_bool(payload["lan_toegang"])
+
+
+def _coerce_bool(v) -> bool:
+    """Interpret the common JSON/HTML form representations of a boolean.
+
+    Accepts proper booleans plus 'true'/'false', '1'/'0', 'on'/'off'
+    (checkboxes send 'on' when checked and nothing when unchecked).
+    The JSON POST in settings.html maps checkboxes to real bools, but
+    be defensive in case a future form posts raw form data.
+    """
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    return bool(v)
 
 
 def _build_vakanties_status() -> dict:
@@ -225,6 +233,17 @@ def api_settings_post():
     if not request.is_json:
         abort(400, "JSON expected")
     payload = request.get_json() or {}
+    # Lockout guard: switching LAN access *off* is only allowed from
+    # the machine itself. Without this, an admin on a LAN laptop who
+    # unchecks the box saves successfully — and the very next request
+    # (from that same laptop) hits the 403 wall in
+    # webinterface.lan_toegang_filter. Localhost is never blocked by
+    # that filter, so from the device itself this is always safe.
+    if "lan_toegang" in payload and not _coerce_bool(payload["lan_toegang"]):
+        if not wi._client_is_loopback():
+            abort(400, "lan_toegang can only be switched off from the "
+                       "device itself (localhost); doing it from the "
+                       "network would lock you out")
     # Hold the settings file lock for the entire load -> mutate ->
     # save sequence. Without the lock, two concurrent POSTs could
     # both load v1, each apply their own payload, and both save.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import hmac
+import ipaddress
 import os, json, fcntl, secrets, sys
 from contextlib import contextmanager
 from datetime import date, timedelta, datetime, time, timezone
@@ -332,6 +333,80 @@ def _inject_template_globals():
 # the Flask app object via @app.before_request / @app.errorhandler,
 # which is the kind of registration that has to happen in the same
 # module that creates the app.
+
+
+def _client_is_loopback() -> bool:
+    """True when the current request comes from this machine itself.
+
+    Two addresses are checked, and both must be loopback (127.x / ::1):
+
+    1. ``request.remote_addr`` — after ProxyFix this is the client IP
+       taken from the X-Forwarded-For header that nginx adds.
+    2. The *direct* TCP peer, which ProxyFix stashes in the WSGI
+       environ before overwriting it. Checking this too closes a
+       spoofing hole: when gunicorn is reachable on the network
+       directly (no nginx in front, e.g. a laptop install without a
+       proxy), a LAN client could send a forged
+       ``X-Forwarded-For: 127.0.0.1`` header and ProxyFix would
+       happily report loopback. The real peer address gives them away.
+
+    Unparseable or missing addresses count as "not loopback": when in
+    doubt, treat the client as remote. That can never lock out the
+    daemon or a browser on the machine itself — for a genuine local
+    connection both values are a plain 127.0.0.1/::1.
+    """
+    candidates = [request.remote_addr]
+    # Modern werkzeug: dict with the original environ values.
+    # Older werkzeug used a flat key; check both, use whatever exists.
+    orig = request.environ.get("werkzeug.proxy_fix.orig") or {}
+    orig_peer = (
+        orig.get("REMOTE_ADDR")
+        or request.environ.get("werkzeug.proxy_fix.orig_remote_addr")
+    )
+    if orig_peer:
+        candidates.append(orig_peer)
+    for addr in candidates:
+        if not addr:
+            return False
+        try:
+            if not ipaddress.ip_address(addr).is_loopback:
+                return False
+        except ValueError:
+            return False
+    return True
+
+
+@app.before_request
+def lan_toegang_filter():
+    """Refuse clients elsewhere on the network when LAN access is off.
+
+    Runtime companion to the Voorkeuren setting ``lan_toegang``. When
+    that setting is False, every request from a non-loopback address
+    gets a 403 before any route (or even the login page) runs. The
+    daemon is never affected: it polls via 127.0.0.1.
+
+    Registered before csrf_protect on purpose — a before_request
+    handler that returns a response stops the chain, so a refused
+    client triggers no CSRF checks, no user bootstrap, nothing.
+
+    This is an application-level door policy, not a firewall: the
+    TCP port stays open and nginx/gunicorn still accept the
+    connection; the app then refuses to serve it. Truly not
+    listening on the LAN requires changing the bind address at
+    install time (see Opties.md, route B).
+
+    Cost: one read of config.json per request, same trade-off as
+    _refresh_user_permissions' read of users.json below.
+    """
+    if Settings.load().lan_toegang:
+        return
+    if _client_is_loopback():
+        return
+    # Plain-text refusal, deliberately not the templated 403 page:
+    # that template is designed for logged-in users who lack a tab,
+    # and there's no reason to render navigation for a client we're
+    # refusing at the front door.
+    return _("Toegang via het netwerk is uitgeschakeld (zie Voorkeuren op het apparaat zelf)."), 403
 
 
 @app.before_request
