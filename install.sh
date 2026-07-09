@@ -362,8 +362,8 @@ systemctl enable schoolbell-web.service schoolbell-daemon.service
 systemctl restart schoolbell-web.service schoolbell-daemon.service
 
 echo "== 9) Laptop-check =="
-# Route B uit Opties.md: op een (oude) laptop is de installatie
-# identiek, maar twee OS-instellingen kunnen de bel de mond snoeren.
+# Op een (oude) laptop is de installatie identiek aan die op een Pi,
+# maar twee OS-instellingen kunnen de bel de mond snoeren.
 # We detecteren alleen en waarschuwen; aan power management van
 # andermans machine zitten we niet ongevraagd.
 CHASSIS="$(hostnamectl chassis 2>/dev/null || echo '')"

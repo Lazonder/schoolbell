@@ -393,7 +393,8 @@ def lan_toegang_filter():
     TCP port stays open and nginx/gunicorn still accept the
     connection; the app then refuses to serve it. Truly not
     listening on the LAN requires changing the bind address at
-    install time (see Opties.md, route B).
+    install time (GUNICORN_BIND and the nginx listen directives,
+    both in install.sh).
 
     Cost: one read of config.json per request, same trade-off as
     _refresh_user_permissions' read of users.json below.
