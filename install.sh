@@ -1,10 +1,29 @@
 #!/usr/bin/env bash
 # IVKO Schoolbel installer
-# Tested on Raspberry Pi OS (Debian)
+# Doelplatform: elke Debian/Ubuntu-achtige met systemd — Raspberry Pi
+# OS, Debian, Ubuntu (ook op een oude laptop). Getest op Raspberry Pi
+# OS (Debian). Niets hieronder is Pi-specifiek.
 
 set -euo pipefail
 
-APP_USER="${SUDO_USER:-pi}"
+# Onder welk account draaien de services (en staat de repo)?
+#   1. SCHOOLBELL_USER=<naam> vóór het commando zetten wint altijd.
+#   2. Anders: de gebruiker die `sudo ./install.sh` typte (SUDO_USER).
+# Er is bewust géén fallback naar 'pi' meer: op een niet-Pi machine
+# bestaat die gebruiker niet en dan is een expliciete fout hier
+# duidelijker dan een half-geïnstalleerd systeem verderop.
+APP_USER="${SCHOOLBELL_USER:-${SUDO_USER:-}}"
+if [[ -z "${APP_USER}" || "${APP_USER}" == "root" ]]; then
+  echo "ERROR: kan niet bepalen onder welke gebruiker de app moet draaien."
+  echo "Draai dit script als gewone gebruiker via sudo:  sudo ./install.sh"
+  echo "Of geef het account expliciet op:  sudo SCHOOLBELL_USER=<naam> ./install.sh"
+  echo "(De services draaien bewust niet als root.)"
+  exit 1
+fi
+if ! id -u "${APP_USER}" >/dev/null 2>&1; then
+  echo "ERROR: gebruiker '${APP_USER}' bestaat niet op dit systeem."
+  exit 1
+fi
 APP_HOME="$(eval echo "~${APP_USER}")"
 APP_DIR="${APP_HOME}/schoolbell"
 
@@ -50,8 +69,8 @@ echo "== 1b) OS timezone =="
 # The schoolbell runs on local time. The application no longer carries
 # its own timezone setting (was unused and confusing as a second source
 # of truth) — the OS timezone is authoritative. Set it explicitly here
-# so a freshly imaged Pi (often UTC by default) doesn't ring at the
-# wrong moment. Idempotent: setting the same tz twice is a no-op.
+# so a freshly installed system (often UTC by default) doesn't ring at
+# the wrong moment. Idempotent: setting the same tz twice is a no-op.
 TARGET_TZ="${SCHOOLBELL_TZ:-Europe/Amsterdam}"
 if command -v timedatectl >/dev/null 2>&1; then
   CURRENT_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo '')"
@@ -181,10 +200,10 @@ fi
 
 echo "== 4c) TLS certificate (self-signed) =="
 # Zelf-ondertekend cert voor HTTPS binnen het schoolnetwerk. Voor een
-# LAN-only Pi is dit voldoende: één browserwaarschuwing per apparaat,
-# daarna gewoon https://schoolbell.local of https://<pi-ip>/.
+# LAN-only apparaat is dit voldoende: één browserwaarschuwing per
+# apparaat, daarna gewoon https://schoolbell.local of https://<ip>/.
 #
-# Wie de Pi via een echte DNS-naam publiek bereikbaar maakt: schakel
+# Wie de bel via een echte DNS-naam publiek bereikbaar maakt: schakel
 # om naar Let's Encrypt (zie docs/admin-guide.md → HTTPS).
 CERT_DIR="${CONFIG_DIR}/certs"
 CERT_FILE="${CERT_DIR}/cert.pem"
@@ -342,8 +361,26 @@ echo "== 8) Enable + (re)start services =="
 systemctl enable schoolbell-web.service schoolbell-daemon.service
 systemctl restart schoolbell-web.service schoolbell-daemon.service
 
+echo "== 9) Laptop-check =="
+# Route B uit Opties.md: op een (oude) laptop is de installatie
+# identiek, maar twee OS-instellingen kunnen de bel de mond snoeren.
+# We detecteren alleen en waarschuwen; aan power management van
+# andermans machine zitten we niet ongevraagd.
+CHASSIS="$(hostnamectl chassis 2>/dev/null || echo '')"
+if [[ "${CHASSIS}" == "laptop" || "${CHASSIS}" == "convertible" ]]; then
+  echo "Dit lijkt een laptop. Twee aandachtspunten voor een bel die 24/7 doorgaat:"
+  echo "  1. Klep dicht mag niet 'suspend' betekenen. Zet in"
+  echo "     /etc/systemd/logind.conf: HandleLidSwitch=ignore"
+  echo "     (en HandleLidSwitchExternalPower=ignore), daarna:"
+  echo "     sudo systemctl restart systemd-logind"
+  echo "  2. Check met 'alsamixer' of de geluidskaart niet gedempt opstart."
+  echo "  Optioneel: BIOS-optie 'power on after AC restore' aanzetten."
+else
+  echo "Geen laptop gedetecteerd (chassis: ${CHASSIS:-onbekend}); niets te doen."
+fi
+
 echo "== DONE =="
-echo "Open: https://schoolbell.local/  (of https://<pi-ip>/)"
+echo "Open: https://schoolbell.local/  (of https://<ip-van-dit-apparaat>/)"
 echo "Eerste bezoek per apparaat: 'self-signed' waarschuwing accepteren."
 echo
 echo "Status:"

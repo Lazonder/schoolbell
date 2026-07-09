@@ -1,3 +1,6 @@
+# VOORBEELD — install.sh genereert de echte unit met jouw paden.
+# Handmatig gebruiken? Vervang <gebruiker> en /pad/naar/schoolbell.
+# Zie deploy/README.md.
 [Unit]
 Description=Schoolbell Daemon
 After=network.target schoolbell-web.service
@@ -5,8 +8,8 @@ Wants=network.target schoolbell-web.service
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/schoolbell
+User=<gebruiker>
+WorkingDirectory=/pad/naar/schoolbell
 
 EnvironmentFile=/etc/schoolbell/daemon.env
 
@@ -14,7 +17,7 @@ Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
 Environment="API_BASE=http://127.0.0.1:5000"
 # SCHOOLBELL_WEB_USER en SCHOOLBELL_WEB_PASS komen uit daemon.env
 
-ExecStart=/home/pi/schoolbell/venv/bin/python -u /home/pi/schoolbell/schoolbelldaemon.py
+ExecStart=/pad/naar/schoolbell/venv/bin/python -u /pad/naar/schoolbell/schoolbelldaemon.py
 
 # `systemctl reload schoolbell-daemon` stuurt SIGHUP: de daemon
 # herlaadt dan config.json zonder herstart (en zonder een lopende

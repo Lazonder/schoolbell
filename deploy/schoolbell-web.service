@@ -1,13 +1,16 @@
+# VOORBEELD — install.sh genereert de echte unit met jouw paden.
+# Handmatig gebruiken? Vervang <gebruiker> en /pad/naar/schoolbell.
+# Zie deploy/README.md.
 [Unit]
 Description=Schoolbell Web (Gunicorn behind Nginx)
 After=network.target
 
 [Service]
-User=pi
-WorkingDirectory=/home/pi/schoolbell
+User=<gebruiker>
+WorkingDirectory=/pad/naar/schoolbell
 EnvironmentFile=/etc/schoolbell/web.env
 Environment="SCHOOLBELL_CONFIG=/etc/schoolbell/config.json"
-ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
+ExecStart=/pad/naar/schoolbell/venv/bin/gunicorn \
   --workers 2 \
   --threads 4 \
   --timeout 30 \

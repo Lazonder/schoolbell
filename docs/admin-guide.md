@@ -38,14 +38,19 @@ schoolbell-daemon (systemd)
 
 ## Installation
 
-Tested on **Raspberry Pi OS (Debian)**. Requires `sudo` and an
-internet connection.
+Runs on any Debian/Ubuntu-family system with systemd — Raspberry Pi
+OS, Debian, Ubuntu, including an old laptop. Tested on **Raspberry
+Pi OS (Debian)**. Requires `sudo` and an internet connection.
 
 ```bash
 git clone https://github.com/Lazonder/schoolbell.git
 cd schoolbell
 sudo ./install.sh
 ```
+
+The script installs for the account that invoked `sudo` and expects
+the repo at `~/schoolbell` of that account. Installing for a
+different account: `sudo SCHOOLBELL_USER=<name> ./install.sh`.
 
 > **First run only:** the script generates a random admin password
 > and prints it **once** in a boxed output block. Write it down.
@@ -116,7 +121,7 @@ source is in git (see `.gitignore`). If the pull touched any
 translation, regenerate the `.mo` files first:
 
 ```bash
-cd /home/pi/schoolbell
+cd ~/schoolbell
 ./venv/bin/python -m babel.messages.frontend compile -d translations
 ```
 
@@ -159,7 +164,7 @@ files, or runtime data. Use this when you don't want to think about
 what specifically changed:
 
 ```bash
-cd /home/pi/schoolbell
+cd ~/schoolbell
 git pull
 sudo ./install.sh
 ```
@@ -171,7 +176,7 @@ The script is explicitly designed to be safe to re-run.
 ## Credentials & password
 
 On the first `install.sh` run, two env files are created. Both have
-`chmod 640` with owner `root:pi`.
+`chmod 640` with owner `root:<user>` (the account the app runs as).
 
 * `/etc/schoolbell/web.env` — read by `schoolbell-web.service`:
   * `SCHOOLBELL_WEB_USER` — admin username
@@ -205,7 +210,7 @@ sudo cat /etc/schoolbell/daemon.env
 Generate a new hash:
 
 ```bash
-/home/pi/schoolbell/venv/bin/python -c \
+~/schoolbell/venv/bin/python -c \
   'from werkzeug.security import generate_password_hash; print(generate_password_hash("new-password"))'
 ```
 
@@ -449,10 +454,10 @@ self-signed setup keeps working without any change.
 * Timeouts prevent stuck requests
 * Periodic worker refresh prevents memory leaks
 
-Example (systemd):
+Example (systemd; install.sh fills in the actual path):
 
 ```
-ExecStart=/home/pi/schoolbell/venv/bin/gunicorn \
+ExecStart=/pad/naar/schoolbell/venv/bin/gunicorn \
   --workers 2 \
   --threads 4 \
   --timeout 30 \
