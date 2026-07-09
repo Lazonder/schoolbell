@@ -400,6 +400,39 @@ Pi, that's acceptable. Outside a school LAN, it isn't — use a VPN
 (e.g. Tailscale) to reach the Pi rather than exposing it publicly
 with a self-signed certificate.
 
+### Browser won't offer to save the password
+
+A side effect of the self-signed certificate that is easy to
+misread as a bug in the login page: Chrome and Edge **disable their
+password manager entirely** on origins with a certificate error.
+The same warning you clicked through also suppresses the "Save
+password?" prompt and autofill, so the login form appears to be at
+fault while it isn't — it is a regular POST form with
+`autocomplete="username"` / `autocomplete="current-password"`,
+exactly what password managers look for. Firefox is more lenient
+and usually does offer to save after you accept the exception.
+
+Three ways out, in increasing order of effort:
+
+1. **Pick a typeable password (two minutes, no code).** The
+   generated random password is only a first-boot default. Change
+   it — or give each person their own account — via the
+   *Gebruikers* tab (see [User management](#user-management)), and
+   choose something strong but typeable, e.g. three unrelated
+   words. Then nothing needs to be remembered by the browser.
+2. **Trust the certificate on the school devices.** Import
+   `/etc/schoolbell/certs/cert.pem` into each device's trust store
+   (Windows: *Trusted Root Certification Authorities*; macOS:
+   Keychain). The padlock turns valid and the password manager
+   works again. Visit the site as `https://schoolbell.local` — a
+   bare IP is not in the certificate's SAN and keeps the error.
+3. **Get a real certificate.** Free options: `tailscale cert` when
+   the Pi is on a tailnet, automatic TLS when it sits behind a
+   Cloudflare Tunnel, or Let's Encrypt with a DNS-01 challenge —
+   the latter works on your own domain without the Pi being
+   reachable from the internet (unlike the HTTP-01 flow described
+   [below](#switching-to-lets-encrypt-optional)).
+
 ### Kiosk / `/now` displays
 
 Most school installs put `/now` on a permanent display in the staff
